@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/sbuf.h>
 #include <unistd.h>
 
 #include <stdarg.h>
@@ -14,12 +16,6 @@
 #define BSMCONV_MSG_FIELD_PREFIX_LEN (sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1)
 #define BSMCONV_MSG_FIELD_TIMESTAMPID_LEN 14
 #define EOS '\0'
-
-struct buffer {
-	char * buf;
-	size_t len;
-	size_t size;
-};
 
 static void
 debug(const char *fmt, ...)
@@ -32,199 +28,213 @@ debug(const char *fmt, ...)
 	va_end(fmtargs);
 }
 
-static void
-append_buffer(struct buffer * const outbuf, const struct buffer * const inbuf,
-    const size_t offset, const size_t len)
-{
-	size_t newlen;
-	size_t newsize;
-
-	newlen = outbuf->len + inbuf->len;
-	newsize = outbuf->size;
-
-	if (newlen > newsize) {
-		if (newsize == 0)
-			newsize = 1;
-		while (newsize < newlen)
-			newsize *= BSMCONV_REALLOC_MODIFIER;
-		outbuf->buf = realloc(outbuf->buf, newsize);
-		if (outbuf->buf == NULL)
-			err(errno, "realloc");
-	}
-
-	memcpy(outbuf->buf + outbuf->len, inbuf->buf + offset, len);
-	outbuf->len = newlen;
-	outbuf->size = newsize;
-}
-
 /*
  * Returns the absolute position of a newline character.
  * The position is not less than offset.
  */
 static ssize_t
-find_record_end(const struct buffer * const buf, const size_t offset)
+find_record_end(struct sbuf *buf, const size_t offset)
 {
-	size_t offsetlen = buf->len - offset;
+	char *data;
+	size_t offsetlen;
+
+	assert(sbuf_len(buf) != -1);
+
+	offsetlen = sbuf_len(buf) - offset;
+	data = sbuf_data(buf);
 
 	for (size_t i = 0; i < offsetlen; ++i)
-		if (buf->buf[offset + i] == '\n')
-			return offset + i;
-	return -1;
+		if (data[offset + i] == '\n')
+			return (offset + i);
+	return (-1);
 }
 
 static ssize_t
-find_msg_field_position(const struct buffer * const buf)
+find_msg_field_position(struct sbuf *buf)
 {
+	size_t buflen;
 	size_t mi;
-	for (size_t bi = 0; bi < buf->len; ++bi) {
+	char *data;
+
+	assert(sbuf_len(buf) != -1);
+	assert(sbuf_done(buf) != 0);
+
+	data = sbuf_data(buf);
+	buflen = sbuf_len(buf);
+
+	for (size_t bi = 0; bi < buflen; ++bi) {
 		for (mi = 0; mi < BSMCONV_MSG_FIELD_PREFIX_LEN; ++mi)
-			if (buf->buf[bi + mi] != BSMCONV_MSG_FIELD_PREFIX[mi])
+			if (data[bi + mi] != BSMCONV_MSG_FIELD_PREFIX[mi])
 				break;
 		if (mi == BSMCONV_MSG_FIELD_PREFIX_LEN)
-			return bi;
+			return (bi);
 	}
-	return -1;
+	return (-1);
 }
 
 /*
  * pos is the position of the msg field.
  */
 static ssize_t
-find_msg_field_end(const struct buffer * const buf, const size_t pos)
+find_msg_field_end(struct sbuf *buf, const size_t pos)
 {
-	for (size_t i = pos; i < buf->len; ++i)
-		if (buf->buf[i] == ')')
-			return i;
-	return -1;
+	char *data;
+	size_t buflen;
+
+	assert(sbuf_len(buf) != -1);
+	assert(sbuf_done(buf) != 0);
+
+	data = sbuf_data(buf);
+	buflen = sbuf_len(buf);
+
+	for (size_t i = pos; i < buflen; ++i)
+		if (data[i] == ')')
+			return (i);
+	return (-1);
 }
 
 static void
-clean_buffer(struct buffer * const buf)
-{
-	buf->len = 0;
-	buf->size = 0;
-	if (buf->buf != NULL) {
-		free(buf->buf);
-		buf->buf = NULL;
-	}
-}
-
-static void
-init_buffer(struct buffer * const buf)
-{
-	buf->len = 0;
-	buf->size = 0;
-	buf->buf = NULL;
-}
-
-static void
-init_idbuf(struct buffer * idbuf,
-    const struct buffer * const recordbuf, const size_t startpos,
-    const size_t endpos)
-{
-	debug("the first record of the event");
-	idbuf->size = endpos - startpos + 1;
-	idbuf->len = idbuf->size;
-	idbuf->buf = malloc(sizeof(char) * (idbuf->size));
-	strncpy(idbuf->buf, recordbuf->buf + startpos, idbuf->len);
-}
-
-static void
-process_event(const struct buffer * const buf)
+process_event(const struct sbuf * const buf)
 {
 	return;
 }
 
 static void
-parse_record(struct buffer * const eventbuf, struct buffer * recordbuf,
-    struct buffer * idbuf)
+parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
+    struct sbuf *idbuf)
 {
-	size_t msgfieldpos, msgfieldend;
+	size_t msgfieldpos;
+	size_t msgfieldend;
+	size_t recordlen;
+	size_t idlen;
+	char *recorddata;
+	char *iddata;
+
+	assert(sbuf_len(idbuf) != -1);
+	assert(sbuf_len(recordbuf) != -1);
+
+	sbuf_done(recordbuf);
+	recordlen = sbuf_len(recordbuf);
+	recorddata = sbuf_data(recordbuf);
+
 	msgfieldpos = find_msg_field_position(recordbuf);
+
 	/* Find the msg field. */
 	if (msgfieldpos == -1) {
 		/* XXX This code doesn't allow texts in name=value fields */
 		/*     to have any newlines. */
 		warnx("record's msg field not found; "
 		    "the records will be ignored");
-		warnx("the record looks like this: %.*s",
-		    (int)recordbuf->len, recordbuf->buf);
-		clean_buffer(recordbuf);
+		warnx("the record looks like this: %.*s", recordlen,
+		    recorddata);
+		sbuf_clear(recordbuf);
+		return;
 	}
 	else {
 		msgfieldend = find_msg_field_end(recordbuf, msgfieldpos);
-		debug(">> the record (%.*s)",
-		    (int)recordbuf->len, recordbuf->buf);
+
 		/* Check record's id. */
 		/* The first record of the event. */
-		if (idbuf->len == 0) {
-			init_idbuf(idbuf, recordbuf, msgfieldpos, msgfieldend);
-			append_buffer(eventbuf, recordbuf, 0, recordbuf->len);
+		if (sbuf_len(idbuf) == 0) {
+			recorddata = sbuf_data(recordbuf);
+			idlen = msgfieldend - msgfieldpos;
+			sbuf_bcat(idbuf, recorddata + msgfieldpos, idlen);
+			assert(sbuf_len(idbuf) == idlen);
+			sbuf_bcat(eventbuf, recorddata, recordlen);
+			return;
 		}
 
-		/* If still the same event then append to the event_buffer. */
-		if (strncmp(idbuf->buf, recordbuf->buf + msgfieldpos, idbuf->len) == 0) {
-			debug("one of the records of the current event");
-			append_buffer(eventbuf, recordbuf, 0, recordbuf->len);
-		}
+		idlen = sbuf_len(idbuf);
+		iddata = sbuf_data(idbuf);
+
 		/* This record is from the next event. */
-		else {
+		if (strncmp(iddata, recorddata + msgfieldpos, idlen) != 0) {
 			/* Parse and print the current event. */
 			process_event(eventbuf);
 
 			/* Clean the event. */
-			clean_buffer(eventbuf);
-			clean_buffer(idbuf);
-
-			/* Add the current record to the event. */
-			append_buffer(eventbuf, recordbuf, 0, recordbuf->len);
+			sbuf_clear(eventbuf);
+			sbuf_clear(idbuf);
 		}
+		/* Add the current record to the event. */
+		sbuf_bcat(eventbuf, recorddata, recordlen);
 
-		clean_buffer(recordbuf);
+		sbuf_clear(recordbuf);
 	}
 }
 
 int main()
 {
-	struct buffer eventbuf;
-	struct buffer idbuf;
-	struct buffer inbuf;
-	struct buffer recordbuf;
+	struct sbuf *eventbuf;
+	struct sbuf *idbuf;
+	struct sbuf *inbuf;
+	struct sbuf *recordbuf;
+	char *readbuf;
+	char *indata;
 	size_t offset;
 	ssize_t newlinepos;
 	ssize_t bytesread;
+	size_t offsetlen;
+	int resval;
 
-	init_buffer(&eventbuf);
-	init_buffer(&idbuf);
-	init_buffer(&inbuf);
-	init_buffer(&recordbuf);
+	eventbuf = sbuf_new_auto();
+	if (eventbuf == NULL)
+		err(errno, "sbuf_new_auto");
 
-	inbuf.size = BSMCONV_BUFFER_SIZE;
-	inbuf.buf = malloc(sizeof(char) * inbuf.size);
-	if (inbuf.buf == NULL)
+	idbuf = sbuf_new_auto();
+	if (idbuf == NULL)
+		err(errno, "sbuf_new_auto");
+
+	recordbuf = sbuf_new_auto();
+	if (recordbuf == NULL)
+		err(errno, "sbuf_new_auto");
+
+	readbuf = malloc(sizeof(char) * BSMCONV_BUFFER_SIZE);
+	if (readbuf == NULL)
 		err(errno, "malloc");
 
-	while ((bytesread = read(STDIN_FILENO, inbuf.buf, BSMCONV_BUFFER_SIZE)) > 0) {
-		inbuf.len = bytesread;
+	for (;;) {
+		bytesread = read(STDIN_FILENO, readbuf, BSMCONV_BUFFER_SIZE);
+		if (bytesread == -1)
+			err(errno, "read");
+		else if (bytesread == 0) {
+			debug("end of file.");
+			break;
+		}
+
+		inbuf = NULL;
+		sbuf_new(inbuf, readbuf, bytesread, SBUF_AUTOEXTEND);
+		if (inbuf == NULL)
+			err(errno, "sbuf_new");
+		if (sbuf_finish(inbuf) == -1)
+			err(errno, "sbuf_finish");
+		assert(sbuf_done(inbuf) != 0);
+		indata = sbuf_data(inbuf);
 		offset = 0;
 
 		/* The whole record is available. */
-		while ((newlinepos = find_record_end(&inbuf, offset)) != -1) {
-			assert(inbuf.buf[newlinepos] == '\n');
-			append_buffer(&recordbuf, &inbuf, offset, newlinepos - offset);
+		while ((newlinepos = find_record_end(inbuf, offset)) != -1) {
+			assert(sbuf_data(inbuf)[newlinepos] == '\n');
+
+			offsetlen = newlinepos - offset;
+			resval = sbuf_bcat(recordbuf, indata + offset, offsetlen);
+			if (resval == -1)
+				err(errno, "sbuf_bcat");
 			offset += newlinepos + 1;
-			parse_record(&eventbuf, &recordbuf, &idbuf);
+			parse_record(eventbuf, recordbuf, idbuf);
 		}
-		append_buffer(&recordbuf, &inbuf, offset, inbuf.len - offset + 1);
-		inbuf.len = 0;
+
+		offsetlen = sbuf_len(inbuf) - offset + 1;
+		resval = sbuf_bcat(recordbuf, indata + offset, offsetlen);
+
+		sbuf_delete(inbuf);
 	}
+	sbuf_delete(eventbuf);
+	sbuf_delete(recordbuf);
+	sbuf_delete(inbuf);
+	sbuf_delete(idbuf);
 
-	if (bytesread == -1)
-		err(errno, "read");
-	else if (bytesread == 0)
-		debug("end of file.");
-
-	free(inbuf.buf);
+	free(readbuf);
 
 	return 0;
 }
