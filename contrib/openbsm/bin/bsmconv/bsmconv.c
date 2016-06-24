@@ -23,12 +23,12 @@ struct buffer {
 static void
 debug(const char *fmt, ...)
 {
-	va_list fmt_args;
+	va_list fmtargs;
 	fprintf(stderr, "debug: ");
 	va_start(fmt_args, fmt);
-	vfprintf(stderr, fmt, fmt_args);
+	vfprintf(stderr, fmt, fmtargs);
 	fprintf(stderr, "\n");
-	va_end(fmt_args);
+	va_end(fmtargs);
 }
 
 static void
