@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <errno.h>
 #include <err.h>
 #include <stdlib.h>
@@ -7,68 +8,76 @@
 
 #include <stdarg.h>
 
-#define BSMCONV_BUFFER_SIZE 64
+#define BSMCONV_BUFFER_SIZE 16
 #define	BSMCONV_REALLOC_MODIFIER 4
 #define BSMCONV_MSG_FIELD_PREFIX ("msg=audit(")
 #define BSMCONV_MSG_FIELD_PREFIX_LENGTH (sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1)
 #define EOS '\0'
 
+struct buffer {
+	char * buf;
+	size_t len;
+	size_t size;
+};
+
 static void
 debug(const char *fmt, ...)
 {
-	va_list fmt_args;
+	va_list fmtargs;
 	fprintf(stderr, "debug: ");
 	va_start(fmt_args, fmt);
-	vfprintf(stderr, fmt, fmt_args);
+	vfprintf(stderr, fmt, fmtargs);
 	fprintf(stderr, "\n");
-	va_end(fmt_args);
+	va_end(fmtargs);
 }
 
 static void
-append_buffer(char ** out_bufferp, const char * const in_buffer,
-    size_t * const out_buffer_lenp, size_t * const out_buffer_sizep,
-    const size_t in_buffer_len)
+append_buffer(struct buffer * const outbuf, const struct buffer * const inbuf,
+    const size_t offset, const size_t len)
 {
-	size_t new_len;
-	size_t new_size;
+	size_t newlen;
+	size_t newsize;
 
-	new_len = *out_buffer_lenp + in_buffer_len;
-	new_size = *out_buffer_sizep;
+	newlen = outbuf->len + inbuf->len;
+	newsize = outbuf->size;
 
-	if (new_len > *out_buffer_sizep) {
-		new_size = *out_buffer_sizep;
-		if (new_size == 0)
-			new_size = 1;
-		while (new_size < new_len)
-			new_size *= BSMCONV_REALLOC_MODIFIER;
-		*out_bufferp = realloc(*out_bufferp, new_size);
-		if (*out_bufferp == NULL)
+	if (newlen > newsize) {
+		if (newsize == 0)
+			newsize = 1;
+		while (newsize < newlen)
+			newsize *= BSMCONV_REALLOC_MODIFIER;
+		outbuf->buf = realloc(outbuf->buf, newsize);
+		if (outbuf->buf == NULL)
 			err(errno, "realloc");
 	}
 
-	memcpy(*out_bufferp + *out_buffer_lenp, in_buffer, in_buffer_len);
-	*out_buffer_lenp = new_len;
-	*out_buffer_sizep = new_size;
+	memcpy(outbuf->buf + outbuf->len, inbuf->buf + offset, len);
+	outbuf->len = newlen;
+	outbuf->size = newsize;
 }
 
+/*
+ * Returns the absolute position of a newline character.
+ * The position is not less than offset.
+ */
 static ssize_t
-find_record_end(const char * const buffer, const size_t buffer_len)
+find_record_end(const struct buffer * const buf, const size_t offset)
 {
+	size_t offsetlen = buf->len - offset;
 
-	for (size_t pb = 0; pb < buffer_len; ++pb)
-		if (buffer[pb] == '\n')
-			return pb;
+	for (size_t i = 0; i < offsetlen; ++i)
+		if (buf->buf[offset + i] == '\n')
+			return offset + i;
 	return -1;
 }
 
 static ssize_t
-find_msg_field_position(const char * const buffer, const size_t buffer_len)
+find_msg_field_position(const struct buffer * const buf)
 {
-	size_t bi, mi;
-
-	for (bi = 0; bi < buffer_len; ++bi) {
+	size_t mi;
+	for (size_t bi = 0; bi < buf->len; ++bi) {
 		for (mi = 0; mi < BSMCONV_MSG_FIELD_PREFIX_LENGTH; ++mi)
-			if (buffer[bi + mi] != BSMCONV_MSG_FIELD_PREFIX[mi])
+			if (buf->buf[bi + mi] != BSMCONV_MSG_FIELD_PREFIX[mi])
 				break;
 		if (mi == BSMCONV_MSG_FIELD_PREFIX_LENGTH)
 			return bi;
@@ -77,91 +86,90 @@ find_msg_field_position(const char * const buffer, const size_t buffer_len)
 }
 
 static void
-clean_buffer(char ** bufferp, size_t * const len, size_t * const size)
+clean_buffer(struct buffer * const buf)
 {
-	*len = 0;
-	*size = 0;
-	free(*bufferp);
-	*bufferp = NULL;
+	buf->len = 0;
+	buf->size = 0;
+	if (buf->buf != NULL) {
+		free(buf->buf);
+		buf->buf = NULL;
+	}
+}
+
+static void
+initialize_buffer(struct buffer * const buf)
+{
+	buf->len = 0;
+	buf->size = 0;
+	buf->buf = NULL;
+}
+
+static void
+parse_record(struct buffer * recordbuf)
+{
+	size_t msgfieldpos;
+	msgfieldpos = find_msg_field_position(recordbuf);
+	// Check record's id.
+	if (msgfieldpos == -1) {
+		// XXX This code doesn't allow texts in name=value fields
+		//     to have any newlines.
+		warnx("record's msg field not found; "
+		    "the records will be ignored");
+		warnx("the record looks like this: %.*s",
+		    (int)recordbuf->len, recordbuf->buf);
+		clean_buffer(recordbuf);
+	}
+	else {
+		debug("the record looks like this: (%.*s)",
+		    (int)recordbuf->len, recordbuf->buf);
+		debug("parse the record");
+		// If it is the current event's record.
+		// Append to the event_buffer.
+		// Else parse and convert the current event_buffer and add the new record to the new event buffer.
+		clean_buffer(recordbuf);
+	}
 }
 
 int main()
 {
-	char *event_buffer;
-	char *record_buffer;
-	char reading_buffer[BSMCONV_BUFFER_SIZE];
-	ssize_t bytes_read;
-	ssize_t newline_position;
-	ssize_t msg_field_position;
+	struct buffer eventbuf;
+	struct buffer inbuf;
+	struct buffer recordbuf;
+	ssize_t newlinepos;
+	ssize_t bytesread;
+	size_t inbufoffset;
 
-	size_t current_event_start_position;
-	size_t event_buffer_len;
-	size_t event_buffer_size;
-	size_t processed_bytes;
-	size_t record_buffer_len;
-	size_t record_buffer_size;
-	size_t reading_buffer_offset;
-	size_t reading_buffer_offset_len;
+	initialize_buffer(&eventbuf);
+	initialize_buffer(&inbuf);
+	initialize_buffer(&recordbuf);
 
-	event_buffer_len = 0;
-	event_buffer_size = 0;
-	record_buffer_len = 0;
-	record_buffer_size = 0;
+	inbuf.size = BSMCONV_BUFFER_SIZE;
+	inbuf.buf = malloc(sizeof(char) * inbuf.size);
+	if (inbuf.buf == NULL)
+		err(errno, "malloc");
 
-	processed_bytes = 0;
-	current_event_start_position = 0;
-
-	while ((bytes_read = read(STDIN_FILENO, reading_buffer, BSMCONV_BUFFER_SIZE)) > 0) {
-		/* debug("read input buffer"); */
-		reading_buffer_offset = 0;
-		reading_buffer_offset_len = bytes_read;
+	while ((bytesread = read(STDIN_FILENO, inbuf.buf, BSMCONV_BUFFER_SIZE)) > 0) {
+		inbuf.len = bytesread;
+		inbufoffset = 0;
 
 		// The whole record is available.
-		while ((newline_position = find_record_end(reading_buffer + reading_buffer_offset, reading_buffer_offset_len)) != -1) {
-			/* debug("newline detected at %zu", newline_position); */
-
-			/* debug("about to append reading buffer to the record buffer"); */
-			append_buffer(&record_buffer, reading_buffer + reading_buffer_offset,
-			    &record_buffer_len, &record_buffer_size, newline_position);
-
-			reading_buffer_offset += newline_position + 1;
-			/* debug("newline character is in fact (%d)", reading_buffer[reading_buffer_offset - 1]); */
-			reading_buffer_offset_len = bytes_read - reading_buffer_offset;
-
-			// Check record's id.
-			/* debug("about to detect the record buffer"); */
-			msg_field_position = find_msg_field_position(record_buffer, record_buffer_len);
-			/* debug("msg field detected within the record buffer"); */
-			if (msg_field_position == -1) {
-				// XXX This code doesn't allow texts in name=value fields to have any newlines.
-				warnx("record's msg field not found; the records will be ignored");
-				warnx("the record looks like this: %.*s", (int)record_buffer_len, record_buffer);
-				clean_buffer(&record_buffer, &record_buffer_len, &record_buffer_size);
-			}
-			else {
-				debug("the record looks like this: %.*s", (int)record_buffer_len, record_buffer);
-				debug("parse the record");
-				// If it is the current event's record.
-					// Append to the event_buffer.
-				// Else parse and convert the current event_buffer and add the new record to the new event buffer.
-				clean_buffer(&record_buffer, &record_buffer_len, &record_buffer_size);
-			}
-
+		while ((newlinepos = find_record_end(&inbuf, inbufoffset)) != -1) {
+			assert(inbuf.buf[newlinepos] == '\n');
+			append_buffer(&recordbuf, &inbuf, inbufoffset, newlinepos - inbufoffset);
+			inbufoffset += newlinepos + 1;
+			inbuf.len += inbufoffset;
+			parse_record(&recordbuf);
 		}
-		append_buffer(&record_buffer, reading_buffer + reading_buffer_offset,
-		    &record_buffer_len, &record_buffer_size, reading_buffer_offset_len);
-		/* debug("no newlines left"); */
-
-		// Wait until the end of the record.
+		append_buffer(&recordbuf, &inbuf, inbufoffset, inbuf.len - inbufoffset);
+		inbuf.len = 0;
 	}
 
-	if (bytes_read == -1)
+	if (bytesread == -1)
 		err(errno, "read");
+	else if (bytesread == 0)
+		debug("end of file.");
 
-	/* else if (bytes_read == 0) */
-	/*         warn("End of file."); */
-
-	/* free(event_buffer); */
+	free(inbuf.buf);
 
 	return 0;
 }
