@@ -158,6 +158,8 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 		}
 		/* Add the current record to the event. */
 		sbuf_bcat(eventbuf, recorddata, recordlen);
+		/* Separate the records with the EOS character. */
+		sbuf_bcat(eventbuf, "\0", 1);
 
 		sbuf_clear(recordbuf);
 	}
