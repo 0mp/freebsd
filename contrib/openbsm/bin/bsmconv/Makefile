@@ -1,5 +1,6 @@
 CC=clang
-CFLAGS=-Wall -g
+CFLAGS=-Wall -g -pedantic -Werror -ansi
+LDFLAGS=-lsbuf
 TARGETS=conv.out
 
 .PHONY=clean all
@@ -7,11 +8,12 @@ TARGETS=conv.out
 all: $(TARGETS)
 
 conv.out: bsmconv.o
-	$(CC) -o $@ bsmconv.o
+	$(CC) $(LDFLAGS) -o $@ bsmconv.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $^
 
 clean:
-	@rm *.o
-	@rm $(TARGETS)
+	@rm -f *.o
+	@rm -f $(TARGETS)
+	@rm -f *.core
