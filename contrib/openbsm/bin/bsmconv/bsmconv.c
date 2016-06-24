@@ -37,13 +37,14 @@ find_record_end(struct sbuf *buf, const size_t offset)
 {
 	char *data;
 	size_t offsetlen;
+	size_t i;
 
 	assert(sbuf_len(buf) != -1);
 
 	offsetlen = sbuf_len(buf) - offset;
 	data = sbuf_data(buf);
 
-	for (size_t i = 0; i < offsetlen; ++i)
+	for (i = 0; i < offsetlen; ++i)
 		if (data[offset + i] == '\n')
 			return (offset + i);
 	return (-1);
@@ -53,6 +54,7 @@ static ssize_t
 find_msg_field_position(struct sbuf *buf)
 {
 	size_t buflen;
+	size_t bi;
 	size_t mi;
 	char *data;
 
@@ -62,7 +64,7 @@ find_msg_field_position(struct sbuf *buf)
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
-	for (size_t bi = 0; bi < buflen; ++bi) {
+	for (bi = 0; bi < buflen; ++bi) {
 		for (mi = 0; mi < BSMCONV_MSG_FIELD_PREFIX_LEN; ++mi)
 			if (data[bi + mi] != BSMCONV_MSG_FIELD_PREFIX[mi])
 				break;
@@ -80,6 +82,7 @@ find_msg_field_end(struct sbuf *buf, const size_t pos)
 {
 	char *data;
 	size_t buflen;
+	size_t i;
 
 	assert(sbuf_len(buf) != -1);
 	assert(sbuf_done(buf) != 0);
@@ -87,7 +90,7 @@ find_msg_field_end(struct sbuf *buf, const size_t pos)
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
-	for (size_t i = pos; i < buflen; ++i)
+	for (i = pos; i < buflen; ++i)
 		if (data[i] == ')')
 			return (i);
 	return (-1);
