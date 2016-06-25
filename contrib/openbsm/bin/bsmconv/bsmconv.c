@@ -11,9 +11,7 @@
 #include <stdarg.h>
 
 #define BSMCONV_BUFFER_SIZE 16
-#define	BSMCONV_REALLOC_MODIFIER 4
 #define BSMCONV_MSG_FIELD_PREFIX ("msg=audit(")
-#define BSMCONV_MSG_FIELD_PREFIX_LEN (sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1)
 #define BSMCONV_MSG_FIELD_TIMESTAMPID_LEN 14
 #define EOS '\0'
 
@@ -65,10 +63,10 @@ find_msg_field_position(struct sbuf *buf)
 	buflen = sbuf_len(buf);
 
 	for (bi = 0; bi < buflen; ++bi) {
-		for (mi = 0; mi < BSMCONV_MSG_FIELD_PREFIX_LEN; ++mi)
+		for (mi = 0; mi < sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1; ++mi)
 			if (data[bi + mi] != BSMCONV_MSG_FIELD_PREFIX[mi])
 				break;
-		if (mi == BSMCONV_MSG_FIELD_PREFIX_LEN)
+		if (mi == sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1)
 			return (bi);
 	}
 	return (-1);
