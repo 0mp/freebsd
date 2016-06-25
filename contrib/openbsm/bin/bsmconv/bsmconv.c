@@ -51,8 +51,10 @@ find_msg_field_position(struct sbuf *buf)
 	buflen = sbuf_len(buf);
 
 	for (bufii = 0; bufii < buflen; bufii++) {
-		for (msgii = 0; msgii < sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1; msgii++)
-			if (data[bufii + msgii] != BSMCONV_MSG_FIELD_PREFIX[msgii])
+		for (msgii = 0; msgii < sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1;
+		    msgii++)
+			if (data[bufii + msgii] !=
+			    BSMCONV_MSG_FIELD_PREFIX[msgii])
 				break;
 		if (msgii == sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1)
 			return (bufii);
@@ -94,7 +96,8 @@ process_event(struct sbuf *buf)
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
 
-	pjdlog_notice("event: |%zu| (%.*s)", sbuf_len(buf), (int)sbuf_len(buf), sbuf_data(buf));
+	pjdlog_notice("event: |%zu| (%.*s)", sbuf_len(buf), (int)sbuf_len(buf),
+	    sbuf_data(buf));
 
 	return;
 }
@@ -139,17 +142,20 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 		if (sbuf_len(idbuf) == 0) {
 			recorddata = sbuf_data(recordbuf);
 			idlen = msgfieldend - msgfieldpos;
-			PJDLOG_ASSERT(sbuf_bcat(idbuf, recorddata + msgfieldpos, idlen) != -1);
+			PJDLOG_ASSERT(sbuf_bcat(idbuf, recorddata + msgfieldpos,
+			     idlen) != -1);
 			PJDLOG_ASSERT(sbuf_len(idbuf) != -1);
 			PJDLOG_ASSERT((size_t)sbuf_len(idbuf) == idlen);
-			PJDLOG_ASSERT(sbuf_bcat(eventbuf, recorddata, recordlen) != -1);
+			PJDLOG_ASSERT(sbuf_bcat(eventbuf, recorddata,
+			    recordlen) != -1);
 		}
 		else {
 			idlen = sbuf_len(idbuf);
 			iddata = sbuf_data(idbuf);
 
 			/* This record is from the next event. */
-			if (strncmp(iddata, recorddata + msgfieldpos, idlen) != 0) {
+			if (strncmp(iddata, recorddata + msgfieldpos, idlen) !=
+			    0) {
 				/* Parse and print the current event. */
 				process_event(eventbuf);
 
@@ -158,7 +164,8 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 				sbuf_clear(idbuf);
 			}
 			/* Add the current record to the event. */
-			PJDLOG_ASSERT(sbuf_bcat(eventbuf, recorddata, recordlen) != -1);
+			PJDLOG_ASSERT(sbuf_bcat(eventbuf, recorddata,
+			    recordlen) != -1);
 			/* Separate the records with the EOS character. */
 			PJDLOG_ASSERT(sbuf_bcat(eventbuf, "\0", 1) != -1);
 		}
@@ -209,7 +216,8 @@ int main()
 			PJDLOG_ASSERT(sbuf_data(inbuf)[newlinepos] == '\n');
 
 			offsetlen = newlinepos - offset;
-			PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset, offsetlen) != -1);
+			PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset,
+			    offsetlen) != -1);
 			retval = sbuf_finish(recordbuf);
 			if (retval == -1)
 				pjdlog_exit(errno, "sbuf_finish");
@@ -218,7 +226,8 @@ int main()
 		}
 
 		offsetlen = sbuf_len(inbuf) - offset;
-		PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset, offsetlen) != -1);
+		PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset,
+		    offsetlen) != -1);
 
 		sbuf_clear(inbuf);
 	}
