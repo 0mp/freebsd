@@ -96,7 +96,7 @@ process_event(struct sbuf *buf)
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
 
-	pjdlog_notice("event: |%zu| (%.*s)", sbuf_len(buf), (int)sbuf_len(buf),
+	pjdlog_notice("Event: |%zu| (%.*s)", sbuf_len(buf), (int)sbuf_len(buf),
 	    sbuf_data(buf));
 
 	return;
@@ -129,9 +129,10 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 	if (msgfieldpos == -1) {
 		/* XXX This code doesn't allow texts in name=value fields */
 		/*     to have any newlines. */
-		warnx("record's msg field not found; "
+		/* TODO Should I change warnx to pjdlog_*? */
+		warnx("Record's msg field not found; "
 		    "the records will be ignored");
-		warnx("the record looks like this: (%.*s)", recordlen,
+		warnx("The record looks like this: (%.*s)", recordlen,
 		    recorddata);
 	}
 	else {
