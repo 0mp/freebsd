@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/queue.h>
 #include <sys/types.h>
 #include <sys/sbuf.h>
 #include <unistd.h>
@@ -12,6 +13,30 @@
 #define	BSMCONV_BUFFER_SIZE			16
 #define	BSMCONV_MSG_FIELD_PREFIX		"msg=audit("
 #define	BSMCONV_MSG_FIELD_TIMESTAMPID_LEN	14
+
+struct linau_field {
+	char *name;
+	char *val;
+	uint32_t size;
+	TAILQ_ENTRY(linau_field) next;
+};
+
+/* The sizes of the fileds are based on what I've found in
+ * audit-userspace/auparse/auparse.h. */
+struct linau_record {
+	uint32_t id;
+	uint64_t nsec;
+	char *type;
+	uint32_t size;
+	TAILQ_HEAD(, linau_field) fields;
+	TAILQ_ENTRY(linau_record) next;
+};
+
+struct linau_event {
+	uint32_t size;
+	TAILQ_HEAD(, linau_record) records;
+};
+
 
 /*
  * Returns the absolute position of a newline character.
@@ -87,10 +112,8 @@ find_msg_field_end(struct sbuf *buf, const size_t pos)
 static void
 process_event(struct sbuf *buf)
 {
-	int retval;
 
-	retval = sbuf_finish(buf);
-	if (retval == -1)
+	if (sbuf_finish(buf) == -1)
 		pjdlog_exit(errno, "sbuf_finish");
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
@@ -111,13 +134,11 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 	size_t idlen;
 	char *recorddata;
 	char *iddata;
-	int retval;
 
 	PJDLOG_ASSERT(sbuf_len(idbuf) != -1);
 	PJDLOG_ASSERT(sbuf_len(recordbuf) != -1);
 
-	retval = sbuf_finish(recordbuf);
-	if (retval == -1)
+	if (sbuf_finish(recordbuf) == -1)
 		pjdlog_exit(errno, "sbuf_finish");
 
 	recordlen = sbuf_len(recordbuf);
@@ -190,7 +211,9 @@ int main()
 	ssize_t newlinepos;
 	ssize_t bytesread;
 	size_t offsetlen;
-	int retval;
+
+	struct linau_event event;
+	TAILQ_INIT(&event.records);
 
 	eventbuf = sbuf_new_auto();
 	PJDLOG_ASSERT(eventbuf != NULL);
@@ -209,8 +232,7 @@ int main()
 	while ((bytesread = read(STDIN_FILENO, readbuf, sizeof(readbuf))) > 0) {
 
 		PJDLOG_ASSERT(sbuf_bcat(inbuf, readbuf, bytesread) != -1);
-		retval = sbuf_finish(inbuf);
-		if (retval == -1)
+		if (sbuf_finish(inbuf) == -1)
 			pjdlog_exit(errno, "sbuf_finish");
 		PJDLOG_ASSERT(sbuf_done(inbuf) != 0);
 		indata = sbuf_data(inbuf);
@@ -223,8 +245,7 @@ int main()
 			offsetlen = newlinepos - offset;
 			PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset,
 			    offsetlen) != -1);
-			retval = sbuf_finish(recordbuf);
-			if (retval == -1)
+			if (sbuf_finish(recordbuf) == -1)
 				pjdlog_exit(errno, "sbuf_finish");
 			offset += newlinepos + 1;
 			parse_record(eventbuf, recordbuf, idbuf);
