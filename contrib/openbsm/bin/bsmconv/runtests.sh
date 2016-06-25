@@ -1,7 +1,7 @@
 #!/bin/sh
 
 TEST_DIR=tests/
-BIN=./conv.out
+BIN=../../../../usr.bin/bsmconv/bsmconv
 
 if [ "$1" = "-m" ]; then
 	make

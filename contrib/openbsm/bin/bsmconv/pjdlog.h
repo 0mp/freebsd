@@ -39,8 +39,6 @@
 
 #include <compat/compat.h>
 
-#pragma clang diagnostic ignored "-Wvariadic-macros"
-
 #define	PJDLOG_MODE_STD		0
 #define	PJDLOG_MODE_SYSLOG	1
 
