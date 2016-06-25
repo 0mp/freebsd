@@ -193,7 +193,7 @@ int main()
 	struct sbuf *idbuf;
 	struct sbuf *inbuf;
 	struct sbuf *recordbuf;
-	char *readbuf;
+	char readbuf[BSMCONV_BUFFER_SIZE];
 	char *indata;
 	size_t offset;
 	ssize_t newlinepos;
@@ -217,12 +217,8 @@ int main()
 	if (recordbuf == NULL)
 		err(errno, "sbuf_new_auto");
 
-	readbuf = malloc(sizeof(char) * BSMCONV_BUFFER_SIZE);
-	if (readbuf == NULL)
-		err(errno, "malloc");
-
 	for (;;) {
-		bytesread = read(STDIN_FILENO, readbuf, BSMCONV_BUFFER_SIZE);
+		bytesread = read(STDIN_FILENO, readbuf, sizeof(readbuf));
 		if (bytesread == -1)
 			err(errno, "read");
 		else if (bytesread == 0) {
@@ -270,8 +266,6 @@ int main()
 	sbuf_delete(recordbuf);
 	sbuf_delete(inbuf);
 	sbuf_delete(idbuf);
-
-	free(readbuf);
 
 	return (0);
 }
