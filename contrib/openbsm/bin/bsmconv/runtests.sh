@@ -1,10 +1,15 @@
 #!/bin/sh
 
 TEST_DIR=tests/
-BIN=../../../../usr.bin/bsmconv/bsmconv
+MAKEFILE_DIR=../../../../usr.bin/bsmconv/
+BIN=${MAKEFILE_DIR}bsmconv
+MAKEFILE=${MAKEFILE_DIR}Makefile
 
 if [ "$1" = "-m" ]; then
+	CWD=$(pwd)
+	cd "$MAKEFILE_DIR"
 	make
+	cd "$CWD"
 fi
 
 for TEST_FILE in "$TEST_DIR"*.input; do

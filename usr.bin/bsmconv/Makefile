@@ -13,7 +13,7 @@ PROG=	bsmconv
 SRCS=	bsmconv.c
 SRCS+=	pjdlog.c
 
-LIBADD+=	l sbuf util
+LIBADD+=sbuf util
 MAN=
 
 # auditdistd cannot use FreeBSD specific lock annotation macros. Disable
