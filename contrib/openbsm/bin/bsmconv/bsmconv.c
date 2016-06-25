@@ -8,12 +8,11 @@
 #include <sys/sbuf.h>
 #include <unistd.h>
 
-#include <stdarg.h>
+#include <stdarg.h> /* debug */
 
-#define BSMCONV_BUFFER_SIZE 16
-#define BSMCONV_MSG_FIELD_PREFIX ("msg=audit(")
-#define BSMCONV_MSG_FIELD_TIMESTAMPID_LEN 14
-#define EOS '\0'
+#define	BSMCONV_BUFFER_SIZE			16
+#define	BSMCONV_MSG_FIELD_PREFIX		"msg=audit("
+#define	BSMCONV_MSG_FIELD_TIMESTAMPID_LEN	14
 
 static void
 debug(const char *fmt, ...)
