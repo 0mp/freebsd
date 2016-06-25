@@ -42,7 +42,7 @@ find_record_end(struct sbuf *buf, const size_t offset)
 	offsetlen = sbuf_len(buf) - offset;
 	data = sbuf_data(buf);
 
-	for (ii = 0; ii < offsetlen; ++ii)
+	for (ii = 0; ii < offsetlen; ii++)
 		if (data[offset + ii] == '\n')
 			return (offset + ii);
 	return (-1);
@@ -62,8 +62,8 @@ find_msg_field_position(struct sbuf *buf)
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
-	for (bufii = 0; bufii < buflen; ++bufii) {
-		for (msgii = 0; msgii < sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1; ++msgii)
+	for (bufii = 0; bufii < buflen; bufii++) {
+		for (msgii = 0; msgii < sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1; msgii++)
 			if (data[bufii + msgii] != BSMCONV_MSG_FIELD_PREFIX[msgii])
 				break;
 		if (msgii == sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1)
@@ -88,7 +88,7 @@ find_msg_field_end(struct sbuf *buf, const size_t pos)
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
-	for (ii = pos; ii < buflen; ++ii)
+	for (ii = pos; ii < buflen; ii++)
 		if (data[ii] == ')')
 			return (ii);
 	return (-1);
