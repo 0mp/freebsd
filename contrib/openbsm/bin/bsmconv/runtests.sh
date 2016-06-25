@@ -12,6 +12,7 @@ if [ "$1" = "-m" ]; then
 	cd "$CWD"
 fi
 
+echo ==================== TESTS ==========================
 for TEST_FILE in "$TEST_DIR"*.input; do
     cat "$TEST_FILE" | "$BIN"
 done

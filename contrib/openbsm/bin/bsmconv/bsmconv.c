@@ -120,6 +120,7 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 	retval = sbuf_finish(recordbuf);
 	if (retval == -1)
 		pjdlog_exit(errno, "sbuf_finish");
+
 	recordlen = sbuf_len(recordbuf);
 	recorddata = sbuf_data(recordbuf);
 
@@ -127,8 +128,8 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 
 	/* Find the msg field. */
 	if (msgfieldpos == -1) {
-		/* XXX This code doesn't allow texts in name=value fields */
-		/*     to have any newlines. */
+		/* XXX This code doesn't allow texts in name=value fields
+		 *     to have any newlines. */
 		/* TODO Should I change warnx to pjdlog_*? */
 		warnx("Record's msg field not found; "
 		    "the records will be ignored");
@@ -141,6 +142,8 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 		/* Check record's id. */
 		/* The first record of the event. */
 		if (sbuf_len(idbuf) == 0) {
+			/* TODO Check if the timestamp:id is a valid timestamp
+			 *	and id is a valid 16-bit number. */
 			recorddata = sbuf_data(recordbuf);
 			idlen = msgfieldend - msgfieldpos;
 			PJDLOG_ASSERT(sbuf_bcat(idbuf, recorddata + msgfieldpos,
@@ -164,11 +167,13 @@ parse_record(struct sbuf * const eventbuf, struct sbuf *recordbuf,
 				sbuf_clear(eventbuf);
 				sbuf_clear(idbuf);
 			}
+
 			/* Add the current record to the event. */
 			PJDLOG_ASSERT(sbuf_bcat(eventbuf, recorddata,
 			    recordlen) != -1);
+
 			/* Separate the records with the EOS character. */
-			PJDLOG_ASSERT(sbuf_bcat(eventbuf, "\0", 1) != -1);
+			PJDLOG_ASSERT(sbuf_bcat(eventbuf, "X", 1) != -1);
 		}
 	}
 	sbuf_clear(recordbuf);
