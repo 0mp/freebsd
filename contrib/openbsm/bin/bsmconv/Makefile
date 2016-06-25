@@ -1,14 +1,14 @@
 CC=clang
 CFLAGS=-Wall -g -pedantic -Werror -ansi
-LDFLAGS=-lsbuf
+LIBS=-lsbuf
 TARGETS=conv.out
 
 .PHONY=clean all
 
 all: $(TARGETS)
 
-conv.out: bsmconv.o
-	$(CC) $(LDFLAGS) -o $@ bsmconv.o
+conv.out: bsmconv.o pjdlog.o
+	$(CC) $(LIBS) -o $@ bsmconv.o
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $^
