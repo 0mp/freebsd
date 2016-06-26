@@ -1,3 +1,10 @@
+/*
+ * Debug levels:
+ * 1 -> Temporarily important logs.
+ * 2 -> General information about if a function was called.
+ * 3 -> Function-level logs.
+ */
+
 #include <errno.h>
 #include <err.h>
 #include <stdlib.h>
@@ -147,16 +154,16 @@ parse_num_from_msg(struct sbuf * buf, const size_t start, const size_t end)
 	char *substr;
 	size_t num;
 
-	pjdlog_debug(1, "Parsing a part of a msg");
+	pjdlog_debug(2, "Parsing a part of a msg");
 	len = end - start;
 	substr = malloc(sizeof(char) * (len + 1));
 	PJDLOG_ASSERT(substr != NULL);
 	substr = strncpy(substr, sbuf_data(buf) + start, len);
 	substr[len] = '\0';
-	pjdlog_debug(1, "num substr: (%s)", substr);
+	pjdlog_debug(3, "num substr: (%s)", substr);
 	string_to_uint32(&num, substr);
 	free(substr);
-	pjdlog_debug(1, "num: %zu", num);
+	pjdlog_debug(3, "num: %zu", num);
 	return num;
 }
 
@@ -176,7 +183,7 @@ set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 	uint64_t sumsecs;
 	char *data;
 
-	pjdlog_debug(1, "set_record_id_and_nsec");
+	pjdlog_debug(2, "set_record_id_and_nsec");
 
 	data = sbuf_data(buf);
 
@@ -413,7 +420,7 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	*recordp = record;
 }
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	struct sbuf *inbuf;
 	struct sbuf *recordbuf;
@@ -423,6 +430,7 @@ int main(void)
 	ssize_t newlinepos;
 	ssize_t bytesread;
 	size_t offsetlen;
+	int debuglevel;
 
 	struct linau_event event;
 	struct linau_record *record;
@@ -435,7 +443,25 @@ int main(void)
 	PJDLOG_ASSERT(recordbuf != NULL);
 
 	pjdlog_init(PJDLOG_MODE_STD);
-	pjdlog_debug_set(1);
+
+	/* Parse command line options. */
+	debuglevel = 0;
+	for (;;) {
+		int ch;
+
+		ch = getopt(argc, argv, "v");
+		if (ch == -1)
+			break;
+		switch (ch) {
+		case 'v':
+			debuglevel++;
+			break;
+		default:
+			PJDLOG_ASSERT(!"Invalid command line options detected");
+		}
+	}
+
+	pjdlog_debug_set(debuglevel);
 
 	while ((bytesread = read(STDIN_FILENO, readbuf, sizeof(readbuf))) > 0) {
 		PJDLOG_ASSERT(sbuf_bcat(inbuf, readbuf, bytesread) != -1);

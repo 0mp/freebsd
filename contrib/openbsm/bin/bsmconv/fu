@@ -40,9 +40,10 @@ fu_run_test_set() {
     DIR="$1"
     ONSUCCESS="$2"
     ONFAILURE="$3"
+    OPTS="$4"
     for TEST_FILE in "$POSITIVE_DIR"*.input; do
         echo =========[ $TEST_FILE ]=========
-        cat "$TEST_FILE" | "$BIN"
+        cat "$TEST_FILE" | "$BIN" "$OPTS"
         if [ "$?" -eq 0 ]; then
             $ONSUCCESS $TEST_FILE
         else
@@ -52,8 +53,9 @@ fu_run_test_set() {
 }
 
 fu_run_tests() {
-    fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure'
-    fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success'
+    OPTS="$1"
+    fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
 }
 
 fu_usage() {
@@ -67,10 +69,15 @@ fu_usage() {
 
 PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
 
-for action in "$@"; do
-    case "$action" in
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
     t|test|tests)
         fu_run_tests
+        ;;
+    tv)
+        fu_run_tests "$2"
+        shift
         ;;
     m|make)
         fu_make
@@ -79,5 +86,6 @@ for action in "$@"; do
         fu_usage
         ;;
     esac
+    shift
 done
 
