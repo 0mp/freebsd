@@ -449,13 +449,29 @@ parse_fields(struct linau_record * const record, struct sbuf * const buf)
 		parse_field(&field, &lastpos, buf);
 
 		/* Calculate the size of the field. */
+		field->size = field->namelen + field->vallen;
 
 		/* Append the field to the record. */
 		(void)record;
 
 		/* Add the size of the field to the total size of the record. */
+		record->size += field->size;
 
 	}
+}
+
+static void
+linau_record_init(struct linau_record ** recordp)
+{
+	struct linau_record * record;
+	PJDLOG_ASSERT((record = malloc(sizeof(record))) != NULL);
+	record->id = 0;
+	record->nsecs = 0;
+	record->type = NULL;
+	record->typelen = 0;
+	record->size = 0;
+	TAILQ_INIT(&record->fields);
+	*recordp = record;
 }
 
 /*
@@ -474,8 +490,7 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	data = sbuf_data(recordbuf);
 	len = sbuf_len(recordbuf);
 
-	record = malloc(sizeof(record));
-	TAILQ_INIT(&record->fields);
+	linau_record_init(&record);
 
 	/* Set the type of the record. */
 	set_record_type(record, recordbuf);
