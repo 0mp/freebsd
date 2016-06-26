@@ -211,7 +211,7 @@ set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 	PJDLOG_ASSERT(nsecs <= UINT32_MAX); /* TODO Is it needed? */
 
 	/* Convert the timestamp to nanoseconds. */
-	sumsecs = (uint64_t)secs * 1000 * 1000 * 1000 + (uint64_t)nsecs;
+	sumsecs = (uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs;
 
 	/* Set the nanoseconds field. */
 	record->nsecs = sumsecs;
