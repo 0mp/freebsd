@@ -20,7 +20,9 @@
 
 struct linau_field {
 	char *name;
+	uint32_t namelen;
 	char *val;
+	uint32_t vallen;
 	uint32_t size;
 	TAILQ_ENTRY(linau_field) next;
 };
@@ -31,6 +33,7 @@ struct linau_record {
 	uint32_t id;
 	uint64_t nsecs;
 	char *type;
+	uint32_t typelen;
 	uint32_t size;
 	TAILQ_HEAD(, linau_field) fields;
 	TAILQ_ENTRY(linau_record) next;
@@ -144,22 +147,21 @@ parse_num_from_msg(struct sbuf * buf, const size_t start, const size_t end)
 	char *substr;
 	size_t num;
 
-	pjdlog_notice("Parsing a part of a msg");
+	pjdlog_debug("Parsing a part of a msg");
 	len = end - start;
 	substr = malloc(sizeof(char) * (len + 1));
 	PJDLOG_ASSERT(substr != NULL);
 	substr = strncpy(substr, sbuf_data(buf) + start, len);
 	substr[len] = '\0';
-	pjdlog_notice("num substr: (%s)", substr);
+	pjdlog_debug("num substr: (%s)", substr);
 	string_to_uint32(&num, substr);
 	free(substr);
-	pjdlog_notice("num: %zu", num);
+	pjdlog_debug("num: %zu", num);
 	return num;
 }
 
 static void
-set_record_id_and_nsec(struct linau_record * record,
-    struct sbuf * recordbuf)
+set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 {
 	size_t dotpos;
 	size_t msgstart;
@@ -174,26 +176,26 @@ set_record_id_and_nsec(struct linau_record * record,
 	uint64_t sumsecs;
 	char *data;
 
-	pjdlog_notice("set_record_id_and_nsec");
+	pjdlog_debug("set_record_id_and_nsec");
 
-	data = sbuf_data(recordbuf);
+	data = sbuf_data(buf);
 
 	/* Find msg field start. */
-	PJDLOG_ASSERT(find_msg_field_start(&msgstart, recordbuf) != 0);
+	PJDLOG_ASSERT(find_msg_field_start(&msgstart, buf) != 0);
 	secsstart = msgstart + sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1;
 	PJDLOG_ASSERT(data[secsstart] != '(');
 
 	/* Find msg field msgend. */
-	PJDLOG_ASSERT(find_in_sbuf(&msgend, recordbuf, BSMCONV_MSG_FIELD_SUFFIX,
+	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, BSMCONV_MSG_FIELD_SUFFIX,
 	    msgstart) != 0);
 
 	/* Find a dotpos inside the msg field. */
-	PJDLOG_ASSERT(find_in_sbuf(&dotpos, recordbuf,
+	PJDLOG_ASSERT(find_in_sbuf(&dotpos, buf,
 	    BSMCONV_MSG_FIELD_TIMESTAMP_SEPARATOR, msgstart) != 0);
 	nsecsstart = dotpos + 1;
 
 	/* Find the timestamp:id separator. */
-	PJDLOG_ASSERT(find_in_sbuf(&separatorpos, recordbuf,
+	PJDLOG_ASSERT(find_in_sbuf(&separatorpos, buf,
 	    BSMCONV_MSG_FIELD_TIMESTAMPID_SEPARATOR, dotpos) != 0);
 	idstart = separatorpos + 1;
 
@@ -201,8 +203,8 @@ set_record_id_and_nsec(struct linau_record * record,
 	    nsecsstart < idstart && idstart < msgend);
 
 	/* Parse the timestamp. */
-	secs = parse_num_from_msg(recordbuf, secsstart, dotpos);
-	nsecs = parse_num_from_msg(recordbuf, nsecsstart, separatorpos);
+	secs = parse_num_from_msg(buf, secsstart, dotpos);
+	nsecs = parse_num_from_msg(buf, nsecsstart, separatorpos);
 
 	/* Validate the timestamp. */
 	PJDLOG_ASSERT(secs <= UINT32_MAX); /* TODO Is it needed? */
@@ -215,13 +217,166 @@ set_record_id_and_nsec(struct linau_record * record,
 	record->nsecs = sumsecs;
 
 	/* Parse the id. */
-	id = parse_num_from_msg(recordbuf, idstart, msgend);
+	id = parse_num_from_msg(buf, idstart, msgend);
 
 	/* Validate the id. */
 	PJDLOG_ASSERT(id <= UINT32_MAX); /* TODO Is it needed? */
 
 	/* Set the id field. */
 	record->id = id;
+}
+
+/*
+ * strtype should be either " or '.
+ */
+static void
+parse_field_value_string(size_t * const valendp, const size_t valstart,
+    struct sbuf * const buf, const char strtype)
+{
+	char *data;
+	size_t valend;
+	size_t buflen;
+
+	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	data = sbuf_data(buf);
+	buflen = sbuf_len(buf);
+
+	valend = valstart + 1;
+	PJDLOG_ASSERT(valend < (size_t)buflen);
+
+	do {
+		PJDLOG_ASSERT(find_in_sbuf(&valend, buf, strtype, valend) !=0);
+	} while (data[valend - 1] == '\\');
+
+	*valendp = valend;
+}
+
+static void
+parse_field_value(char ** valuep, size_t * vallenp, struct sbuf * const buf,
+    const size_t valstart)
+{
+	char *data;
+	size_t vallen;
+	size_t buflen;
+	size_t valend;
+	char *value;
+
+	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	data = sbuf_data(buf);
+	buflen = sbuf_len(buf);
+	PJDLOG_ASSERT(valstart < buflen);
+
+	if (data[valstart] == '"') {
+		parse_field_value_string(&valend, valstart, buf, '"');
+	}
+	/* XXX You cannot have a value like '''. It's assumed that there are no */
+	/*     apostophes between two main apostrophes.
+	 *     Actually, it is OK as long as there is a \ before the '. */
+	else if (data[valstart] == '\'') {
+		parse_field_value_string(&valend, valstart, buf, '\'');
+	}
+	else {
+		PJDLOG_ASSERT(find_in_sbuf(&valend, buf, ' ', valend) !=0);
+	}
+
+	vallen = valend - valstart + 1;
+	value = malloc(sizeof(char) * vallen);
+
+	*valuep = value;
+	*vallenp = vallen;
+}
+
+static void
+parse_field(struct linau_field ** fieldp, size_t * const lastposp,
+    struct sbuf * const buf)
+{
+	size_t len;
+	size_t namestart;
+	size_t equalpos;
+	size_t nameend;
+	size_t valstart;
+	size_t namelen;
+	size_t vallen;
+	char *data;
+	char *name;
+	char *value;
+	struct linau_field * field;
+
+	PJDLOG_ASSERT((field = malloc(sizeof(struct linau_field))) != NULL);
+
+	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	data = sbuf_data(buf);
+	len = sbuf_len(buf);
+
+	namestart = *lastposp;
+
+	/* Skip spaces.
+	 * XXX Commas are invalid for the time being. */
+	while (namestart < len && data[namestart] != ' ')
+		namestart++;
+
+	// XXX This one might be wrong. How about the end of the record?
+	PJDLOG_ASSERT(namestart != len);
+
+	/* Reach the next field. */
+	/* Assue there are no '=' in the name. */
+	PJDLOG_ASSERT(find_in_sbuf(&equalpos, buf, '=', namestart) != 0);
+	nameend = equalpos - 1;
+
+	/* Parse the name. */
+	namelen = nameend - namestart + 1;
+	name = malloc(sizeof(char) * namelen);
+
+	/* Set the name. */
+	field->name = name;
+
+	/* Parse the value of the field. */
+	valstart = equalpos + 1;
+	PJDLOG_ASSERT(valstart < len);
+	parse_field_value(&value, &vallen, buf, valstart);
+
+	/* Set the value. */
+	field->val = value;
+
+	*lastposp = valstart + vallen;
+	*fieldp = field;
+}
+
+static void
+parse_fields(struct linau_record * const record, struct sbuf * const buf)
+{
+	size_t msgend;
+	/* size_t spacecomapos; */
+	/* size_t namepos; */
+	/* size_t valuepos; */
+	/* size_t colonpos; */
+	/* size_t fieldend; */
+	size_t lastpos;
+	size_t buflen;
+	struct linau_field * field;
+
+	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	buflen = sbuf_len(buf) != -1;
+
+	/* Find the beginning of the field section. */
+	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, ')', 0) != 0);
+	PJDLOG_ASSERT(sbuf_data(buf)[msgend] == ')');
+	PJDLOG_ASSERT(sbuf_data(buf)[msgend + 1] == ':');
+	PJDLOG_ASSERT(sbuf_data(buf)[msgend + 2] == ' ');
+
+	lastpos = msgend + 2;
+	/* While not all bytes of the buf are processed. */
+	while (lastpos < buflen) {
+		parse_field(&field, &lastpos, buf);
+
+		/* Calculate the size of the field. */
+
+		/* Append the field to the record. */
+		(void)record;
+
+		/* Add the size of the field to the total size of the record. */
+
+	}
 }
 
 /*
@@ -242,12 +397,16 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	record = malloc(sizeof(record));
 	TAILQ_INIT(&record->fields);
 
+	/* Set the type of the record. */
+	; // TODO
+
 	set_record_id_and_nsec(record, recordbuf);
 
 	/* Calculate the size of the record. */
 	; // TODO
 
 	/* Parse the fields. */
+	parse_fields(record, recordbuf);
 	; // TODO
 
 	sbuf_clear(recordbuf);
@@ -315,7 +474,7 @@ int main()
 
 	PJDLOG_ASSERT(bytesread != -1);
 	PJDLOG_ASSERT(bytesread == 0);
-	pjdlog_notice("EOF");
+	pjdlog_debug("EOF");
 
 	sbuf_delete(recordbuf);
 	sbuf_delete(inbuf);
