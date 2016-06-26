@@ -1,0 +1,4 @@
+type=TESTTYPE4 msg=audit(1464612294.816:25): a:okok
+type=TESTTYPE4 msg=audit(1800000000.123:3000): textfield:"youknowwhat?
+ohbytheway!"
+type=TESTTYPE5 msg=audit(1800000000.12a:3000): w:2

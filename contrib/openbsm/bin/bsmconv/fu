@@ -1,44 +1,83 @@
 #!/bin/sh
 
 TEST_DIR=tests/
+POSITIVE_DIR=${TEST_DIR}positive/
+NEGATIVE_DIR=${TEST_DIR}negative/
 MAKEFILE_DIR=../../../../usr.bin/bsmconv/
 BIN=${MAKEFILE_DIR}bsmconv
 MAKEFILE=${MAKEFILE_DIR}Makefile
 
-fu_make() {
-        local CWD
-        CWD=$(pwd)
-        cd "$MAKEFILE_DIR"
-        make
-        cd "$CWD"
+PROGRESS_PENDING_CHAR="\."
+update_progress_bar() {
+    UPDATE="$1"
+    PROGRESS="$(echo "$PROGRESS" | sed 's/'"$PROGRESS_PENDING_CHAR"'/'"$UPDATE"'/')"
 }
 
-fu_run_tests() {
-    if [ "$1" = "-m" ]; then
-        fu_make
-    fi
-    echo ==================== TESTS ==========================
-    for TEST_FILE in "$TEST_DIR"*.input; do
+fu_make() {
+    local CWD
+    CWD=$(pwd)
+    cd "$MAKEFILE_DIR"
+    make
+    cd "$CWD"
+}
+
+fu_result() {
+    update_progress_bar "$2"
+    echo "[$1]"
+    printf "%s $PROGRESS\n" "$3"
+    # echo "OK   $PROGRESS"
+}
+
+fu_success() {
+    fu_result "$1" '#' 'OK  '
+}
+
+fu_failure() {
+    fu_result "$1" 'F' 'FAIL'
+}
+
+fu_run_test_set() {
+    DIR="$1"
+    ONSUCCESS="$2"
+    ONFAILURE="$3"
+    for TEST_FILE in "$POSITIVE_DIR"*.input; do
+        echo =========[ $TEST_FILE ]=========
         cat "$TEST_FILE" | "$BIN"
+        if [ "$?" -eq 0 ]; then
+            $ONSUCCESS $TEST_FILE
+        else
+            $ONFAILURE $TEST_FILE
+        fi
     done
 }
 
+fu_run_tests() {
+    fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure'
+    fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success'
+}
 
-case "$1" in
+fu_usage() {
+    echo "usage: $0 ACTION [ACTION ...]"
+    echo "ACTION is {make, test, usage}."
+    printf "%s\n%s\n" \
+    "The game of chess is like a sword fight." \
+    "You must think first before you move."
+    exit 1
+}
+
+PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
+
+for action in "$@"; do
+    case "$action" in
     t|test|tests)
-        fu_run_tests "$2"
+        fu_run_tests
         ;;
     m|make)
         fu_make
         ;;
-    *)
-        printf "%s\n%s\n" \
-            "The game of chess is like a sword fight." \
-            "You must think first before you move."
-        exit 1
+    usage|help|-h|*)
+        fu_usage
         ;;
-esac
-
-
-
+    esac
+done
 
