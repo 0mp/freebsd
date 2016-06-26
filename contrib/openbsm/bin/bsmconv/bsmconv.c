@@ -147,16 +147,16 @@ parse_num_from_msg(struct sbuf * buf, const size_t start, const size_t end)
 	char *substr;
 	size_t num;
 
-	pjdlog_debug("Parsing a part of a msg");
+	pjdlog_debug(1, "Parsing a part of a msg");
 	len = end - start;
 	substr = malloc(sizeof(char) * (len + 1));
 	PJDLOG_ASSERT(substr != NULL);
 	substr = strncpy(substr, sbuf_data(buf) + start, len);
 	substr[len] = '\0';
-	pjdlog_debug("num substr: (%s)", substr);
+	pjdlog_debug(1, "num substr: (%s)", substr);
 	string_to_uint32(&num, substr);
 	free(substr);
-	pjdlog_debug("num: %zu", num);
+	pjdlog_debug(1, "num: %zu", num);
 	return num;
 }
 
@@ -176,7 +176,7 @@ set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 	uint64_t sumsecs;
 	char *data;
 
-	pjdlog_debug("set_record_id_and_nsec");
+	pjdlog_debug(1, "set_record_id_and_nsec");
 
 	data = sbuf_data(buf);
 
@@ -413,7 +413,7 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	*recordp = record;
 }
 
-int main()
+int main(void)
 {
 	struct sbuf *inbuf;
 	struct sbuf *recordbuf;
@@ -435,6 +435,7 @@ int main()
 	PJDLOG_ASSERT(recordbuf != NULL);
 
 	pjdlog_init(PJDLOG_MODE_STD);
+	pjdlog_debug_set(1);
 
 	while ((bytesread = read(STDIN_FILENO, readbuf, sizeof(readbuf))) > 0) {
 		PJDLOG_ASSERT(sbuf_bcat(inbuf, readbuf, bytesread) != -1);
@@ -474,7 +475,7 @@ int main()
 
 	PJDLOG_ASSERT(bytesread != -1);
 	PJDLOG_ASSERT(bytesread == 0);
-	pjdlog_debug("EOF");
+	pjdlog_debug(1, "EOF");
 
 	sbuf_delete(recordbuf);
 	sbuf_delete(inbuf);
