@@ -122,21 +122,10 @@ find_in_sbuf(size_t * const pos, struct sbuf * buf,
 
 }
 
-/* static void */
-/* process_event(struct sbuf *buf) */
-/* { */
-
-/*         if (sbuf_finish(buf) == -1) */
-/*                 pjdlog_exit(errno, "sbuf_finish"); */
-
-/*         PJDLOG_ASSERT(sbuf_len(buf) != -1); */
-
-/*         pjdlog_notice("Event: |%zu| (%.*s)", sbuf_len(buf), (int)sbuf_len(buf), */
-/*             sbuf_data(buf)); */
-
-/*         return; */
-/* } */
-
+/*
+ * TODO Fix the case when *num == 0. I think the case is that errno is not equal
+ *      to 0.
+ */
 static void
 string_to_uint32(uint32_t * const num, const char * const str)
 {
@@ -145,28 +134,27 @@ string_to_uint32(uint32_t * const num, const char * const str)
 	*num = (uint32_t)strtol(str, &endp, 10);
 	if (str == endp || *endp != '\0' || (*num == 0 && errno != 0))
 		err(errno, "Failed to convert a timestamp to uint32_t. "
-		    "endp points to (%c)", *endp);
+		    "endp points to (%c:%d)", *endp, *endp);
 }
 
-static void
-parse_anysecs_from_timestamp(uint32_t * const anysecsp, struct sbuf * buf,
-    const size_t start, const size_t end)
+static uint32_t
+parse_num_from_msg(struct sbuf * buf, const size_t start, const size_t end)
 {
 	size_t len;
 	char *substr;
-	size_t anysecs;
+	size_t num;
 
-	pjdlog_notice("Parsing a part of a timestamp");
+	pjdlog_notice("Parsing a part of a msg");
 	len = end - start;
 	substr = malloc(sizeof(char) * (len + 1));
 	PJDLOG_ASSERT(substr != NULL);
 	substr = strncpy(substr, sbuf_data(buf) + start, len);
 	substr[len] = '\0';
-	pjdlog_notice("anysecs substr: (%s)", substr);
-	string_to_uint32(&anysecs, substr);
+	pjdlog_notice("num substr: (%s)", substr);
+	string_to_uint32(&num, substr);
 	free(substr);
-	pjdlog_notice("anysecs: %zu", anysecs);
-	*anysecsp = anysecs;
+	pjdlog_notice("num: %zu", num);
+	return num;
 }
 
 static void
@@ -179,8 +167,10 @@ set_record_id_and_nsec(struct linau_record * record,
 	size_t nsecsstart;
 	size_t secsstart;
 	size_t separatorpos;
+	size_t idstart;
 	uint32_t nsecs;
 	uint32_t secs;
+	uint32_t id;
 	uint64_t sumsecs;
 	char *data;
 
@@ -205,17 +195,18 @@ set_record_id_and_nsec(struct linau_record * record,
 	/* Find the timestamp:id separator. */
 	PJDLOG_ASSERT(find_in_sbuf(&separatorpos, recordbuf,
 	    BSMCONV_MSG_FIELD_TIMESTAMPID_SEPARATOR, dotpos) != 0);
+	idstart = separatorpos + 1;
 
-	PJDLOG_ASSERT(secsstart < dotpos && dotpos < msgend);
+	PJDLOG_ASSERT(msgstart < secsstart && secsstart < nsecsstart &&
+	    nsecsstart < idstart && idstart < msgend);
 
 	/* Parse the timestamp. */
-	parse_anysecs_from_timestamp(&secs, recordbuf, secsstart, dotpos);
-	parse_anysecs_from_timestamp(&nsecs, recordbuf, nsecsstart,
-	    separatorpos);
+	secs = parse_num_from_msg(recordbuf, secsstart, dotpos);
+	nsecs = parse_num_from_msg(recordbuf, nsecsstart, separatorpos);
 
 	/* Validate the timestamp. */
-	PJDLOG_ASSERT(secs <= UINT32_MAX);
-	PJDLOG_ASSERT(nsecs <= UINT32_MAX);
+	PJDLOG_ASSERT(secs <= UINT32_MAX); /* TODO Is it needed? */
+	PJDLOG_ASSERT(nsecs <= UINT32_MAX); /* TODO Is it needed? */
 
 	/* Convert the timestamp to nanoseconds. */
 	sumsecs = (uint64_t)secs * 1000 * 1000 * 1000 * (uint64_t)nsecs;
@@ -224,16 +215,20 @@ set_record_id_and_nsec(struct linau_record * record,
 	record->nsecs = sumsecs;
 
 	/* Parse the id. */
+	id = parse_num_from_msg(recordbuf, idstart, msgend);
+
 	/* Validate the id. */
+	PJDLOG_ASSERT(id <= UINT32_MAX); /* TODO Is it needed? */
+
 	/* Set the id field. */
+	record->id = id;
 }
 
 /*
  * recordp is not initliazied.
  */
 static void
-parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf,
-    const struct linau_event * const event)
+parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 {
 	size_t len;
 	char *data;
@@ -247,17 +242,20 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf,
 	record = malloc(sizeof(record));
 	TAILQ_INIT(&record->fields);
 
-	(void)event;
 	set_record_id_and_nsec(record, recordbuf);
 
-	// TODO *
+	/* Calculate the size of the record. */
+	; // TODO
+
+	/* Parse the fields. */
+	; // TODO
 
 	sbuf_clear(recordbuf);
+	*recordp = record;
 }
 
 int main()
 {
-	struct sbuf *eventbuf;
 	struct sbuf *inbuf;
 	struct sbuf *recordbuf;
 	char readbuf[BSMCONV_BUFFER_SIZE];
@@ -271,10 +269,6 @@ int main()
 	struct linau_record *record;
 
 	TAILQ_INIT(&event.records);
-
-	eventbuf = sbuf_new_auto();
-	PJDLOG_ASSERT(eventbuf != NULL);
-
 	inbuf = sbuf_new_auto();
 	PJDLOG_ASSERT(inbuf != NULL);
 
@@ -303,7 +297,7 @@ int main()
 				pjdlog_exit(errno, "sbuf_finish");
 
 			offset += newlinepos + 1;
-			parse_record(&record, recordbuf, &event);
+			parse_record(&record, recordbuf);
 
 			/* Check if the new record is from the current event. */
 			; // TODO
@@ -323,15 +317,8 @@ int main()
 	PJDLOG_ASSERT(bytesread == 0);
 	pjdlog_notice("EOF");
 
-	PJDLOG_ASSERT(sbuf_len(eventbuf) != -1);
-	if (sbuf_len(eventbuf) != 0) {
-		process_event(eventbuf);
-	}
-
-	sbuf_delete(eventbuf);
 	sbuf_delete(recordbuf);
 	sbuf_delete(inbuf);
-	sbuf_delete(idbuf);
 
 	pjdlog_fini();
 
