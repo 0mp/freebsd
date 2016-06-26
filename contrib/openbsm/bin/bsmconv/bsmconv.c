@@ -137,6 +137,7 @@ string_to_uint32(uint32_t * const num, const char * const str)
 {
 	char *endp;
 
+	errno = 0;
 	*num = (uint32_t)strtol(str, &endp, 10);
 	if (str == endp || *endp != '\0' || (*num == 0 && errno != 0))
 		err(errno, "Failed to convert a timestamp to uint32_t. "
