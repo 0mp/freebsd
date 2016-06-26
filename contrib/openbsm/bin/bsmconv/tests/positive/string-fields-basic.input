@@ -1,0 +1,1 @@
+type=TESTTYPE msg=audit(1464612294.816:250): name1=value1 name2="value2 value2.1" name3='value3 value3.1'
