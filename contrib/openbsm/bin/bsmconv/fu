@@ -25,15 +25,14 @@ fu_result() {
     update_progress_bar "$2"
     echo "[$1]"
     printf "%s $PROGRESS\n" "$3"
-    # echo "OK   $PROGRESS"
 }
 
 fu_success() {
-    fu_result "$1" '#' 'OK  '
+    fu_result "$1" "$2" 'OK  '
 }
 
 fu_failure() {
-    fu_result "$1" 'F' 'FAIL'
+    fu_result "$1" "$2" 'FAIL'
 }
 
 fu_run_test_set() {
@@ -46,9 +45,9 @@ fu_run_test_set() {
         cat "$TEST_FILE" | "$BIN" "$OPTS"
         echo ------------------------------------------------------
         if [ "$?" -eq 0 ]; then
-            $ONSUCCESS $TEST_FILE
+            $ONSUCCESS $TEST_FILE '#'
         else
-            $ONFAILURE $TEST_FILE
+            $ONFAILURE $TEST_FILE 'F'
         fi
     done
 }
