@@ -1,8 +1,8 @@
 /*
  * Debug levels:
  * 1 -> Temporarily important logs.
- * 2 -> General information about if a function was called.
  * 3 -> Function-level logs.
+ * 4 -> General information whether a function was called.
  */
 
 #include <errno.h>
@@ -118,13 +118,15 @@ find_in_sbuf(size_t * const pos, struct sbuf * buf,
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
-	for (ii = start; ii < buflen; ii++)
-		if (data[ii] == c) {
-			*pos = ii;
-			return (1);
-		}
+	PJDLOG_ASSERT(start <= buflen);
 
-	return (0);
+	for (ii = start; ii < buflen; ii++)
+		if (data[ii] == c)
+			break;
+
+	pjdlog_debug(4, "find_in_sbuf: pos (%zu), buflen (%zu)", ii, buflen);
+	*pos = ii;
+	return (*pos == buflen ? 0 : 1);
 
 }
 
@@ -151,21 +153,70 @@ parse_num_from_msg(struct sbuf * buf, const size_t start, const size_t end)
 	char *substr;
 	size_t num;
 
-	pjdlog_debug(2, "Parsing a part of a msg");
 	len = end - start;
 	substr = malloc(sizeof(char) * (len + 1));
 	PJDLOG_ASSERT(substr != NULL);
 	substr = strncpy(substr, sbuf_data(buf) + start, len);
 	substr[len] = '\0';
-	pjdlog_debug(3, "num substr: (%s)", substr);
 	string_to_uint32(&num, substr);
 	free(substr);
-	pjdlog_debug(3, "num: %zu", num);
 	return num;
 }
 
 static void
-set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
+set_record_type(struct linau_record * const record, struct sbuf * const buf)
+{
+	const char *typeprefix;
+	char *data;
+	char *type;
+	size_t buflen;
+	size_t equalpos;
+	size_t typestart;
+	size_t typeend;
+	size_t spacepos;
+	size_t typelen;
+	size_t typeprefixlen;
+
+	/* Parse the type. */
+	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	buflen = sbuf_len(buf);
+	data = sbuf_data(buf);
+
+	typeprefix = "type";
+	typeprefixlen = 4;
+
+	PJDLOG_ASSERT(sizeof(typeprefix) < buflen);
+	PJDLOG_ASSERT(strncmp(data, typeprefix, strlen(typeprefix)) == 0);
+
+	equalpos = typeprefixlen;
+	PJDLOG_ASSERT(equalpos < buflen);
+
+	typestart = equalpos + 1;
+	PJDLOG_ASSERT(typestart < buflen);
+	PJDLOG_ASSERT(data[typestart] != ' '); /* Some type must be set. */
+
+	PJDLOG_ASSERT(find_in_sbuf(&spacepos, buf, ' ', typestart + 1) != 0);
+	typeend = spacepos - 1;
+	PJDLOG_ASSERT(typestart <= typeend);
+
+	typelen = typeend - typestart + 1;
+	pjdlog_debug(3, "Raw type: (%zu) (%.*s)", typelen, (int)typelen,
+	    data + typestart);
+	/* XXX I don't know why but (typelen + 1) would fix the issue #22. */
+	type = malloc(sizeof(char) * (typelen));
+	strncpy(type, data + typestart, typelen);
+	PJDLOG_ASSERT(strncmp(type, data + typestart, typelen) == 0);
+
+	record->type = type;
+	record->typelen = typelen;
+
+	pjdlog_debug(3, "Parsed type: (%zu) (%.*s)", typelen, typelen,
+	    type);
+}
+
+static void
+set_record_id_and_nsec(struct linau_record * const record,
+    struct sbuf * const buf)
 {
 	size_t dotpos;
 	size_t msgstart;
@@ -180,7 +231,7 @@ set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 	uint64_t sumsecs;
 	char *data;
 
-	pjdlog_debug(2, "set_record_id_and_nsec");
+	pjdlog_debug(4, "set_record_id_and_nsec");
 
 	data = sbuf_data(buf);
 
@@ -225,6 +276,9 @@ set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 
 	/* Set the id field. */
 	record->id = id;
+
+	pjdlog_debug(2, "id (%zu), secs (%zu), nsecs (%zu), sumsecs (%llu)",
+	    id, secs, nsecs, sumsecs);
 }
 
 /*
@@ -260,7 +314,9 @@ parse_field_value(char ** valuep, size_t * vallenp, struct sbuf * const buf,
 	size_t vallen;
 	size_t buflen;
 	size_t valend;
+	size_t spacepos;
 	char *value;
+	int retval;
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
 	data = sbuf_data(buf);
@@ -277,21 +333,27 @@ parse_field_value(char ** valuep, size_t * vallenp, struct sbuf * const buf,
 		parse_field_value_string(&valend, valstart, buf, '\'');
 	}
 	else {
-		PJDLOG_ASSERT(find_in_sbuf(&valend, buf, ' ', valend) !=0);
+		retval = find_in_sbuf(&spacepos, buf, ' ', valstart);
+		if (retval == 0)
+			PJDLOG_ASSERT(spacepos == buflen);
+		valend = spacepos - 1;
+
 	}
 
 	vallen = valend - valstart + 1;
 	value = malloc(sizeof(char) * vallen);
+	PJDLOG_ASSERT(strncpy(value, data + valstart, vallen) != NULL);
 
 	*valuep = value;
 	*vallenp = vallen;
 }
 
 static void
-parse_field(struct linau_field ** fieldp, size_t * const lastposp,
+parse_field(struct linau_field ** const fieldp, size_t * const lastposp,
     struct sbuf * const buf)
 {
-	size_t len;
+	pjdlog_debug(4, "parse_field");
+	size_t buflen;
 	size_t namestart;
 	size_t equalpos;
 	size_t nameend;
@@ -307,37 +369,56 @@ parse_field(struct linau_field ** fieldp, size_t * const lastposp,
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
 	data = sbuf_data(buf);
-	len = sbuf_len(buf);
+	buflen = sbuf_len(buf);
 
 	namestart = *lastposp;
+	pjdlog_debug(2, "namestart (%zu) points to (%c)", namestart,
+	    data[namestart]);
 
 	/* Skip spaces.
 	 * XXX Commas are invalid for the time being. */
-	while (namestart < len && data[namestart] != ' ')
+	while (namestart < buflen && data[namestart] == ' ')
 		namestart++;
 
-	// XXX This one might be wrong. How about the end of the record?
-	PJDLOG_ASSERT(namestart != len);
+	pjdlog_debug(2, "Nonspace namestart (%zu) points to (%c)", namestart,
+	    data[namestart]);
+
+	/* TODO Check if we reach the end of line. Return if so. */
+	if (namestart == buflen) {
+		free(field);
+		*fieldp = NULL;
+		*lastposp = namestart;
+		return;
+	}
 
 	/* Reach the next field. */
 	/* Assue there are no '=' in the name. */
-	PJDLOG_ASSERT(find_in_sbuf(&equalpos, buf, '=', namestart) != 0);
+	PJDLOG_ASSERT(find_in_sbuf(&equalpos, buf, '=', namestart + 1) != 0);
 	nameend = equalpos - 1;
+	PJDLOG_ASSERT(data[nameend] != '=');
 
 	/* Parse the name. */
 	namelen = nameend - namestart + 1;
 	name = malloc(sizeof(char) * namelen);
+	name = strncpy(name, data + namestart, namelen);
+	PJDLOG_ASSERT(strncmp(name, data + namestart, namelen) == 0);
 
 	/* Set the name. */
 	field->name = name;
+	field->namelen = namelen;
 
 	/* Parse the value of the field. */
 	valstart = equalpos + 1;
-	PJDLOG_ASSERT(valstart < len);
+	PJDLOG_ASSERT(valstart < buflen);
 	parse_field_value(&value, &vallen, buf, valstart);
+	PJDLOG_ASSERT(strncmp(value, data + valstart, vallen) == 0);
 
 	/* Set the value. */
 	field->val = value;
+	field->vallen = vallen;
+
+	pjdlog_debug(2, "Field: name: (%.*s|%zu), value: (%.*s|%zu)",
+	    (int)namelen, name, namelen, (int)vallen, value, vallen);
 
 	*lastposp = valstart + vallen;
 	*fieldp = field;
@@ -346,18 +427,14 @@ parse_field(struct linau_field ** fieldp, size_t * const lastposp,
 static void
 parse_fields(struct linau_record * const record, struct sbuf * const buf)
 {
+	pjdlog_debug(4, "parse_fields");
 	size_t msgend;
-	/* size_t spacecomapos; */
-	/* size_t namepos; */
-	/* size_t valuepos; */
-	/* size_t colonpos; */
-	/* size_t fieldend; */
 	size_t lastpos;
 	size_t buflen;
 	struct linau_field * field;
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
-	buflen = sbuf_len(buf) != -1;
+	buflen = sbuf_len(buf);
 
 	/* Find the beginning of the field section. */
 	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, ')', 0) != 0);
@@ -366,6 +443,7 @@ parse_fields(struct linau_record * const record, struct sbuf * const buf)
 	PJDLOG_ASSERT(sbuf_data(buf)[msgend + 2] == ' ');
 
 	lastpos = msgend + 2;
+	pjdlog_debug(2, "lastpos (%zu), buflen (%zu)", lastpos, buflen);
 	/* While not all bytes of the buf are processed. */
 	while (lastpos < buflen) {
 		parse_field(&field, &lastpos, buf);
@@ -386,6 +464,7 @@ parse_fields(struct linau_record * const record, struct sbuf * const buf)
 static void
 parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 {
+	pjdlog_debug(4, "parse_record");
 	size_t len;
 	char *data;
 	struct linau_record * record;
@@ -399,6 +478,7 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	TAILQ_INIT(&record->fields);
 
 	/* Set the type of the record. */
+	set_record_type(record, recordbuf);
 	; // TODO
 
 	set_record_id_and_nsec(record, recordbuf);
@@ -414,8 +494,12 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	*recordp = record;
 }
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 {
+	/* XXX I don't know why errno equals 2 instead of 0 here... */
+	/* printf("errno: %d\n", errno); */
+	/* PJDLOG_ASSERT(errno == 0); */
 	struct sbuf *inbuf;
 	struct sbuf *recordbuf;
 	char readbuf[BSMCONV_BUFFER_SIZE];
@@ -425,7 +509,6 @@ int main(int argc, char *argv[])
 	ssize_t bytesread;
 	size_t offsetlen;
 	int debuglevel;
-
 	struct linau_event event;
 	struct linau_record *record;
 
@@ -461,14 +544,12 @@ int main(int argc, char *argv[])
 		PJDLOG_ASSERT(sbuf_bcat(inbuf, readbuf, bytesread) != -1);
 		if (sbuf_finish(inbuf) == -1)
 			pjdlog_exit(errno, "sbuf_finish");
-		PJDLOG_ASSERT(sbuf_done(inbuf) != 0);
 		indata = sbuf_data(inbuf);
 		offset = 0;
 
 		/* The whole record is available. */
 		while ((newlinepos = find_record_end(inbuf, offset)) != -1) {
 			PJDLOG_ASSERT(sbuf_data(inbuf)[newlinepos] == '\n');
-
 			offsetlen = newlinepos - offset;
 			PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset,
 			    offsetlen) != -1);
