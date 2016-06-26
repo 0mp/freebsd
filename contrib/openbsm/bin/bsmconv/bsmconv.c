@@ -20,10 +20,6 @@
 
 #define	BSMCONV_BUFFER_SIZE			16
 #define	BSMCONV_MSG_FIELD_PREFIX		"msg=audit("
-#define	BSMCONV_MSG_FIELD_SUFFIX		')'
-#define	BSMCONV_MSG_FIELD_TIMESTAMP_SEPARATOR	'.'
-#define	BSMCONV_MSG_FIELD_TIMESTAMPID_SEPARATOR	':'
-#define	BSMCONV_MSG_FIELD_TIMESTAMPID_LEN	14
 
 struct linau_field {
 	char *name;
@@ -193,17 +189,14 @@ set_record_id_and_nsec(struct linau_record * record, struct sbuf * buf)
 	PJDLOG_ASSERT(data[secsstart] != '(');
 
 	/* Find msg field msgend. */
-	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, BSMCONV_MSG_FIELD_SUFFIX,
-	    msgstart) != 0);
+	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, ')', msgstart) != 0);
 
 	/* Find a dotpos inside the msg field. */
-	PJDLOG_ASSERT(find_in_sbuf(&dotpos, buf,
-	    BSMCONV_MSG_FIELD_TIMESTAMP_SEPARATOR, msgstart) != 0);
+	PJDLOG_ASSERT(find_in_sbuf(&dotpos, buf, '.', msgstart) != 0);
 	nsecsstart = dotpos + 1;
 
 	/* Find the timestamp:id separator. */
-	PJDLOG_ASSERT(find_in_sbuf(&separatorpos, buf,
-	    BSMCONV_MSG_FIELD_TIMESTAMPID_SEPARATOR, dotpos) != 0);
+	PJDLOG_ASSERT(find_in_sbuf(&separatorpos, buf, ':', dotpos) != 0);
 	idstart = separatorpos + 1;
 
 	PJDLOG_ASSERT(msgstart < secsstart && secsstart < nsecsstart &&
