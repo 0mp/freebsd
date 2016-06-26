@@ -17,7 +17,7 @@ fu_make() {
     local CWD
     CWD=$(pwd)
     cd "$MAKEFILE_DIR"
-    make
+    make || exit 1
     cd "$CWD"
 }
 
@@ -36,6 +36,7 @@ fu_failure() {
 }
 
 fu_run_test_set() {
+    trap 'exit 130' INT
     DIR="$1"
     ONSUCCESS="$2"
     ONFAILURE="$3"
