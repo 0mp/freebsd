@@ -41,9 +41,10 @@ fu_run_test_set() {
     ONSUCCESS="$2"
     ONFAILURE="$3"
     OPTS="$4"
-    for TEST_FILE in "$POSITIVE_DIR"*.input; do
+    for TEST_FILE in "$DIR"*.input; do
         echo =========[ $TEST_FILE ]=========
         cat "$TEST_FILE" | "$BIN" "$OPTS"
+        echo ------------------------------------------------------
         if [ "$?" -eq 0 ]; then
             $ONSUCCESS $TEST_FILE
         else
