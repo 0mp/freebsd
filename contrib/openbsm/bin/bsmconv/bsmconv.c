@@ -601,7 +601,7 @@ main(int argc, char *argv[])
 		sbuf_clear(inbuf);
 	}
 
-	PJDLOG_ASSERT(bytesread != -1);
+	PJDLOG_VERIFY(bytesread != -1);
 	PJDLOG_ASSERT(bytesread == 0);
 	pjdlog_debug(1, "EOF");
 
