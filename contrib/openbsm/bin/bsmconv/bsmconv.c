@@ -60,6 +60,7 @@ find_record_end(struct sbuf *buf, const size_t offset)
 	size_t ii;
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	PJDLOG_ASSERT(sbuf_done(buf) != 0);
 
 	offsetlen = sbuf_len(buf) - offset;
 	data = sbuf_data(buf);
@@ -154,8 +155,8 @@ parse_num_from_msg(struct sbuf * buf, const size_t start, const size_t end)
 	size_t num;
 
 	len = end - start;
-	substr = malloc(sizeof(char) * (len + 1));
-	PJDLOG_ASSERT(substr != NULL);
+	substr = calloc(len + 1, sizeof(*substr));
+	PJDLOG_VERIFY(substr != NULL);
 	substr = strncpy(substr, sbuf_data(buf) + start, len);
 	substr[len] = '\0';
 	string_to_uint32(&num, substr);
@@ -179,14 +180,16 @@ set_record_type(struct linau_record * const record, struct sbuf * const buf)
 
 	/* Parse the type. */
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	PJDLOG_ASSERT(sbuf_done(buf) != 0);
+
 	buflen = sbuf_len(buf);
 	data = sbuf_data(buf);
 
 	typeprefix = "type";
 	typeprefixlen = 4;
 
-	PJDLOG_ASSERT(sizeof(typeprefix) < buflen);
-	PJDLOG_ASSERT(strncmp(data, typeprefix, strlen(typeprefix)) == 0);
+	PJDLOG_ASSERT(sizeof(typeprefix) < buflen); /* XXX Does it make sense? */
+	PJDLOG_VERIFY(strncmp(data, typeprefix, strlen(typeprefix)) == 0);
 
 	equalpos = typeprefixlen;
 	PJDLOG_ASSERT(equalpos < buflen);
@@ -195,7 +198,7 @@ set_record_type(struct linau_record * const record, struct sbuf * const buf)
 	PJDLOG_ASSERT(typestart < buflen);
 	PJDLOG_ASSERT(data[typestart] != ' '); /* Some type must be set. */
 
-	PJDLOG_ASSERT(find_in_sbuf(&spacepos, buf, ' ', typestart + 1) != 0);
+	PJDLOG_VERIFY(find_in_sbuf(&spacepos, buf, ' ', typestart + 1) != 0);
 	typeend = spacepos - 1;
 	PJDLOG_ASSERT(typestart <= typeend);
 
@@ -203,9 +206,10 @@ set_record_type(struct linau_record * const record, struct sbuf * const buf)
 	pjdlog_debug(3, "Raw type: (%zu) (%.*s)", typelen, (int)typelen,
 	    data + typestart);
 	/* XXX I don't know why but (typelen + 1) would fix the issue #22. */
-	type = malloc(sizeof(char) * (typelen));
+	type = calloc(typelen, sizeof(*type));
+	PJDLOG_VERIFY(type != NULL);
 	strncpy(type, data + typestart, typelen);
-	PJDLOG_ASSERT(strncmp(type, data + typestart, typelen) == 0);
+	PJDLOG_VERIFY(strncmp(type, data + typestart, typelen) == 0);
 
 	record->type = type;
 	record->typelen = typelen;
@@ -236,19 +240,19 @@ set_record_id_and_nsec(struct linau_record * const record,
 	data = sbuf_data(buf);
 
 	/* Find msg field start. */
-	PJDLOG_ASSERT(find_msg_field_start(&msgstart, buf) != 0);
+	PJDLOG_VERIFY(find_msg_field_start(&msgstart, buf) != 0);
 	secsstart = msgstart + sizeof(BSMCONV_MSG_FIELD_PREFIX) - 1;
 	PJDLOG_ASSERT(data[secsstart] != '(');
 
 	/* Find msg field msgend. */
-	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, ')', msgstart) != 0);
+	PJDLOG_VERIFY(find_in_sbuf(&msgend, buf, ')', msgstart) != 0);
 
 	/* Find a dotpos inside the msg field. */
-	PJDLOG_ASSERT(find_in_sbuf(&dotpos, buf, '.', msgstart) != 0);
+	PJDLOG_VERIFY(find_in_sbuf(&dotpos, buf, '.', msgstart) != 0);
 	nsecsstart = dotpos + 1;
 
 	/* Find the timestamp:id separator. */
-	PJDLOG_ASSERT(find_in_sbuf(&separatorpos, buf, ':', dotpos) != 0);
+	PJDLOG_VERIFY(find_in_sbuf(&separatorpos, buf, ':', dotpos) != 0);
 	idstart = separatorpos + 1;
 
 	PJDLOG_ASSERT(msgstart < secsstart && secsstart < nsecsstart &&
@@ -293,6 +297,7 @@ parse_field_value_string(size_t * const valendp, const size_t valstart,
 	size_t buflen;
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	PJDLOG_ASSERT(sbuf_done(buf != 0);
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
@@ -300,7 +305,7 @@ parse_field_value_string(size_t * const valendp, const size_t valstart,
 	PJDLOG_ASSERT(valend < (size_t)buflen);
 
 	do {
-		PJDLOG_ASSERT(find_in_sbuf(&valend, buf, strtype, valend) !=0);
+		PJDLOG_VERIFY(find_in_sbuf(&valend, buf, strtype, valend) !=0);
 	} while (data[valend - 1] == '\\');
 
 	*valendp = valend;
@@ -319,8 +324,11 @@ parse_field_value(char ** valuep, size_t * vallenp, struct sbuf * const buf,
 	int retval;
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	PJDLOG_ASSERT(sbuf_done(buf) != 0);
+
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
+
 	PJDLOG_ASSERT(valstart < buflen);
 
 	if (data[valstart] == '"') {
@@ -341,8 +349,9 @@ parse_field_value(char ** valuep, size_t * vallenp, struct sbuf * const buf,
 	}
 
 	vallen = valend - valstart + 1;
-	value = malloc(sizeof(char) * vallen);
-	PJDLOG_ASSERT(strncpy(value, data + valstart, vallen) != NULL);
+	value = calloc(vallen, sizeof(*value));
+	PJDLOG_VERIFY(value != NULL);
+	PJDLOG_VERIFY(strncpy(value, data + valstart, vallen) != NULL);
 
 	*valuep = value;
 	*vallenp = vallen;
@@ -365,9 +374,11 @@ parse_field(struct linau_field ** const fieldp, size_t * const lastposp,
 	char *value;
 	struct linau_field * field;
 
-	PJDLOG_ASSERT((field = malloc(sizeof(struct linau_field))) != NULL);
+	PJDLOG_VERIFY((field = calloc(1, sizeof(*field))) != NULL);
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
+	PJDLOG_ASSERT(sbuf_done(buf) != 0);
+
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
@@ -388,20 +399,22 @@ parse_field(struct linau_field ** const fieldp, size_t * const lastposp,
 		free(field);
 		*fieldp = NULL;
 		*lastposp = namestart;
-		return;
+		PJDLOG_ABORT("parse_field() reach the end of line contating "
+		    "trailing spaces. It hasn't been implemented yet");
 	}
 
 	/* Reach the next field. */
 	/* Assue there are no '=' in the name. */
-	PJDLOG_ASSERT(find_in_sbuf(&equalpos, buf, '=', namestart + 1) != 0);
+	PJDLOG_VERIFY(find_in_sbuf(&equalpos, buf, '=', namestart + 1) != 0);
 	nameend = equalpos - 1;
 	PJDLOG_ASSERT(data[nameend] != '=');
 
 	/* Parse the name. */
 	namelen = nameend - namestart + 1;
-	name = malloc(sizeof(char) * namelen);
+	name = calloc(namelen, sizeof(*name));
+	PJDLOG_VERIFY(name != NULL);
 	name = strncpy(name, data + namestart, namelen);
-	PJDLOG_ASSERT(strncmp(name, data + namestart, namelen) == 0);
+	PJDLOG_VERIFY(strncmp(name, data + namestart, namelen) == 0);
 
 	/* Set the name. */
 	field->name = name;
@@ -411,7 +424,7 @@ parse_field(struct linau_field ** const fieldp, size_t * const lastposp,
 	valstart = equalpos + 1;
 	PJDLOG_ASSERT(valstart < buflen);
 	parse_field_value(&value, &vallen, buf, valstart);
-	PJDLOG_ASSERT(strncmp(value, data + valstart, vallen) == 0);
+	PJDLOG_VERIFY(strncmp(value, data + valstart, vallen) == 0);
 
 	/* Set the value. */
 	field->val = value;
@@ -437,22 +450,27 @@ parse_fields(struct linau_record * const record, struct sbuf * const buf)
 	buflen = sbuf_len(buf);
 
 	/* Find the beginning of the field section. */
-	PJDLOG_ASSERT(find_in_sbuf(&msgend, buf, ')', 0) != 0);
-	PJDLOG_ASSERT(sbuf_data(buf)[msgend] == ')');
-	PJDLOG_ASSERT(sbuf_data(buf)[msgend + 1] == ':');
-	PJDLOG_ASSERT(sbuf_data(buf)[msgend + 2] == ' ');
+	PJDLOG_VERIFY(find_in_sbuf(&msgend, buf, ')', 0) != 0);
+	PJDLOG_VERIFY(sbuf_data(buf)[msgend] == ')');
+	PJDLOG_VERIFY(sbuf_data(buf)[msgend + 1] == ':');
+	PJDLOG_VERIFY(sbuf_data(buf)[msgend + 2] == ' ');
 
 	lastpos = msgend + 2;
 	pjdlog_debug(2, "lastpos (%zu), buflen (%zu)", lastpos, buflen);
+
 	/* While not all bytes of the buf are processed. */
 	while (lastpos < buflen) {
+		field = NULL;
 		parse_field(&field, &lastpos, buf);
+		PJDLOG_ASSERT(field != NULL);
+		pjdlog_debug(2, "next: %p", TAILQ_NEXT(field, next));
 
 		/* Calculate the size of the field. */
 		field->size = field->namelen + field->vallen;
 
 		/* Append the field to the record. */
-		(void)record;
+		/* XXX Issue #23. */
+		TAILQ_INSERT_TAIL(&record->fields, field, next);
 
 		/* Add the size of the field to the total size of the record. */
 		record->size += field->size;
@@ -464,12 +482,8 @@ static void
 linau_record_init(struct linau_record ** recordp)
 {
 	struct linau_record * record;
-	PJDLOG_ASSERT((record = malloc(sizeof(record))) != NULL);
-	record->id = 0;
-	record->nsecs = 0;
-	record->type = NULL;
-	record->typelen = 0;
-	record->size = 0;
+	record = calloc(1, sizeof(*record));
+	PJDLOG_VERIFY(record != NULL);
 	TAILQ_INIT(&record->fields);
 	*recordp = record;
 }
@@ -486,6 +500,7 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	struct linau_record * record;
 
 	PJDLOG_ASSERT(sbuf_len(recordbuf) != -1);
+	PJDLOG_ASSERT(sbuf_done(buf) != 0);
 
 	data = sbuf_data(recordbuf);
 	len = sbuf_len(recordbuf);
@@ -512,9 +527,6 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 int
 main(int argc, char *argv[])
 {
-	/* XXX I don't know why errno equals 2 instead of 0 here... */
-	/* printf("errno: %d\n", errno); */
-	/* PJDLOG_ASSERT(errno == 0); */
 	struct sbuf *inbuf;
 	struct sbuf *recordbuf;
 	char readbuf[BSMCONV_BUFFER_SIZE];
@@ -529,10 +541,10 @@ main(int argc, char *argv[])
 
 	TAILQ_INIT(&event.records);
 	inbuf = sbuf_new_auto();
-	PJDLOG_ASSERT(inbuf != NULL);
+	PJDLOG_VERIFY(inbuf != NULL);
 
 	recordbuf = sbuf_new_auto();
-	PJDLOG_ASSERT(recordbuf != NULL);
+	PJDLOG_VERIFY(recordbuf != NULL);
 
 	pjdlog_init(PJDLOG_MODE_STD);
 
@@ -556,7 +568,7 @@ main(int argc, char *argv[])
 	pjdlog_debug_set(debuglevel);
 
 	while ((bytesread = read(STDIN_FILENO, readbuf, sizeof(readbuf))) > 0) {
-		PJDLOG_ASSERT(sbuf_bcat(inbuf, readbuf, bytesread) != -1);
+		PJDLOG_VERIFY(sbuf_bcat(inbuf, readbuf, bytesread) != -1);
 		if (sbuf_finish(inbuf) == -1)
 			pjdlog_exit(errno, "sbuf_finish");
 		indata = sbuf_data(inbuf);
@@ -566,7 +578,7 @@ main(int argc, char *argv[])
 		while ((newlinepos = find_record_end(inbuf, offset)) != -1) {
 			PJDLOG_ASSERT(sbuf_data(inbuf)[newlinepos] == '\n');
 			offsetlen = newlinepos - offset;
-			PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset,
+			PJDLOG_VERIFY(sbuf_bcat(recordbuf, indata + offset,
 			    offsetlen) != -1);
 
 			if (sbuf_finish(recordbuf) == -1)
@@ -583,7 +595,7 @@ main(int argc, char *argv[])
 		}
 
 		offsetlen = sbuf_len(inbuf) - offset;
-		PJDLOG_ASSERT(sbuf_bcat(recordbuf, indata + offset,
+		PJDLOG_VERIFY(sbuf_bcat(recordbuf, indata + offset,
 		    offsetlen) != -1);
 
 		sbuf_clear(inbuf);
