@@ -60,7 +60,7 @@ fu_run_test_set() {
 fu_run_tests() {
     OPTS="$1"
     fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure' "$OPTS"
-    echo "Skip the negative test set." || fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
+    fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
 }
 
 fu_usage() {

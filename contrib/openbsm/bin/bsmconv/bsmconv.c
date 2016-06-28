@@ -3,6 +3,7 @@
  * 1 -> Temporarily important logs.
  * 3 -> Function-level logs.
  * 4 -> General information whether a function was called.
+ * 5 -> Unused debug messages.
  */
 
 #include <errno.h>
@@ -142,9 +143,9 @@ string_to_uint32(uint32_t * const num, const char * const str)
 
 	errno = 0;
 	*num = (uint32_t)strtol(str, &endp, 10);
-	if (str == endp || *endp != '\0' || (*num == 0 && errno != 0))
-		err(errno, "Failed to convert a timestamp to uint32_t. "
-		    "endp points to (%c:%d)", *endp, *endp);
+	PJDLOG_ASSERT(str != endp);
+	PJDLOG_ASSERT(*endp == '\0');
+	PJDLOG_ASSERT(*num != 0 || errno == 0);
 }
 
 static uint32_t
@@ -383,7 +384,7 @@ parse_field(struct linau_field ** const fieldp, size_t * const lastposp,
 	buflen = sbuf_len(buf);
 
 	namestart = *lastposp;
-	pjdlog_debug(2, "namestart (%zu) points to (%c)", namestart,
+	pjdlog_debug(5, "namestart (%zu) points to (%c)", namestart,
 	    data[namestart]);
 
 	/* Skip spaces.
@@ -391,7 +392,7 @@ parse_field(struct linau_field ** const fieldp, size_t * const lastposp,
 	while (namestart < buflen && data[namestart] == ' ')
 		namestart++;
 
-	pjdlog_debug(2, "Nonspace namestart (%zu) points to (%c)", namestart,
+	pjdlog_debug(5, "Nonspace namestart (%zu) points to (%c)", namestart,
 	    data[namestart]);
 
 	/* TODO Check if we reach the end of line. Return if so. */
@@ -456,7 +457,7 @@ parse_fields(struct linau_record * const record, struct sbuf * const buf)
 	PJDLOG_VERIFY(sbuf_data(buf)[msgend + 2] == ' ');
 
 	lastpos = msgend + 2;
-	pjdlog_debug(2, "lastpos (%zu), buflen (%zu)", lastpos, buflen);
+	pjdlog_debug(5, "lastpos (%zu), buflen (%zu)", lastpos, buflen);
 
 	/* While not all bytes of the buf are processed. */
 	while (lastpos < buflen) {
@@ -509,7 +510,6 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 
 	/* Set the type of the record. */
 	set_record_type(record, recordbuf);
-	; // TODO
 
 	set_record_id_and_nsec(record, recordbuf);
 
@@ -518,7 +518,6 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 
 	/* Parse the fields. */
 	parse_fields(record, recordbuf);
-	; // TODO
 
 	sbuf_clear(recordbuf);
 	*recordp = record;
@@ -589,9 +588,9 @@ main(int argc, char *argv[])
 
 			/* Check if the new record is from the current event. */
 			; // TODO
+				/* Print the event and create a new one. */
+				; // TODO
 
-			/* If so then print the event and create a new one. */
-			; // TODO
 		}
 
 		offsetlen = sbuf_len(inbuf) - offset;
