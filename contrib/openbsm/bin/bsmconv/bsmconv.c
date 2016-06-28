@@ -297,7 +297,7 @@ parse_field_value_string(size_t * const valendp, const size_t valstart,
 	size_t buflen;
 
 	PJDLOG_ASSERT(sbuf_len(buf) != -1);
-	PJDLOG_ASSERT(sbuf_done(buf != 0);
+	PJDLOG_ASSERT(sbuf_done(buf) != 0);
 	data = sbuf_data(buf);
 	buflen = sbuf_len(buf);
 
@@ -500,7 +500,7 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	struct linau_record * record;
 
 	PJDLOG_ASSERT(sbuf_len(recordbuf) != -1);
-	PJDLOG_ASSERT(sbuf_done(buf) != 0);
+	PJDLOG_ASSERT(sbuf_done(recordbuf) != 0);
 
 	data = sbuf_data(recordbuf);
 	len = sbuf_len(recordbuf);
