@@ -1,0 +1,96 @@
+#!/bin/sh
+
+TEST_DIR=tests/
+POSITIVE_DIR=${TEST_DIR}positive/
+NEGATIVE_DIR=${TEST_DIR}negative/
+MAKEFILE_DIR=../../../../usr.bin/bsmconv/
+BIN=${MAKEFILE_DIR}bsmconv
+MAKEFILE=${MAKEFILE_DIR}Makefile
+
+PROGRESS_PENDING_CHAR="\."
+update_progress_bar() {
+    UPDATE="$1"
+    PROGRESS="$(echo "$PROGRESS" | sed 's/'"$PROGRESS_PENDING_CHAR"'/'"$UPDATE"'/')"
+}
+
+fu_make() {
+    local CWD
+    CWD=$(pwd)
+    cd "$MAKEFILE_DIR"
+    make || exit 1
+    cd "$CWD"
+}
+
+fu_result() {
+    update_progress_bar "$2"
+    echo "[$1]"
+    printf "%s (%d) $PROGRESS\n" "$3" "$4"
+}
+
+fu_success() {
+    fu_result "$1" "#" "PASS" "$2"
+}
+
+fu_failure() {
+    fu_result "$1" "F" "FAIL" "$2"
+}
+
+fu_run_test_set() {
+    trap 'exit 130' INT
+    DIR="$1"
+    ONSUCCESS="$2"
+    ONFAILURE="$3"
+    OPTS="$4"
+    for TEST_FILE in "$DIR"*.input; do
+        echo ======================================================
+        echo "[$TEST_FILE]"
+        echo ------------------------------------------------------
+        "$BIN" "$OPTS" < "$TEST_FILE"
+        RETVAL="$?"
+        echo ------------------------------------------------------
+        if [ "$RETVAL" -eq 0 ]; then
+            $ONSUCCESS $TEST_FILE $RETVAL
+        else
+            $ONFAILURE $TEST_FILE $RETVAL
+        fi
+    done
+    echo ======================================================
+}
+
+fu_run_tests() {
+    OPTS="$1"
+    fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
+}
+
+fu_usage() {
+    echo "usage: $0 ACTION [ACTION ...]"
+    echo "ACTION is {make, test, usage}."
+    printf "%s\n%s\n" \
+    "The game of chess is like a sword fight." \
+    "You must think first before you move."
+    exit 1
+}
+
+PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
+
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+    t|test|tests)
+        fu_run_tests
+        ;;
+    tv)
+        fu_run_tests "$2"
+        shift
+        ;;
+    m|make)
+        fu_make
+        ;;
+    usage|help|-h|*)
+        fu_usage
+        ;;
+    esac
+    shift
+done
+
