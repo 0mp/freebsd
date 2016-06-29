@@ -701,7 +701,15 @@ main(int argc, char *argv[])
 
 	PJDLOG_VERIFY(bytesread != -1);
 	PJDLOG_ASSERT(bytesread == 0);
-	pjdlog_debug(1, "EOF");
+
+	/* Print the event and create a new one. */
+	linau_event_print(event);
+	; // TODO
+
+	/* XXX Awful event reset. */
+	pjdlog_debug(4, "Awful event reset");
+	TAILQ_INIT(&event->records);
+	event->size = 0;
 
 	sbuf_delete(recordbuf);
 	sbuf_delete(inbuf);
