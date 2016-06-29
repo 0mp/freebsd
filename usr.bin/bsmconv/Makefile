@@ -12,6 +12,8 @@ NO_WMISSING_VARIABLE_DECLARATIONS=
 PROG=	bsmconv
 SRCS=	bsmconv.c
 SRCS+=	pjdlog.c
+SRCS+=	linau_event.c
+SRCS+=	linau_record.c
 
 LIBADD+=sbuf util
 MAN=
