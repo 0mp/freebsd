@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <err.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h> /* UINT32_MAX */
 #include <string.h>
@@ -126,7 +127,7 @@ find_in_sbuf(size_t * const pos, struct sbuf * buf,
 		if (data[ii] == c)
 			break;
 
-	pjdlog_debug(4, "find_in_sbuf: pos (%zu), buflen (%zu)", ii, buflen);
+	/* pjdlog_debug(4, "find_in_sbuf: pos (%zu), buflen (%zu)", ii, buflen); */
 	*pos = ii;
 	return (*pos == buflen ? 0 : 1);
 
@@ -483,6 +484,7 @@ static void
 linau_record_init(struct linau_record ** recordp)
 {
 	struct linau_record * record;
+
 	record = calloc(1, sizeof(*record));
 	PJDLOG_VERIFY(record != NULL);
 	TAILQ_INIT(&record->fields);
@@ -523,6 +525,91 @@ parse_record(struct linau_record ** const recordp, struct sbuf *recordbuf)
 	*recordp = record;
 }
 
+static bool
+is_record_from_event(const struct linau_record * const record,
+    const struct linau_event * const event)
+{
+	pjdlog_debug(4, "is_record_from_event");
+	struct linau_record * headrecord;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(record != NULL);
+
+	/* Check if record is the first record of the event. */
+	if (event->size == 0)
+		return true;
+
+	/* TODO Why does this assert is illegal? */
+	/* PJDLOG_ASSERT(event->records != NULL); */
+	headrecord = TAILQ_FIRST(&event->records);
+
+	PJDLOG_ASSERT(headrecord != NULL);
+
+	if (headrecord->id != record->id)
+		return false;
+	else if (headrecord->nsecs != record->nsecs)
+		return false;
+	else
+		return true;
+}
+
+static void
+linau_event_add_record(struct linau_event * const event,
+   struct linau_record * const record)
+{
+	pjdlog_debug(4, "linau_event_add_record");
+
+	PJDLOG_ASSERT(event != NULL);
+	/* TODO Why does this assert is illegal? */
+	/* PJDLOG_ASSERT(event->records != NULL); */
+	PJDLOG_ASSERT(record != NULL);
+
+	/* Update the size. */
+	event->size += record->size;
+
+	/* Append the field to the record. */
+	/* XXX Issue #23. */
+	TAILQ_INSERT_TAIL(&event->records, record, next);
+}
+
+static void
+linau_event_print(const struct linau_event * event)
+{
+	struct linau_record *rp;
+	struct linau_record *rptemp;
+	struct linau_field *fp;
+	struct linau_field *fptemp;
+
+	pjdlog_debug(1, "========================");
+	pjdlog_debug(1, "event:");
+	pjdlog_debug(1, " > size\t(%zu)", event->size);
+	pjdlog_debug(1, " > records");
+
+	TAILQ_FOREACH_SAFE(rp, &event->records, next, rptemp) {
+		pjdlog_debug(1, " . > id\t(%lu)", rp->id);
+		pjdlog_debug(1, " . > nsecs\t(%llu)", rp->nsecs);
+		pjdlog_debug(1, " . > type\t(%.*s)", (int)rp->typelen, rp->type);
+		pjdlog_debug(1, " . > typelen\t(%zu)", rp->typelen);
+		pjdlog_debug(1, " . > size\t(%zu)", rp->size);
+		/* TAILQ_REMOVE(&event->records, rp, next); */
+		/* free(rp->type); */
+		/* free(rp); */
+		TAILQ_FOREACH_SAFE(fp, &rp->fields, next, fptemp) {
+			pjdlog_debug(1, " . . > name\t(%.*s)", (int)fp->namelen,
+			    fp->name);
+			pjdlog_debug(1, " . . > namelen\t(%zu)", fp->namelen);
+			pjdlog_debug(1, " . . > val\t(%.*s)", (int)fp->vallen,
+			    fp->val);
+			pjdlog_debug(1, " . . > vallen\t(%zu)", fp->vallen);
+			pjdlog_debug(1, " . . > size\t(%zu)", fp->size);
+			/* TAILQ_REMOVE(&rp->fields, fp, next); */
+			/* free(fp->name); */
+			/* free(fp->val); */
+			/* free(fp); */
+		}
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -535,10 +622,12 @@ main(int argc, char *argv[])
 	ssize_t bytesread;
 	size_t offsetlen;
 	int debuglevel;
-	struct linau_event event;
+	struct linau_event *event;
 	struct linau_record *record;
 
-	TAILQ_INIT(&event.records);
+	event = calloc(1, sizeof(*event));
+	PJDLOG_VERIFY(event != NULL);
+	TAILQ_INIT(&event->records);
 	inbuf = sbuf_new_auto();
 	PJDLOG_VERIFY(inbuf != NULL);
 
@@ -588,9 +677,19 @@ main(int argc, char *argv[])
 
 			/* Check if the new record is from the current event. */
 			; // TODO
+			if (!is_record_from_event(record, event)) {
 				/* Print the event and create a new one. */
+				linau_event_print(event);
 				; // TODO
 
+				/* XXX Awful event reset. */
+				pjdlog_debug(4, "Awful event reset");
+				TAILQ_INIT(&event->records);
+				event->size = 0;
+			}
+			pjdlog_debug(4, "About to append a record to event.");
+
+			linau_event_add_record(event, record);
 		}
 
 		offsetlen = sbuf_len(inbuf) - offset;
@@ -602,7 +701,15 @@ main(int argc, char *argv[])
 
 	PJDLOG_VERIFY(bytesread != -1);
 	PJDLOG_ASSERT(bytesread == 0);
-	pjdlog_debug(1, "EOF");
+
+	/* Print the event and create a new one. */
+	linau_event_print(event);
+	; // TODO
+
+	/* XXX Awful event reset. */
+	pjdlog_debug(4, "Awful event reset");
+	TAILQ_INIT(&event->records);
+	event->size = 0;
 
 	sbuf_delete(recordbuf);
 	sbuf_delete(inbuf);
