@@ -1,5 +1,6 @@
 #include "linau_event.h"
 #include "linau_record.h"
+#include "linau_impl.h"
 #include "pjdlog.h"
 
 
@@ -9,14 +10,7 @@
 linau_event *
 linau_event_create(void)
 {
-	linau_event * event;
-
-	PJDLOG_ASSERT(event != NULL);
-
-	event = nvlist_create(0);
-	PJDLOG_VERIFY(nvlist_error(event) == 0);
-
-	return (event);
+	return (linau_proto_create());
 }
 
 void

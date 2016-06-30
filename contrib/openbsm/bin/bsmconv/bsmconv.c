@@ -36,6 +36,7 @@ main(int argc, char *argv[]) {
 	fp = stdin;
 
 	event = linau_event_create();
+	PJDLOG_VERIFY(event != NULL);
 
 	while ((record = linau_record_fetch(fp)) != NULL)
 		linau_event_add_record(event, record);
