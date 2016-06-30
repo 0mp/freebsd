@@ -1,13 +1,22 @@
 #ifndef _LINAU_FIELD_H_
 #define _LINAU_FIELD_H_
 
+#include <nv.h>
+
 #define BSMCONV_LINAU_FIELD_NAME	"name"
 #define BSMCONV_LINAU_FIELD_VALUE	"value"
 #define BSMCONV_LINAU_FIELD_TYPE	"__bsmconvlinaufieldtype__"
 #define BSMCONV_LINAU_FIELD_TYPE_STRING	"string"
 
-void linau_field_parse(nvlist_t ** const fieldp,
-    const char * const recordstr, const size_t recordstrlen,
-    size_t * const lastposp);
+typedef linau_field nvlist_t;
+
+linau_field *linau_field_create(void);
+
+void linau_field_set_name(linau_field *field, const char * name);
+void linau_field_set_value(linau_field *field, const char * value);
+
+linau_field *linau_field_parse(const char *buf, size_t *lastposp);
+char *linau_field_parse_name(const char *buf, size_t start, size_t end);
+char *linau_field_parse_value(const char *buf, size_t start);
 
 #endif

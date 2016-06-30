@@ -77,13 +77,13 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
         PJDLOG_ASSERT(buf[secsstart] != '(');
 
         /* Find msg field msgend. */
-	PJDLOG_VERIFY(find_position(&msgend, buf, buflen, msgstart, ')'));
+	PJDLOG_VERIFY(find_position(&msgend, buf, msgstart, ')'));
 
         /* Find a dotpos inside the msg field. */
-	PJDLOG_VERIFY(find_position(&dotpos, buf, buflen, msgstart, '.'));
+	PJDLOG_VERIFY(find_position(&dotpos, buf, msgstart, '.'));
 
         /* Find the timestamp:id separator. */
-	PJDLOG_VERIFY(find_position(&separatorpos, buf, buflen, dotpos, ':'));
+	PJDLOG_VERIFY(find_position(&separatorpos, buf, dotpos, ':'));
 
         nsecsstart = dotpos + 1;
         idstart = separatorpos + 1;
@@ -180,11 +180,7 @@ void
 linau_record_set_type(linau_record *record, const char *type)
 {
 
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(type != NULL);
-
-	nvlist_add_string(record, BSMCONV_LINAU_RECORD_TYPE_NVNAME, type);
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
+	linau_proto_set_string(record, BSMCONV_LINAU_RECORD_TYPE_NVNAME, type);
 }
 
 /*
@@ -251,6 +247,103 @@ linau_record_parse_id(const char *buf)
 	return (id);
 }
 
+/*
+ * fieldsp should be uninitialized, shouldn't it?
+ *
+ * XXX Assume that a record cannot have two fields of with same name.
+ */
+linau_field *
+linau_record_parse_fields(const char *buf)
+{
+	size_t msgend;
+	size_t lastpos;
+	nvlist_t *field;
+	nvlist_t *fields;
+	size_t buflen;
+
+	pjdlog_debug(5, " . > linau_record_parse_fields");
+
+	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
+	PJDLOG_ASSERT(buf != NULL);
+	buflen = strlen(buf);
+
+	PJDLOG_ASSERT(*fieldsp == NULL);
+	fields = nvlist_create(0);
+	PJDLOG_VERIFY(fields != NULL);
+
+	/* Find the beginning of the field section. */
+	PJDLOG_VERIFY(find_position(&msgend, buf, 0, ')'));
+	PJDLOG_VERIFY(buf[msgend] == ')');
+	PJDLOG_VERIFY(buf[msgend + 1] == ':');
+	PJDLOG_VERIFY(buf[msgend + 2] == ' ');
+
+	lastpos = msgend + 2;
+	pjdlog_debug(5, " . > lastpos (%zu)", lastpos);
+
+	/* While not all bytes of the buf are processed. */
+	while (lastpos < buflen && buf[lastpos] != '\n') {
+		field = NULL;
+
+		/* 0mphere3 */
+		field = linau_field_parse(buf, &lastpos);
+		PJDLOG_ASSERT(field != NULL);
+
+		/* Calculate the size of the field. */
+		/* field->size = field->namelen + field->vallen; */
+		; // TODO
+
+		/* Append the field to the record. */
+		if (strcmp(nvlist_get_string(field, BSMCONV_LINAU_FIELD_TYPE),
+		    BSMCONV_LINAU_FIELD_TYPE_STRING) == 0) {
+			nvlist_move_string(fields,
+			    nvlist_take_string(field, BSMCONV_LINAU_FIELD_NAME),
+			    nvlist_take_string(field, BSMCONV_LINAU_FIELD_VALUE)
+			    );
+		}
+		else {
+			PJDLOG_ABORT("Invalid type of the field's value.");
+		}
+
+		/* Add the size of the field to the total size of the record. */
+		/* record->size += field->size; */
+		; // TODO
+		nvlist_destroy(field);
+	}
+}
+
+uint64_t
+linau_record_parse_timestamp(const char *buf)
+{
+	size_t secspos;
+	size_t nsecspos;
+	size_t idpos;
+	size_t msgend;
+	size_t msgstart;
+	size_t buflen;
+	uint64_t timestamp;
+	uint32_t nsecs;
+	uint32_t secs;
+
+	pjdlog_debug(5, " . > linau_record_parse_nsecs");
+
+	/* XXX VERIFY or ASSERT? */
+	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
+	PJDLOG_ASSERT(buf != NULL);
+	buflen = strlen(buf);
+
+	linau_record_locate_msg(buf, buflen, &msgstart, &secspos,
+	    &nsecspos, &idpos, &msgend);
+
+	/* Set the id field. */
+	secs = extract_uint32(buf, secspos, nsecspos - 2);
+	nsecs = extract_uint32(buf, nsecspos, idpos - 2);
+
+	timestamp = (uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs;
+
+	pjdlog_debug(5, " . > secs (%llu)", *nsecsp);
+
+	return (timestamp);
+}
 
 char *
 linau_record_parse_type(const char *buf)
@@ -359,63 +452,6 @@ linau_record_fetch(FILE * fp)
  */
 
 
-/*
- * fieldsp should be uninitialized, shouldn't it?
- *
- * XXX Assume that a record cannot have two fields of with same name.
- */
-static void
-linau_record_parse_fields(nvlist_t ** const fieldsp,
-    const char * const recordstr, const size_t recordstrlen)
-{
-	pjdlog_debug(5, " . > linau_record_parse_fields");
-
-	size_t msgend;
-	size_t lastpos;
-	nvlist_t *field;
-	nvlist_t *fields;
-
-	PJDLOG_ASSERT(*fieldsp == NULL);
-	fields = nvlist_create(0);
-
-	/* Find the beginning of the field section. */
-	PJDLOG_VERIFY(find_position(&msgend, recordstr, recordstrlen, 0, ')'));
-	PJDLOG_VERIFY(recordstr[msgend] == ')');
-	PJDLOG_VERIFY(recordstr[msgend + 1] == ':');
-	PJDLOG_VERIFY(recordstr[msgend + 2] == ' ');
-
-	lastpos = msgend + 2;
-	pjdlog_debug(5, " . > lastpos (%zu)", lastpos);
-
-	/* While not all bytes of the buf are processed. */
-	while (lastpos < recordstrlen && recordstr[lastpos] != '\n') {
-		field = NULL;
-
-		linau_field_parse(&field, recordstr, recordstrlen, &lastpos);
-		PJDLOG_ASSERT(field != NULL);
-
-		/* Calculate the size of the field. */
-		/* field->size = field->namelen + field->vallen; */
-		; // TODO
-
-		/* Append the field to the record. */
-		if (strcmp(nvlist_get_string(field, BSMCONV_LINAU_FIELD_TYPE),
-		    BSMCONV_LINAU_FIELD_TYPE_STRING) == 0) {
-			nvlist_move_string(fields,
-			    nvlist_take_string(field, BSMCONV_LINAU_FIELD_NAME),
-			    nvlist_take_string(field, BSMCONV_LINAU_FIELD_VALUE)
-			    );
-		}
-		else {
-			PJDLOG_ABORT("Invalid type of the field's value.");
-		}
-
-		/* Add the size of the field to the total size of the record. */
-		/* record->size += field->size; */
-		; // TODO
-		nvlist_destroy(field);
-	}
-}
 
 uint32_t
 linau_record_get_id(const struct linau_record *record)
@@ -467,38 +503,5 @@ extract_uint32(const char * const str, const size_t start, const size_t end)
 	return (string_to_uint32(numstr));
 }
 
-uint64_t
-linau_record_parse_timestamp(const char *buf)
-{
-	size_t secspos;
-	size_t nsecspos;
-	size_t idpos;
-	size_t msgend;
-	size_t msgstart;
-	size_t buflen;
-	uint64_t timestamp;
-	uint32_t nsecs;
-	uint32_t secs;
-
-	pjdlog_debug(5, " . > linau_record_parse_nsecs");
-
-	/* XXX VERIFY or ASSERT? */
-	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
-	PJDLOG_ASSERT(buf != NULL);
-	buflen = strlen(buf);
-
-	linau_record_locate_msg(buf, buflen, &msgstart, &secspos,
-	    &nsecspos, &idpos, &msgend);
-
-	/* Set the id field. */
-	secs = extract_uint32(buf, secspos, nsecspos - 2);
-	nsecs = extract_uint32(buf, nsecspos, idpos - 2);
-
-	timestamp = (uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs;
-
-	pjdlog_debug(5, " . > secs (%llu)", *nsecsp);
-
-	return (timestamp);
-}
 
 
