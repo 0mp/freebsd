@@ -156,6 +156,15 @@ string_to_uint32(const char * const str)
 //         }
 // }
 
+static void
+parse_fields(const char * const recordstr, const size_t recordstrlen)
+{
+	(void)recordstr;
+	(void)recordstrlen;
+	return;
+
+}
+
 /*
  * Returns the position of the next unprocessed character.
  */
@@ -350,7 +359,7 @@ linau_record_parse(const char * const recordstr, const size_t recordstrlen)
 	; // TODO
 
 	/* Parse the fields. */
-	/* parse_fields(record, recordbuf); */
+	parse_fields(recordstr, recordstrlen);
 	; // TODO
 
 	return (record);

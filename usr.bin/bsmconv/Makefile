@@ -15,7 +15,7 @@ SRCS+=	pjdlog.c
 SRCS+=	linau_event.c
 SRCS+=	linau_record.c
 
-LIBADD+=sbuf util
+LIBADD+=sbuf util nv
 MAN=
 
 # auditdistd cannot use FreeBSD specific lock annotation macros. Disable

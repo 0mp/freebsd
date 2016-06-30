@@ -3,8 +3,11 @@
 
 #include <sys/queue.h>
 
+#include <nv.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#include "linau_field.h"
 
 
 #define BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE 16
@@ -12,13 +15,12 @@
 /* The sizes of the fileds are based on what I've found in
  * audit-userspace/auparse/auparse.h. */
 struct linau_record {
-	char				*lr_type;
-	uint32_t			lr_typelen;
-	uint32_t			lr_id;
-	uint64_t			lr_nsecs;
-	uint32_t			lr_size;
-	TAILQ_HEAD(, linau_field)	lr_fields;
-	TAILQ_ENTRY(linau_record) 	next;
+	char		*lr_type;
+	uint32_t	lr_typelen;
+	uint32_t	lr_id;
+	uint64_t	lr_nsecs;
+	uint32_t	lr_size;
+	nvlist_t	*lr_fields;
 };
 
 struct linau_record * linau_record_fetch(FILE * fp);
