@@ -2,59 +2,64 @@
 #include "linau_record.h"
 #include "pjdlog.h"
 
-// static void
-// linau_event_add_record(struct linau_event * const event,
-//    struct linau_record * const record)
-// {
-//         pjdlog_debug(4, "linau_event_add_record");
 
-//         PJDLOG_ASSERT(event != NULL);
-//         [> TODO Why does this assert is illegal? <]
-//         [> PJDLOG_ASSERT(event->records != NULL); <]
-//         PJDLOG_ASSERT(record != NULL);
+/*******************************************************************************
+ */
 
-//         [> Update the size. <]
-//         event->size += record->size;
+linau_event *
+linau_event_create(void)
+{
+	linau_event * event;
 
-//         [> Append the field to the record. <]
-//         [> XXX Issue #23. <]
-//         TAILQ_INSERT_TAIL(&event->records, record, next);
-// }
+	PJDLOG_ASSERT(event != NULL);
 
-// static void
-// linau_event_print(const struct linau_event * event)
-// {
-//         struct linau_record *rp;
-//         struct linau_record *rptemp;
-//         struct linau_field *fp;
-//         struct linau_field *fptemp;
+	event = nvlist_create(0);
+	PJDLOG_VERIFY(nvlist_error(event) == 0);
 
-//         pjdlog_debug(1, "========================");
-//         pjdlog_debug(1, "event:");
-//         pjdlog_debug(1, " > size\t(%zu)", event->size);
-//         pjdlog_debug(1, " > records");
+	return (event);
+}
 
-//         TAILQ_FOREACH_SAFE(rp, &event->records, next, rptemp) {
-//                 pjdlog_debug(1, " . > id\t(%lu)", rp->id);
-//                 pjdlog_debug(1, " . > nsecs\t(%llu)", rp->nsecs);
-//                 pjdlog_debug(1, " . > type\t(%.*s)", (int)rp->typelen, rp->type);
-//                 pjdlog_debug(1, " . > typelen\t(%zu)", rp->typelen);
-//                 pjdlog_debug(1, " . > size\t(%zu)", rp->size);
-//                 [> TAILQ_REMOVE(&event->records, rp, next); <]
-//                 [> free(rp->type); <]
-//                 [> free(rp); <]
-//                 TAILQ_FOREACH_SAFE(fp, &rp->fields, next, fptemp) {
-//                         pjdlog_debug(1, " . . > name\t(%.*s)", (int)fp->namelen,
-//                             fp->name);
-//                         pjdlog_debug(1, " . . > namelen\t(%zu)", fp->namelen);
-//                         pjdlog_debug(1, " . . > val\t(%.*s)", (int)fp->vallen,
-//                             fp->val);
-//                         pjdlog_debug(1, " . . > vallen\t(%zu)", fp->vallen);
-//                         pjdlog_debug(1, " . . > size\t(%zu)", fp->size);
-//                         [> TAILQ_REMOVE(&rp->fields, fp, next); <]
-//                         [> free(fp->name); <]
-//                         [> free(fp->val); <]
-//                         [> free(fp); <]
-//                 }
-//         }
-// }
+void
+linau_event_destroy(linau_event *event)
+{
+
+	PJDLOG_ASSERT(event != NULL);
+	nvlist_destroy(event);
+}
+
+/* TODO */
+void
+linau_event_add_record(linau_event *event, const linau_record *record)
+{
+	const char *key;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(record != NULL);
+
+	key = linau_record_generate_key(record);
+	nvlist_add_nvlist(event, key, record);
+	PJDLOG_VERIFY(nvlist_error(event) == 0);
+
+	/* Update the size. */
+	; // TODO
+
+}
+
+/* TODO */
+uint32_t
+linau_event_get_size(const linau_event *event)
+{
+
+	PJDLOG_ASSERT(event != NULL);
+	return (2905);
+}
+
+void
+linau_event_print(const linau_event *event)
+{
+
+	PJDLOG_ASSERT(event != NULL);
+	printf("====================\n");
+	printf("event:\n");
+	printf(" > size (%lu)\n", linau_event_get_size(event));
+}
