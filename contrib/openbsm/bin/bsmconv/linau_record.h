@@ -7,9 +7,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "linau_field.h"
-
-
 #define BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE 16
 
 /* The sizes of the fileds are based on what I've found in

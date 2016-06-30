@@ -1,15 +1,13 @@
 #ifndef _LINAU_FIELD_H_
 #define _LINAU_FIELD_H_
 
-#include <sys/queue.h>
-#include <stdint.h>
+#define BSMCONV_LINAU_FIELD_NAME	"name"
+#define BSMCONV_LINAU_FIELD_VALUE	"value"
+#define BSMCONV_LINAU_FIELD_TYPE	"__bsmconvlinaufieldtype__"
+#define BSMCONV_LINAU_FIELD_TYPE_STRING	"string"
 
-struct linau_field {
-	char				*lf_name;
-	uint32_t			lf_namelen;
-	char				*lf_val;
-	uint32_t			lf_vallen;
-	uint32_t			lf_size;
-};
+void linau_field_parse(nvlist_t ** const fieldp,
+    const char * const recordstr, const size_t recordstrlen,
+    size_t * const lastposp);
 
 #endif

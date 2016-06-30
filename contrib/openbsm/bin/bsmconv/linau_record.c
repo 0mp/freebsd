@@ -10,22 +10,9 @@
 #include <string.h>
 
 #include "linau_record.h"
+#include "linau_field.h"
+#include "linau_impl.h"
 #include "pjdlog.h"
-
-static bool
-find_position(size_t * const posp, const char * const buf, const size_t buflen,
-    const size_t start, const char chr)
-{
-
-	PJDLOG_ASSERT(buf != NULL);
-	PJDLOG_ASSERT(posp != NULL);
-
-	for (*posp = start; *posp < buflen; (*posp)++)
-		if (buf[*posp] == chr)
-			break;
-
-	return (*posp < buflen);
-}
 
 
 static void
@@ -112,56 +99,66 @@ string_to_uint32(const char * const str)
 	return (num);
 }
 
-
-
-
-// static void
-// parse_fields(struct linau_record * const record, struct sbuf * const buf)
-// {
-//         pjdlog_debug(5, " . > parse_fields");
-//         size_t msgend;
-//         size_t lastpos;
-//         size_t buflen;
-//         struct linau_field * field;
-//
-//         PJDLOG_ASSERT(sbuf_len(buf) != -1);
-//         buflen = sbuf_len(buf);
-//
-//         /* Find the beginning of the field section. */
-//         PJDLOG_VERIFY(find_in_sbuf(&msgend, buf, ')', 0) != 0);
-//         PJDLOG_VERIFY(sbuf_data(buf)[msgend] == ')');
-//         PJDLOG_VERIFY(sbuf_data(buf)[msgend + 1] == ':');
-//         PJDLOG_VERIFY(sbuf_data(buf)[msgend + 2] == ' ');
-//
-//         lastpos = msgend + 2;
-//         pjdlog_debug(5, "lastpos (%zu), buflen (%zu)", lastpos, buflen);
-//
-//         /* While not all bytes of the buf are processed. */
-//         while (lastpos < buflen) {
-//                 field = NULL;
-//                 parse_field(&field, &lastpos, buf);
-//                 PJDLOG_ASSERT(field != NULL);
-//                 pjdlog_debug(2, "next: %p", TAILQ_NEXT(field, next));
-//
-//                 /* Calculate the size of the field. */
-//                 field->size = field->namelen + field->vallen;
-//
-//                 /* Append the field to the record. */
-//                 /* XXX Issue #23. */
-//                 TAILQ_INSERT_TAIL(&record->fields, field, next);
-//
-//                 /* Add the size of the field to the total size of the record. */
-//                 record->size += field->size;
-//
-//         }
-// }
-
+/*
+ * fieldsp should be uninitialized, shouldn't it?
+ *
+ * XXX Assume that a record cannot have two fields of with same name.
+ */
 static void
-parse_fields(const char * const recordstr, const size_t recordstrlen)
+linau_record_parse_fields(nvlist_t ** const fieldsp,
+    const char * const recordstr, const size_t recordstrlen)
 {
-	(void)recordstr;
-	(void)recordstrlen;
-	return;
+	pjdlog_debug(5, " . > linau_record_parse_fields");
+
+	size_t msgend;
+	size_t lastpos;
+	nvlist_t *field;
+	nvlist_t *fields;
+
+	PJDLOG_ASSERT(*fieldsp == NULL);
+	fields = nvlist_create(0);
+
+	/* Find the beginning of the field section. */
+	PJDLOG_VERIFY(find_position(&msgend, recordstr, recordstrlen, 0, ')'));
+	PJDLOG_VERIFY(recordstr[msgend] == ')');
+	PJDLOG_VERIFY(recordstr[msgend + 1] == ':');
+	PJDLOG_VERIFY(recordstr[msgend + 2] == ' ');
+
+	lastpos = msgend + 2;
+	pjdlog_debug(5, " . > lastpos (%zu)", lastpos);
+
+	/* While not all bytes of the buf are processed. */
+	while (lastpos < recordstrlen && recordstr[lastpos] != '\n') {
+		field = NULL;
+
+		linau_field_parse(&field, recordstr, recordstrlen, &lastpos);
+		PJDLOG_ASSERT(field != NULL);
+
+		/* Calculate the size of the field. */
+		/* field->size = field->namelen + field->vallen; */
+		; // TODO
+
+		/* Append the field to the record. */
+		if (strcmp(nvlist_get_string(field, BSMCONV_LINAU_FIELD_TYPE),
+		    BSMCONV_LINAU_FIELD_TYPE_STRING) == 0) {
+			nvlist_move_string(fields,
+			    nvlist_take_string(field, BSMCONV_LINAU_FIELD_NAME),
+			    nvlist_take_string(field, BSMCONV_LINAU_FIELD_VALUE)
+			    );
+		}
+		else {
+			PJDLOG_ABORT("Invalid type of the field's value.");
+		}
+
+		/* Add the size of the field to the total size of the record. */
+		/* record->size += field->size; */
+		; // TODO
+		nvlist_destroy(field);
+
+	}
+
+
+
 
 }
 
@@ -359,7 +356,7 @@ linau_record_parse(const char * const recordstr, const size_t recordstrlen)
 	; // TODO
 
 	/* Parse the fields. */
-	parse_fields(recordstr, recordstrlen);
+	linau_record_parse_fields(&record->lr_fields, recordstr, recordstrlen);
 	; // TODO
 
 	return (record);
