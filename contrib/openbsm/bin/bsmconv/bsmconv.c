@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <nv.h>
 #include <unistd.h> /* getopt(3) */
 
 #include "linau.h"
@@ -38,8 +39,11 @@ main(int argc, char *argv[]) {
 	event = linau_event_create();
 	PJDLOG_VERIFY(event != NULL);
 
-	while ((record = linau_record_fetch(fp)) != NULL)
+	while ((record = linau_record_fetch(fp)) != NULL) {
+		// XXX DBG.
+		nvlist_dump(record, 2);
 		linau_event_add_record(event, record);
+	}
 
 	linau_event_print(event);
 

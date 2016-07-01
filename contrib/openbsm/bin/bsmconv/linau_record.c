@@ -14,15 +14,15 @@
 #include "linau_impl.h"
 #include "pjdlog.h"
 
-#define GET_MUM_OF_DIGITS(x) sizeof(#x)
-/* #define	XSTR(x)	STR(x) */
-/* #define	STR(x)	#x */
 
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
+#define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
+#define	BSMCONV_LINAU_RECORD_UINT32_T_DIGITS_COUNT	(sizeof(#UINT32_MAX) - 1)
+#define	BSMCONV_LINAU_RECORD_UINT64_T_DIGITS_COUNT	(sizeof(#UINT64_MAX) - 1)
 #define	BSMCONV_LINAU_RECORD_FIELDS_NVNAME	"fields"
-#define	BSMCONV_LINAU_RECORD_ID_NVNAME		"id"
-#define	BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME	"timestamp"
-#define	BSMCONV_LINAU_RECORD_TYPE_NVNAME	"type"
+#define	BSMCONV_LINAU_RECORD_ID_NVNAME		"_id"
+#define	BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME	"_timestamp"
+#define	BSMCONV_LINAU_RECORD_TYPE_NVNAME	"_type"
 
 /*******************************************************************************
  * Static fun definition.
@@ -162,16 +162,40 @@ linau_record_destroy(linau_record *record)
 uint32_t
 linau_record_get_id(const linau_record *record)
 {
+	uint32_t id;
 
-	return (nvlist_get_number(record, BSMCONV_LINAU_RECORD_ID_NVNAME));
+	PJDLOG_ASSERT(record != NULL);
+	/* PJDLOG_ASSERT(nvlist_empty(record) == false); */
+	PJDLOG_ASSERT(nvlist_error(record) == 0);
+
+	pjdlog_debug(5, " . . . . + linau_record_get_id");
+
+	PJDLOG_ASSERT(nvlist_exists_number(record,
+	    BSMCONV_LINAU_RECORD_ID_NVNAME));
+	pjdlog_debug(5, " . . . . . Assert passed.");
+	id = nvlist_get_number(record, BSMCONV_LINAU_RECORD_ID_NVNAME);
+	PJDLOG_VERIFY(nvlist_error(record) == 0);
+
+	pjdlog_debug(5, " . . . . -");
+
+	return (id);
 }
 
 uint64_t
 linau_record_get_timestamp(const linau_record *record)
 {
+	uint64_t timestamp;
 
-	return (nvlist_get_number(record,
-	    BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME));
+	pjdlog_debug(5, " . . . . + linau_record_get_timestamp");
+
+	timestamp = nvlist_get_number(record,
+	    BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME);
+
+	PJDLOG_VERIFY(nvlist_error(record) == 0);
+
+	pjdlog_debug(5, " . . . . -");
+
+	return timestamp;
 }
 
 void
@@ -226,6 +250,8 @@ linau_record_parse(const char * buf)
 	uint32_t id;
 	uint64_t timestamp;
 
+	pjdlog_debug(3, " . . + linau_record_parse");
+
 	/* XXX VERIFY or ASSERT? */
 	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
@@ -251,6 +277,11 @@ linau_record_parse(const char * buf)
 	linau_record_set_fields(record, fields);
 	nvlist_destroy(fields);
 
+	pjdlog_debug(3, " . . . > id (%u), timestamp (%ju)",
+	    linau_record_get_id(record), linau_record_get_timestamp(record));
+
+	pjdlog_debug(3, " . . -");
+
 	return (record);
 }
 
@@ -264,13 +295,15 @@ linau_record_parse_id(const char *buf)
 	size_t msgstart;
 	uint32_t id;
 
-	pjdlog_debug(5, " . > linau_record_parse_id");
+	pjdlog_debug(5, " . . . . + linau_record_parse_id");
 
 	locate_msg(buf, &msgstart, &secspos, &nsecspos, &idpos, &msgend);
 
 	id = extract_uint32(buf, idpos, msgend - 1);
 
-	pjdlog_debug(5, " . > id (%zu)", id);
+	pjdlog_debug(5, " . . . . . id (%zu)", id);
+
+	pjdlog_debug(5, " . . . . -");
 
 	return (id);
 }
@@ -287,7 +320,7 @@ linau_record_parse_fields(const char *buf)
 	nvlist_t *fields;
 	size_t buflen;
 
-	pjdlog_debug(5, " . > linau_record_parse_fields");
+	pjdlog_debug(5, " . . . . + linau_record_parse_fields");
 
 	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
@@ -303,7 +336,7 @@ linau_record_parse_fields(const char *buf)
 	PJDLOG_VERIFY(buf[msgend + 2] == ' ');
 
 	lastpos = msgend + 2;
-	pjdlog_debug(5, " . > lastpos (%zu)", lastpos);
+	pjdlog_debug(5, " . . . . . lastpos (%zu)", lastpos);
 
 	/* While not all bytes of the buf are processed. */
 	while (lastpos < buflen && buf[lastpos] != '\n') {
@@ -327,6 +360,8 @@ linau_record_parse_fields(const char *buf)
 		linau_field_destroy(field);
 	}
 
+	pjdlog_debug(5, " . . . . -");
+
 	return (fields);
 }
 
@@ -343,7 +378,7 @@ linau_record_parse_timestamp(const char *buf)
 	uint32_t nsecs;
 	uint32_t secs;
 
-	pjdlog_debug(5, " . > linau_record_parse_nsecs");
+	pjdlog_debug(5, " . . . . + linau_record_parse_timestamp");
 
 	/* XXX VERIFY or ASSERT? */
 	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
@@ -357,6 +392,7 @@ linau_record_parse_timestamp(const char *buf)
 	nsecs = extract_uint32(buf, nsecspos, idpos - 2);
 
 	timestamp = (uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs;
+	pjdlog_debug(5, " . . . . -");
 
 	return (timestamp);
 }
@@ -373,6 +409,8 @@ linau_record_parse_type(const char *buf)
 	char * type;
 	char * typenextspace;
 	size_t buflen;
+
+	pjdlog_debug(4, " . . . + linau_record_parse_type");
 
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_VERIFY(strchr(buf, '\0'));
@@ -398,56 +436,63 @@ linau_record_parse_type(const char *buf)
 	PJDLOG_ASSERT(buf[typeend] != ' ');
 
 	typelen = typeend - typestart + 1;
-	pjdlog_debug(3, "Raw type: (%zu) (%.*s)", typelen, (int)typelen,
-	    buf + typestart);
+	pjdlog_debug(4, " . . . . Raw type: (%zu) (%.*s)", typelen,
+	    (int)typelen, buf + typestart);
 
 	/* XXX I don't know why but (typelen + 1) would fix the issue #22.
 	 *     Update: It might be solved by now. I cannot check now though.
 	 */
 	type = extract_substring(buf, typestart, typelen);
 
+	pjdlog_debug(4, " . . . -");
+
 	return (type);
 }
 
+/* TODO Use sbuf_printf. */
 char *
 linau_record_generate_key(const linau_record *record)
 {
-	char timestampstr[GET_MUM_OF_DIGITS(UINT64_MAX) + 1];
-	char idstr[GET_MUM_OF_DIGITS(UINT32_MAX) + 1];
+	/* char timestampstr[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE]; */
+	/* char idstr[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE]; */
 	struct sbuf *buf;
 	size_t buflen;
 	char *key;
 	char *data;
+	uint32_t id;
+	uint64_t timestamp;
 
-	pjdlog_debug(4, " > linau_record_generate_key");
+	pjdlog_debug(4, " . . . + linau_record_generate_key");
 
 	/* Initialize the buffer. */
 	buf = sbuf_new_auto();
 	PJDLOG_VERIFY(buf != NULL);
 
 	/* Get and append the timestamp. */
-	PJDLOG_VERIFY(sprintf(timestampstr, "%llu",
-	    linau_record_get_timestamp(record)));
-	sbuf_cat(buf, timestampstr);
+	timestamp = linau_record_get_timestamp(record);
+	sbuf_printf(buf, "%llu", timestamp);
 
 	/* Get and append the id. */
-	PJDLOG_VERIFY(sprintf(idstr, "%u", linau_record_get_id(record)));
-	sbuf_cat(buf, idstr);
+	id = linau_record_get_id(record);
+	sbuf_printf(buf, "%u", id);
 
 	/* Close the buffer. */
 	PJDLOG_VERIFY(sbuf_finish(buf) == 0);
 
 	/* Extract the key from the buffer. */
+	/* TODO Refactor. */
 	PJDLOG_VERIFY(sbuf_len(buf) != -1);
 	buflen = sbuf_len(buf);
 	data = sbuf_data(buf);
 	PJDLOG_ASSERT(data[buflen] == '\0');
 	key = extract_substring(data, 0, buflen);
 
+
 	/* Clean up. */
 	sbuf_delete(buf);
 
-	pjdlog_debug(4, " > End of linau_record_generate_key. key: (%s)", key);
+	pjdlog_debug(4, " . . . . key: (%s)", key);
+	pjdlog_debug(4, " . . . -");
 
 	return (key);
 }
@@ -479,13 +524,13 @@ linau_record_fetch(FILE * fp)
 
 		if (fgets(rawbuf, sizeof(rawbuf), fp) == NULL) {
 			PJDLOG_VERIFY(errno == 0);
-			pjdlog_debug(4, " > EOF");
+			pjdlog_debug(3, "EOF");
 			sbuf_delete(inbuf);
 			return NULL; /* EOF */
 		}
 
-		pjdlog_debug(4, " > rawbuf: (%s)", rawbuf);
-		sbuf_cat(inbuf, rawbuf);
+		pjdlog_debug(3, "rawbuf: (%s)", rawbuf);
+		PJDLOG_VERIFY(sbuf_cat(inbuf, rawbuf) == 0);
 	} while (strstr(rawbuf, "\n\0") == NULL);
 
 	PJDLOG_VERIFY(sbuf_finish(inbuf) == 0);
@@ -494,19 +539,12 @@ linau_record_fetch(FILE * fp)
 	PJDLOG_ASSERT(sbuf_len(inbuf) != -1);
 	buflen = sbuf_len(inbuf);
 	data = sbuf_data(inbuf);
-	pjdlog_debug(4, " > buflen: (%zu)", buflen);
+	pjdlog_debug(3, "buflen: (%zu)", buflen);
 	PJDLOG_VERIFY(strcmp(data + (buflen - 1), "\n\0") == 0);
 
-	pjdlog_debug(4, " > Read record: (%s)", data);
+	pjdlog_debug(3, "Read record: (%s)", data);
 
 	record = linau_record_parse(data);
 
 	return (record);
 }
-
-/*******************************************************************************
- * End.
- */
-
-
-

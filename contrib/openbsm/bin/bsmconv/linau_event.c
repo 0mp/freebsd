@@ -28,19 +28,25 @@ linau_event_add_record(linau_event *event, const linau_record *record)
 {
 	char *key;
 
-	pjdlog_debug(3, "linau_event_add_record");
+	pjdlog_debug(3, " . . + linau_event_add_record");
+	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
 
-	(void)key;
+	pjdlog_debug(3, " . . . id (%u), timestamp (%llu)",
+	    linau_record_get_id(record),
+	    linau_record_get_timestamp(record));
+	pjdlog_debug(3, " . . . About to generate a key");
 	key = linau_record_generate_key(record);
-
-	/* pjdlog_debug(3, "About to add a record of a key (%s) to an event", key); */
+	PJDLOG_VERIFY(nvlist_error(event) == 0);
+	pjdlog_debug(3, " . . . About to add a record of a key (%s) to an "
+	    "event", key);
+	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
 	nvlist_add_nvlist(event, key, record);
-	/* nvlist_move_nvlist(event, key, record); */
+	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
 	/* PJDLOG_VERIFY(nvlist_error(event) == 0); */
-	pjdlog_debug(3, "End of linau_event_add_record");
+	pjdlog_debug(3, " . . -");
 }
 
 /* TODO */

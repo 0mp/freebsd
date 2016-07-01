@@ -60,19 +60,15 @@ extract_substring(const char *buf, size_t start, size_t len)
 {
 	char *substr;
 
-	pjdlog_debug(5, " . > extract_substring");
-	pjdlog_debug(5, " . > start (%zu), len (%zu), buflen (%zu)", start, len,
-	    strlen(buf));
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(start + len <= strlen(buf));
 
-	substr = calloc(len + 1, sizeof(*substr));
+	substr = malloc((len + 1) * sizeof(*substr));
 	PJDLOG_VERIFY(substr != NULL);
 	PJDLOG_VERIFY(strncpy(substr, buf + start, len) != NULL);
 	substr[len] = '\0';
 	PJDLOG_VERIFY(strncmp(substr, buf + start, len) == 0);
 
-	pjdlog_debug(5, " . > End of extract_substring");
 	return (substr);
 }
