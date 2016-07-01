@@ -449,12 +449,10 @@ linau_record_parse_type(const char *buf)
 	return (type);
 }
 
-/* TODO Use sbuf_printf. */
+/* TODO 0mphere100 Use type as the key. */
 char *
 linau_record_generate_key(const linau_record *record)
 {
-	/* char timestampstr[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE]; */
-	/* char idstr[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE]; */
 	struct sbuf *buf;
 	size_t buflen;
 	char *key;
@@ -486,7 +484,6 @@ linau_record_generate_key(const linau_record *record)
 	data = sbuf_data(buf);
 	PJDLOG_ASSERT(data[buflen] == '\0');
 	key = extract_substring(data, 0, buflen);
-
 
 	/* Clean up. */
 	sbuf_delete(buf);
