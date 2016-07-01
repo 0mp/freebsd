@@ -10,6 +10,7 @@
 linau_event *
 linau_event_create(void)
 {
+
 	return (linau_proto_create());
 }
 
@@ -25,18 +26,21 @@ linau_event_destroy(linau_event *event)
 void
 linau_event_add_record(linau_event *event, const linau_record *record)
 {
-	const char *key;
+	char *key;
+
+	pjdlog_debug(3, "linau_event_add_record");
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
 
+	(void)key;
 	key = linau_record_generate_key(record);
+
+	/* pjdlog_debug(3, "About to add a record of a key (%s) to an event", key); */
 	nvlist_add_nvlist(event, key, record);
-	PJDLOG_VERIFY(nvlist_error(event) == 0);
-
-	/* Update the size. */
-	; // TODO
-
+	/* nvlist_move_nvlist(event, key, record); */
+	/* PJDLOG_VERIFY(nvlist_error(event) == 0); */
+	pjdlog_debug(3, "End of linau_event_add_record");
 }
 
 /* TODO */

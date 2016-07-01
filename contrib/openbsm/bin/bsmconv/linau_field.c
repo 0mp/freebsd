@@ -22,8 +22,8 @@ find_string_value_end(const char *buf, size_t start, char stringtype)
 	size_t buflen;
 
 	PJDLOG_ASSERT(buf != NULL);
-	PJDLOG_ASSERT(buflen > 0);
 
+	buflen = strlen(buf);
 	end = start + 1;
 	PJDLOG_ASSERT(end < buflen);
 
@@ -44,6 +44,13 @@ linau_field_create(void)
 }
 
 void
+linau_field_destroy(linau_field *field)
+{
+
+	linau_proto_destroy(field);
+}
+
+void
 linau_field_set_name(linau_field *field, const char * name)
 {
 
@@ -56,8 +63,8 @@ linau_field_set_value(linau_field *field, const char * value)
 {
 
 	linau_proto_set_string(field, BSMCONV_LINAU_FIELD_VALUE_NVNAME, value);
-	linau_proto_set_string(field, BSMCONV_LINAU_FIELD_TYPE_STRING,
-	    BSMCONV_LINAU_FIELD_TYPE);
+	linau_proto_set_string(field, BSMCONV_LINAU_FIELD_TYPE,
+	    BSMCONV_LINAU_FIELD_TYPE_STRING);
 }
 
 /* TODO Commas are invalid for the time being. */
@@ -115,7 +122,7 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	valstart = equalpos + 1;
 	PJDLOG_ASSERT(valstart < buflen);
 
-	value = linau_field_parse_value(buf, buflen, valstart);
+	value = linau_field_parse_value(buf, valstart);
 	linau_field_set_value(field, value);
 	free(value);
 
