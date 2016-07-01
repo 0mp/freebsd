@@ -6,9 +6,9 @@
 #define BSMCONV_LINAU_FIELD_NAME	"name"
 #define BSMCONV_LINAU_FIELD_VALUE	"value"
 #define BSMCONV_LINAU_FIELD_TYPE	"__bsmconvlinaufieldtype__"
-#define BSMCONV_LINAU_FIELD_TYPE_STRING	"string"
+#define BSMCONV_LINAU_FIELD_TYPE_STRING	NV_TYPE_STRING
 
-typedef linau_field nvlist_t;
+typedef nvlist_t linau_field;
 
 linau_field *linau_field_create(void);
 

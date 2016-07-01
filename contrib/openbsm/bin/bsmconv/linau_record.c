@@ -105,7 +105,7 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 }
 
 static uint32_t
-_extract_uint32(const char *buf, size_t start, size_t end)
+extract_uint32(const char *buf, size_t start, size_t end)
 {
 	size_t len;
 	char *numstr;
@@ -114,13 +114,10 @@ _extract_uint32(const char *buf, size_t start, size_t end)
 	PJDLOG_ASSERT(isdigit(buf[end]) != 0);
 
 	len = end - start + 1;
-	numstr = calloc(len + 1, sizeof(*numstr));
-	PJDLOG_VERIFY(numstr != NULL);
-	strncpy(numstr, buf + start, len);
-	numstr[len] = '\0';
-	pjdlog_debug(6, " . . > numstr (%s)", numstr);
+	numstr = extract_substring(buf, start, len);
+	num = string_to_uint32(numstr);
 
-	return (string_to_uint32(numstr));
+	return (num);
 }
 
 static uint32_t
@@ -379,18 +376,21 @@ linau_record_parse_type(const char *buf)
 	typenextspacepos = typenextspace - buf;
 	typeend = typenextspacepos - 1;
 	PJDLOG_ASSERT(typestart <= typeend);
+	PJDLOG_ASSERT(buf[typeend] != ' ');
 
-	typelen = typeend - typestart;
+	typelen = typeend - typestart + 1;
 	pjdlog_debug(3, "Raw type: (%zu) (%.*s)", typelen, (int)typelen,
 	    buf + typestart);
 
 	/* XXX I don't know why but (typelen + 1) would fix the issue #22.
-	 * Update: It might be solved by now. I cannot check now though. */
-	type = calloc(typelen + 1, sizeof(*type));
-	PJDLOG_VERIFY(type != NULL);
-	strncpy(type, buf + typestart, typelen);
-	type[typelen] = '\0';
-	PJDLOG_VERIFY(strncmp(type, buf + typestart, typelen) == 0);
+	 *     Update: It might be solved by now. I cannot check now though.
+	 */
+	/* type = calloc(typelen + 1, sizeof(*type)); */
+	/* PJDLOG_VERIFY(type != NULL); */
+	/* strncpy(type, buf + typestart, typelen); */
+	/* type[typelen] = '\0'; */
+	/* PJDLOG_VERIFY(strncmp(type, buf + typestart, typelen) == 0); */
+	type = extract_substring(buf, typestart, typelen);
 
 	return (type);
 }
@@ -489,18 +489,17 @@ extract_uint32(const char * const str, const size_t start, const size_t end)
 {
 	size_t len;
 	char *numstr;
+	uint32_t num;
 
 	PJDLOG_ASSERT(isdigit(str[start]) != 0);
 	PJDLOG_ASSERT(isdigit(str[end]) != 0);
 
 	len = end - start + 1;
-	numstr = calloc(len + 1, sizeof(*numstr));
-	PJDLOG_VERIFY(numstr != NULL);
-	strncpy(numstr, str + start, len);
-	numstr[len] = '\0';
-	pjdlog_debug(6, " . . > numstr (%s)", numstr);
+	numstr = extract_substring(buf, start, len);
 
-	return (string_to_uint32(numstr));
+	num = string_to_uint32(numstr);
+
+	return (num);
 }
 
 

@@ -3,7 +3,9 @@
 
 #include <nv.h>
 
-typedef linau_event nvlist_t;
+#include "linau_record.h"
+
+typedef nvlist_t linau_event;
 
 linau_event *linau_event_create(void);
 void linau_event_destroy(linau_event *event);
