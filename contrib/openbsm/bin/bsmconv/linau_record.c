@@ -198,6 +198,23 @@ linau_record_get_timestamp(const linau_record *record)
 	return timestamp;
 }
 
+const char *
+linau_record_get_type(const linau_record *record)
+{
+	const char *type;
+
+	pjdlog_debug(5, " . . . . + linau_record_get_type");
+
+	type = nvlist_get_string(record, BSMCONV_LINAU_RECORD_TYPE_NVNAME);
+
+	PJDLOG_VERIFY(nvlist_error(record) == 0);
+
+	pjdlog_debug(5, " . . . . -");
+
+	return type;
+
+}
+
 void
 linau_record_set_fields(linau_record *record, nvlist_t *fields)
 {
@@ -450,6 +467,7 @@ linau_record_parse_type(const char *buf)
 }
 
 /* TODO 0mphere100 Use type as the key. */
+/* Assume that there is only at most one record of any type. */
 char *
 linau_record_generate_key(const linau_record *record)
 {
@@ -457,8 +475,6 @@ linau_record_generate_key(const linau_record *record)
 	size_t buflen;
 	char *key;
 	char *data;
-	uint32_t id;
-	uint64_t timestamp;
 
 	pjdlog_debug(4, " . . . + linau_record_generate_key");
 
@@ -466,13 +482,8 @@ linau_record_generate_key(const linau_record *record)
 	buf = sbuf_new_auto();
 	PJDLOG_VERIFY(buf != NULL);
 
-	/* Get and append the timestamp. */
-	timestamp = linau_record_get_timestamp(record);
-	sbuf_printf(buf, "%llu", timestamp);
-
-	/* Get and append the id. */
-	id = linau_record_get_id(record);
-	sbuf_printf(buf, "%u", id);
+	/* Get and append the type. */
+	sbuf_printf(buf, "%s", linau_record_get_type(record));
 
 	/* Close the buffer. */
 	PJDLOG_VERIFY(sbuf_finish(buf) == 0);

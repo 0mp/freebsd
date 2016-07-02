@@ -12,6 +12,7 @@ void linau_record_destroy(linau_record *record);
 
 uint32_t linau_record_get_id(const linau_record *record);
 uint64_t linau_record_get_timestamp(const linau_record *record);
+const char *linau_record_get_type(const linau_record *record);
 
 void linau_record_set_fields(linau_record *record, nvlist_t *fields);
 void linau_record_set_id(linau_record *record, uint32_t id);
