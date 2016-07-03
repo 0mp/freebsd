@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <nv.h>
 #include <string.h>
 #include <stdlib.h>
@@ -88,10 +89,19 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	pjdlog_debug(6, " . . > namestart (%zu) points to (%c)", namestart,
 	    buf[namestart]);
 
-	/* Skip spaces. */
-	/* XXX Commas are invalid for the time being. */
-	while (namestart < buflen && buf[namestart] == ' ')
+	/* Skip a comma and spaces. */
+	if (namestart + 1 < buflen && isspace(buf[namestart]))
 		namestart++;
+	else if (namestart + 1 < buflen && buf[namestart] == ',')
+		namestart++;
+	else
+		PJDLOG_ABORT("The record fields should be separated by either "
+		    "a comma or a whitespace");
+	while (namestart + 1 < buflen && isspace(buf[namestart]))
+		namestart++;
+
+	PJDLOG_ASSERT(!isspace(buf[namestart]));
+	PJDLOG_ASSERT(buf[namestart] != ',');
 
 	pjdlog_debug(6, " . . > Nonspace namestart (%zu) points to (%c)",
 	    namestart, buf[namestart]);
@@ -179,6 +189,10 @@ linau_field_parse_value(const char *buf, size_t start)
 			PJDLOG_ASSERT(buf[spacepos] == '\n');
 		}
 		end = spacepos - 1;
+
+		if (buf[end] == ',')
+			end--;
+
 		break;
 	}
 
