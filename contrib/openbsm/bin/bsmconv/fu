@@ -14,11 +14,7 @@ update_progress_bar() {
 }
 
 fu_make() {
-    local CWD
-    CWD=$(pwd)
-    cd "$MAKEFILE_DIR"
-    make || exit 1
-    cd "$CWD"
+    make -C "$MAKEFILE_DIR"|| exit 1
 }
 
 fu_result() {
@@ -65,7 +61,7 @@ fu_run_tests() {
 
 fu_usage() {
     echo "usage: $0 ACTION [ACTION ...]"
-    echo "ACTION is {make, test, usage}."
+    echo "ACTION is {m, t, tv -v. rv -v test, usage}."
     printf "%s\n%s\n" \
     "The game of chess is like a sword fight." \
     "You must think first before you move."
@@ -86,6 +82,11 @@ while [ "$#" -gt 0 ]; do
         ;;
     m|make)
         fu_make
+        ;;
+    rv)
+        "$BIN" "$2" < "$3"
+        shift
+        shift
         ;;
     usage|help|-h|*)
         fu_usage

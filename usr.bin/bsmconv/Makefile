@@ -11,13 +11,13 @@ NO_WMISSING_VARIABLE_DECLARATIONS=
 
 PROG=	bsmconv
 SRCS=	bsmconv.c
+SRCS+=	linau_event.c
+SRCS+=	linau_field.c
+SRCS+=	linau_impl.c
+SRCS+=	linau_record.c
 SRCS+=	pjdlog.c
 
-LIBADD+=sbuf util
+LIBADD+=sbuf util nv
 MAN=
-
-# auditdistd cannot use FreeBSD specific lock annotation macros. Disable
-# thread safety analysis completely.
-# NO_WTHREAD_SAFETY=
 
 .include <bsd.prog.mk>
