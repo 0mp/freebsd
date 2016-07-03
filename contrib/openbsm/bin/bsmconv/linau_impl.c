@@ -25,6 +25,36 @@ linau_proto_destroy(nvlist_t *nvl)
 	nvlist_destroy(nvl);
 }
 
+uintmax_t
+linau_proto_get_number(const nvlist_t *nvl, const char *nvname)
+{
+	uintmax_t num;
+
+	PJDLOG_ASSERT(nvl != NULL);
+	PJDLOG_ASSERT(!nvlist_empty(nvl));
+	PJDLOG_ASSERT(nvlist_error(nvl) == 0);
+
+	PJDLOG_ASSERT(nvlist_exists_number(nvl, nvname));
+
+	num = nvlist_get_number(nvl, nvname);
+
+	PJDLOG_VERIFY(nvlist_error(nvl) == 0);
+
+	return (num);
+}
+
+void
+linau_proto_set_number(nvlist_t *nvl, const char *nvname, uintmax_t num)
+{
+
+	PJDLOG_ASSERT(nvl != NULL);
+	PJDLOG_ASSERT(nvname != NULL);
+
+	nvlist_add_number(nvl, nvname, num);
+
+	PJDLOG_VERIFY(nvlist_error(nvl) == 0);
+}
+
 void
 linau_proto_set_string(nvlist_t *nvl, const char *nvname, const char *str)
 {
@@ -35,6 +65,23 @@ linau_proto_set_string(nvlist_t *nvl, const char *nvname, const char *str)
 	nvlist_add_string(nvl, nvname, str);
 	PJDLOG_VERIFY(nvlist_error(nvl) == 0);
 	PJDLOG_ASSERT(nvlist_exists_string(nvl, nvname));
+}
+
+int
+linau_proto_compare_origin(uint32_t id1, uint64_t timestamp1, uint32_t id2,
+    uint64_t timestamp2)
+{
+
+	if (timestamp1 < timestamp2)
+		return -1;
+	else if (timestamp1 > timestamp2)
+		return 1;
+	else if (id1 < id2)
+		return -1;
+	else if (id1 > id2)
+		return 1;
+	else
+		return 0;
 }
 
 bool

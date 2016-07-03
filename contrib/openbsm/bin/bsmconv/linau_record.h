@@ -29,4 +29,7 @@ char * linau_record_generate_key(const linau_record *record);
 
 linau_record *linau_record_fetch(FILE * fp);
 
+int linau_record_comapre_origin(const linau_record *reca,
+    const linau_record *recb);
+
 #endif

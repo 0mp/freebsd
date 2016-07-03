@@ -162,40 +162,17 @@ linau_record_destroy(linau_record *record)
 uint32_t
 linau_record_get_id(const linau_record *record)
 {
-	uint32_t id;
 
-	PJDLOG_ASSERT(record != NULL);
-	/* PJDLOG_ASSERT(nvlist_empty(record) == false); */
-	PJDLOG_ASSERT(nvlist_error(record) == 0);
-
-	pjdlog_debug(5, " . . . . + linau_record_get_id");
-
-	PJDLOG_ASSERT(nvlist_exists_number(record,
+	return ((uint32_t)linau_proto_get_number(record,
 	    BSMCONV_LINAU_RECORD_ID_NVNAME));
-	pjdlog_debug(5, " . . . . . Assert passed.");
-	id = nvlist_get_number(record, BSMCONV_LINAU_RECORD_ID_NVNAME);
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
-
-	pjdlog_debug(5, " . . . . -");
-
-	return (id);
 }
 
 uint64_t
 linau_record_get_timestamp(const linau_record *record)
 {
-	uint64_t timestamp;
 
-	pjdlog_debug(5, " . . . . + linau_record_get_timestamp");
-
-	timestamp = nvlist_get_number(record,
-	    BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME);
-
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
-
-	pjdlog_debug(5, " . . . . -");
-
-	return timestamp;
+	return ((uint64_t)linau_proto_get_number(record,
+	    BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME));
 }
 
 const char *
@@ -228,21 +205,15 @@ void
 linau_record_set_id(linau_record *record, uint32_t id)
 {
 
-	PJDLOG_ASSERT(record != NULL);
-
-	nvlist_add_number(record, BSMCONV_LINAU_RECORD_ID_NVNAME, id);
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
+	linau_proto_set_number(record, BSMCONV_LINAU_RECORD_ID_NVNAME, id);
 }
 
 void
 linau_record_set_timestamp(linau_record *record, uint64_t timestamp)
 {
 
-	PJDLOG_ASSERT(record != NULL);
-
-	nvlist_add_number(record, BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME,
+	linau_proto_set_number(record, BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME,
 	    timestamp);
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
 }
 
 
@@ -555,4 +526,32 @@ linau_record_fetch(FILE * fp)
 	record = linau_record_parse(data);
 
 	return (record);
+}
+
+/*
+ * Compare the records' timestamps and ids.
+ *
+ * Firstly, the function compare by the timestamps and secondly by the ids.
+ *
+ * Returns -1 if reca seems to be earlier in terms of the timestamp and the id
+ * and 1 if recb seems to be earlier. 0 if the timestamp and the ids are the
+ * same.
+ */
+int
+linau_record_comapre_origin(const linau_record *reca, const linau_record *recb)
+{
+	uint64_t recats;
+	uint64_t recbts;
+	uint32_t recaid;
+	uint32_t recbid;
+
+	PJDLOG_ASSERT(reca != NULL);
+	PJDLOG_ASSERT(recb != NULL);
+
+	recats = linau_record_get_timestamp(reca);
+	recbts = linau_record_get_timestamp(recb);
+	recaid = linau_record_get_id(reca);
+	recbid = linau_record_get_id(recb);
+
+	return (linau_proto_compare_origin(recaid, recats, recbid, recbts));
 }

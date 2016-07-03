@@ -40,12 +40,15 @@ main(int argc, char *argv[]) {
 	PJDLOG_VERIFY(event != NULL);
 
 	while ((record = linau_record_fetch(fp)) != NULL) {
-		// XXX DBG.
-		nvlist_dump(record, 2);
+		if (!linau_event_empty(event) &&
+		    linau_event_compare_origin(event, record)) {
+			linau_event_print(event);
+			linau_event_destroy(event);
+			event = linau_event_create();
+		}
 		linau_event_add_record(event, record);
 	}
 
-	linau_event_print(event);
 
 	return (0);
 }
