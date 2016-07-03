@@ -1,4 +1,5 @@
 #include "linau_event.h"
+#include "linau_field.h"
 #include "linau_record.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
@@ -111,11 +112,7 @@ linau_event_set_timestamp(linau_event *event, uint64_t timestamp)
 void
 linau_event_print(const linau_event *event)
 {
-
-	PJDLOG_ASSERT(event != NULL);
-	printf("====================\n");
-	printf("event:\n");
-	printf(" > size (%lu)\n", linau_event_get_size(event));
+	nvlist_dump(event, 2);
 }
 
 /* event shall not be empty. */

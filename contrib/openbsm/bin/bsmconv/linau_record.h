@@ -5,6 +5,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* For the sake of linau_event_print. */
+#define	BSMCONV_LINAU_RECORD_FIELDS_NVNAME	"_fields"
+#define	BSMCONV_LINAU_RECORD_ID_NVNAME		"_id"
+#define	BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME	"_timestamp"
+#define	BSMCONV_LINAU_RECORD_TYPE_NVNAME	"_type"
+
 typedef nvlist_t linau_record;
 
 linau_record *linau_record_create(void);

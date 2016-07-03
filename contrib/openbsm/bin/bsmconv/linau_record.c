@@ -19,22 +19,11 @@
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 #define	BSMCONV_LINAU_RECORD_UINT32_T_DIGITS_COUNT	(sizeof(#UINT32_MAX) - 1)
 #define	BSMCONV_LINAU_RECORD_UINT64_T_DIGITS_COUNT	(sizeof(#UINT64_MAX) - 1)
-#define	BSMCONV_LINAU_RECORD_FIELDS_NVNAME	"fields"
-#define	BSMCONV_LINAU_RECORD_ID_NVNAME		"_id"
-#define	BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME	"_timestamp"
-#define	BSMCONV_LINAU_RECORD_TYPE_NVNAME	"_type"
 
-/*******************************************************************************
- * Static fun definition.
- */
 static void locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
     size_t *nsecsposp, size_t *idposp, size_t *msgendp);
 static uint32_t extract_uint32(const char *buf, size_t start, size_t end);
 static uint32_t string_to_uint32(const char *str);
-
-/*******************************************************************************
- * Static fun.
- */
 
 /* XXX Ugly. */
 static void
@@ -141,10 +130,6 @@ string_to_uint32(const char *str)
 	return (num);
 }
 
-/*******************************************************************************
- * Interface.
- */
-
 linau_record *
 linau_record_create(void)
 {
@@ -178,18 +163,9 @@ linau_record_get_timestamp(const linau_record *record)
 const char *
 linau_record_get_type(const linau_record *record)
 {
-	const char *type;
 
-	pjdlog_debug(5, " . . . . + linau_record_get_type");
-
-	type = nvlist_get_string(record, BSMCONV_LINAU_RECORD_TYPE_NVNAME);
-
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
-
-	pjdlog_debug(5, " . . . . -");
-
-	return type;
-
+	return (linau_proto_get_string(record,
+	    BSMCONV_LINAU_RECORD_TYPE_NVNAME));
 }
 
 void

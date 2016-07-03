@@ -6,10 +6,6 @@
 #include "linau_impl.h"
 #include "pjdlog.h"
 
-#define	BSMCONV_LINAU_FIELD_NAME_NVNAME		"name"
-#define	BSMCONV_LINAU_FIELD_VALUE_NVNAME	"value"
-
-
 static size_t find_string_value_end(const char *buf, size_t start,
     char stringtype);
 

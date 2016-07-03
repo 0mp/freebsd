@@ -43,6 +43,18 @@ linau_proto_get_number(const nvlist_t *nvl, const char *nvname)
 	return (num);
 }
 
+const char *
+linau_proto_get_string(const nvlist_t *nvl, const char *nvname)
+{
+	const char *str;
+
+	str = nvlist_get_string(nvl, nvname);
+
+	PJDLOG_VERIFY(nvlist_error(nvl) == 0);
+
+	return (str);
+}
+
 void
 linau_proto_set_number(nvlist_t *nvl, const char *nvname, uintmax_t num)
 {

@@ -48,7 +48,8 @@ main(int argc, char *argv[]) {
 		}
 		linau_event_add_record(event, record);
 	}
-
+	linau_event_print(event);
+	linau_event_destroy(event);
 
 	return (0);
 }
