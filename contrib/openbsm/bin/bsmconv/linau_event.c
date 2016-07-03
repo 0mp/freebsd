@@ -89,7 +89,7 @@ linau_event_get_id(const linau_event *event)
 	    BSMCONV_LINAU_EVENT_ID_NVNAME));
 }
 
-/* TODO */
+/* TODO This will be implemented during along the LA->BSM conversion. */
 uint32_t
 linau_event_get_size(const linau_event *event)
 {
