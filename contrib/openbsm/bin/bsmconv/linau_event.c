@@ -4,8 +4,12 @@
 #include "linau_impl.h"
 #include "pjdlog.h"
 
+#include <stdlib.h>
+#include <stddef.h>
+
 #define	BSMCONV_LINAU_EVENT_ID_NVNAME		"id"
 #define	BSMCONV_LINAU_EVENT_TIMESTAMP_NVNAME	"timestamp"
+#define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
 
 linau_event *
 linau_event_create(void)
@@ -24,7 +28,8 @@ linau_event_destroy(linau_event *event)
 
 /* TODO */
 void
-linau_event_add_record(linau_event *event, const linau_record *record)
+linau_event_add_record(linau_event *event, const linau_record *record,
+    size_t recordnum)
 {
 	char *key;
 
@@ -49,9 +54,14 @@ linau_event_add_record(linau_event *event, const linau_record *record)
 
 	pjdlog_debug(3, " . . . About to generate a key");
 
-	key = linau_record_generate_key(record);
+	key = malloc((BSMCONV_LINAU_EVENT_KEY_BUFFER + 1) *
+	    sizeof(*key));
+	PJDLOG_VERIFY(snprintf(key, BSMCONV_LINAU_EVENT_KEY_BUFFER,
+	    "%zu", recordnum) > 0);
 
 	PJDLOG_VERIFY(nvlist_error(event) == 0);
+	PJDLOG_ASSERT(!nvlist_exists(event, key));
+
 	pjdlog_debug(3, " . . . About to add a record of a key (%s) to an "
 	    "event", key);
 	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
@@ -61,6 +71,8 @@ linau_event_add_record(linau_event *event, const linau_record *record)
 	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
 	PJDLOG_VERIFY(nvlist_error(event) == 0);
 	pjdlog_debug(3, " . . -");
+
+	free(key);
 }
 
 bool
@@ -112,7 +124,7 @@ linau_event_set_timestamp(linau_event *event, uint64_t timestamp)
 void
 linau_event_print(const linau_event *event)
 {
-	nvlist_dump(event, 2);
+	nvlist_dump(event, 1);
 }
 
 /* event shall not be empty. */

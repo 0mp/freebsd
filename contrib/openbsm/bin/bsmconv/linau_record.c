@@ -17,8 +17,6 @@
 
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
-#define	BSMCONV_LINAU_RECORD_UINT32_T_DIGITS_COUNT	(sizeof(#UINT32_MAX) - 1)
-#define	BSMCONV_LINAU_RECORD_UINT64_T_DIGITS_COUNT	(sizeof(#UINT64_MAX) - 1)
 
 static void locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
     size_t *nsecsposp, size_t *idposp, size_t *msgendp);
@@ -385,7 +383,9 @@ linau_record_parse_type(const char *buf)
 
 	/* XXX Does it make sense? */
 	PJDLOG_ASSERT(typeprefixlen + 2 < buflen);
-	PJDLOG_VERIFY(strncmp(buf, typeprefix, strlen(typeprefix)) == 0);
+	pjdlog_debug(4, " . . . . (%.*s), (%.*s)",
+	    typeprefixlen, buf, typeprefixlen, typeprefix);
+	PJDLOG_VERIFY(strncmp(buf, typeprefix, typeprefixlen) == 0);
 
 	typestart = typeprefixlen + 1;
 
@@ -403,53 +403,11 @@ linau_record_parse_type(const char *buf)
 	pjdlog_debug(4, " . . . . Raw type: (%zu) (%.*s)", typelen,
 	    (int)typelen, buf + typestart);
 
-	/* XXX I don't know why but (typelen + 1) would fix the issue #22.
-	 *     Update: It might be solved by now. I cannot check now though.
-	 */
 	type = extract_substring(buf, typestart, typelen);
 
 	pjdlog_debug(4, " . . . -");
 
 	return (type);
-}
-
-/* TODO 0mphere100 Use type as the key. */
-/* Assume that there is only at most one record of any type. */
-char *
-linau_record_generate_key(const linau_record *record)
-{
-	struct sbuf *buf;
-	size_t buflen;
-	char *key;
-	char *data;
-
-	pjdlog_debug(4, " . . . + linau_record_generate_key");
-
-	/* Initialize the buffer. */
-	buf = sbuf_new_auto();
-	PJDLOG_VERIFY(buf != NULL);
-
-	/* Get and append the type. */
-	sbuf_printf(buf, "%s", linau_record_get_type(record));
-
-	/* Close the buffer. */
-	PJDLOG_VERIFY(sbuf_finish(buf) == 0);
-
-	/* Extract the key from the buffer. */
-	/* TODO Refactor. */
-	PJDLOG_VERIFY(sbuf_len(buf) != -1);
-	buflen = sbuf_len(buf);
-	data = sbuf_data(buf);
-	PJDLOG_ASSERT(data[buflen] == '\0');
-	key = extract_substring(data, 0, buflen);
-
-	/* Clean up. */
-	sbuf_delete(buf);
-
-	pjdlog_debug(4, " . . . . key: (%s)", key);
-	pjdlog_debug(4, " . . . -");
-
-	return (key);
 }
 
 /*

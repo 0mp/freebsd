@@ -11,6 +11,7 @@ main(int argc, char *argv[]) {
 	linau_event *event;
 	linau_record *record;
 	FILE * fp;
+	size_t counter;
 	int debuglevel;
 
 	pjdlog_init(PJDLOG_MODE_STD);
@@ -28,13 +29,14 @@ main(int argc, char *argv[]) {
 			debuglevel++;
 			break;
 		default:
-			PJDLOG_ASSERT(!"Invalid command line options detected");
+			PJDLOG_ABORT("Invalid command line options detected");
 		}
 	}
 
 	pjdlog_debug_set(debuglevel);
 
 	fp = stdin;
+	counter = 0;
 
 	event = linau_event_create();
 	PJDLOG_VERIFY(event != NULL);
@@ -46,7 +48,8 @@ main(int argc, char *argv[]) {
 			linau_event_destroy(event);
 			event = linau_event_create();
 		}
-		linau_event_add_record(event, record);
+		linau_event_add_record(event, record, counter);
+		counter++;
 	}
 	linau_event_print(event);
 	linau_event_destroy(event);

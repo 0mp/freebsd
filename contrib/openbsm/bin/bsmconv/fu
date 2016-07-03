@@ -14,11 +14,7 @@ update_progress_bar() {
 }
 
 fu_make() {
-    local CWD
-    CWD=$(pwd)
-    cd "$MAKEFILE_DIR"
-    make || exit 1
-    cd "$CWD"
+    make -C "$MAKEFILE_DIR"|| exit 1
 }
 
 fu_result() {
