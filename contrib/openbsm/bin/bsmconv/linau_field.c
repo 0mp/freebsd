@@ -64,7 +64,6 @@ linau_field_set_value(linau_field *field, const char * value)
 	    BSMCONV_LINAU_FIELD_TYPE_STRING);
 }
 
-/* TODO Commas are invalid for the time being. */
 linau_field *
 linau_field_parse(const char *buf, size_t *lastposp)
 {
@@ -106,17 +105,10 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	pjdlog_debug(6, " . . > Nonspace namestart (%zu) points to (%c)",
 	    namestart, buf[namestart]);
 
-	/* TODO Check if we reach the end of line. Return if so. */
-	if (namestart == buflen) {
-		nvlist_destroy(field);
-		*lastposp = namestart;
-		PJDLOG_ABORT("parse_field() reach the end of line contating "
-		    "trailing spaces. It hasn't been implemented yet");
-	}
+	/* Trailing whitespace is invalid. */
+	PJDLOG_ASSERT(namestart != buflen);
 
-	/*
-	 * Reach the next field. Assume there are no '=' in the name.
-	 */
+	/* Reach the next field. Assume there are no '=' in the name. */
 	PJDLOG_VERIFY(find_position(&equalpos, buf, namestart + 1, '='));
 	nameend = equalpos - 1;
 	PJDLOG_ASSERT(buf[nameend] != '=');
@@ -175,10 +167,9 @@ linau_field_parse_value(const char *buf, size_t start)
 		break;
 	case '\'':
 		/*
-		 * XXX You cannot have a value like '''.
-		 *     You can have a value like '\''.
+		 * You cannot have a value like '''.
+		 * You can have a value like '\''.
 		 */
-		/* TODO Add a test. */
 		end = find_string_value_end(buf, start, '\'');
 		break;
 	default:
