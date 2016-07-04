@@ -1,9 +1,10 @@
 #ifndef _LINAU_RECORD_H_
 #define _LINAU_RECORD_H_
 
-#include <nv.h>
 #include <stdint.h>
 #include <stdio.h>
+
+#include <nv.h>
 
 /* For the sake of linau_event_print. */
 #define	BSMCONV_LINAU_RECORD_FIELDS_NVNAME	"_fields"

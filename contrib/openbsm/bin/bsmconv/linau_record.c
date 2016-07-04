@@ -1,12 +1,11 @@
 #include <sys/types.h>
-
 #include <sys/sbuf.h>
 
 #include <ctype.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 
 #include "linau_record.h"

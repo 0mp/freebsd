@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #include <stdbool.h>
+
 #include <nv.h>
 
 nvlist_t *linau_proto_create(void);

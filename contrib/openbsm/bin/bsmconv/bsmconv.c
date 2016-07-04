@@ -1,9 +1,9 @@
 #include <stdio.h>
+#include <unistd.h>
+
 #include <nv.h>
-#include <unistd.h> /* getopt(3) */
 
 #include "linau.h"
-
 #include "pjdlog.h"
 
 int

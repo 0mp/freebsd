@@ -1,7 +1,8 @@
 #include <ctype.h>
-#include <nv.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
+
+#include <nv.h>
 
 #include "linau_field.h"
 #include "linau_impl.h"
