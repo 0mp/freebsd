@@ -8,33 +8,8 @@
 #include "linau_impl.h"
 #include "pjdlog.h"
 
-static size_t find_string_value_end(const char *buf, size_t start,
-    char stringtype);
 
-
-static size_t
-find_string_value_end(const char *buf, size_t start, char stringtype)
-{
-	size_t end;
-	size_t prevend;
-	size_t buflen;
-
-	PJDLOG_ASSERT(buf != NULL);
-
-	buflen = strlen(buf);
-	end = start + 1;
-	PJDLOG_ASSERT(end < buflen);
-
-	do {
-		prevend = end;
-		PJDLOG_VERIFY(find_position(&end, buf, prevend, stringtype));
-	} while (buf[end - 1] == '\\');
-
-	return (end);
-}
-
-
-linau_field *
+struct linau_field *
 linau_field_create(void)
 {
 

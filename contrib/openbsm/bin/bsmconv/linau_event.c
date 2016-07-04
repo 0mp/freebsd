@@ -38,130 +38,137 @@ linau_event_destroy(struct linau_event *event)
 		linau_record_destroy(record1);
 		record1 = record2;
 	}
-	/* XXX0mp Is this really needed? This is what queue(3) says but ... */
+	/* XXX Is this really needed? This is what queue(3) says but I don't
+	 * understand it. */
 	TAILQ_INIT(&event->le_records);
 
 	free(event);
 }
-//
-// /* TODO */
-// void
-// linau_event_add_record(linau_event *event, const linau_record *record,
-//     size_t recordnum)
-// {
-// 	char *key;
-//
-// 	pjdlog_debug(3, " . . + linau_event_add_record");
-// 	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
-//
-// 	PJDLOG_ASSERT(event != NULL);
-// 	PJDLOG_ASSERT(record != NULL);
-//
-// 	pjdlog_debug(3, " . . . id (%u), timestamp (%llu)",
-// 	    linau_record_get_id(record),
-// 	    linau_record_get_timestamp(record));
-//
-// 	if (linau_event_empty(event)) {
-// 		uint64_t timestamp;
-// 		uint32_t id;
-// 		id = linau_record_get_id(record);
-// 		timestamp = linau_record_get_timestamp(record);
-// 		linau_event_set_id(event, id);
-// 		linau_event_set_timestamp(event, timestamp);
-// 	}
-//
-// 	pjdlog_debug(3, " . . . About to generate a key");
-//
-// 	key = malloc((BSMCONV_LINAU_EVENT_KEY_BUFFER + 1) *
-// 	    sizeof(*key));
-// 	PJDLOG_VERIFY(snprintf(key, BSMCONV_LINAU_EVENT_KEY_BUFFER,
-// 	    "%zu", recordnum) > 0);
-//
-// 	PJDLOG_VERIFY(nvlist_error(event) == 0);
-// 	PJDLOG_ASSERT(!nvlist_exists(event, key));
-//
-// 	pjdlog_debug(3, " . . . About to add a record of a key (%s) to an "
-// 	    "event", key);
-// 	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
-//
-// 	nvlist_add_nvlist(event, key, record);
-//
-// 	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
-// 	PJDLOG_VERIFY(nvlist_error(event) == 0);
-// 	pjdlog_debug(3, " . . -");
-//
-// 	free(key);
-// }
-//
-// bool
-// linau_event_empty(const linau_event *event)
-// {
-// 	return (nvlist_empty(event));
-// }
-//
-// uint32_t
-// linau_event_get_id(const linau_event *event)
-// {
-//
-// 	return ((uint32_t)linau_proto_get_number(event,
-// 	    BSMCONV_LINAU_EVENT_ID_NVNAME));
-// }
-//
-// /* TODO This will be implemented during along the LA->BSM conversion. */
-// uint32_t
-// linau_event_get_size(const linau_event *event)
-// {
-//
-// 	PJDLOG_ASSERT(event != NULL);
-// 	return (2905);
-// }
-//
-// uint64_t
-// linau_event_get_timestamp(const linau_event *event)
-// {
-//
-// 	return ((uint64_t)linau_proto_get_number(event,
-// 	    BSMCONV_LINAU_EVENT_TIMESTAMP_NVNAME));
-// }
-//
-// void
-// linau_event_set_id(linau_event *event, uint32_t id)
-// {
-//
-// 	linau_proto_set_number(event, BSMCONV_LINAU_EVENT_ID_NVNAME, id);
-// }
-//
-// void
-// linau_event_set_timestamp(linau_event *event, uint64_t timestamp)
-// {
-//
-// 	linau_proto_set_number(event, BSMCONV_LINAU_EVENT_TIMESTAMP_NVNAME,
-// 	    timestamp);
-// }
-//
-// void
-// linau_event_print(const linau_event *event)
-// {
-// 	nvlist_dump(event, 1);
-// }
-//
-// /* event shall not be empty. */
-// int
-// linau_event_compare_origin(const linau_event *event, const linau_record *record)
-// {
-// 	uint32_t ide;
-// 	uint32_t idr;
-// 	uint64_t tse;
-// 	uint64_t tsr;
-//
-// 	PJDLOG_ASSERT(event != NULL);
-// 	PJDLOG_ASSERT(record != NULL);
-// 	PJDLOG_ASSERT(nvlist_empty(event) == false);
-//
-// 	ide = linau_event_get_id(event);
-// 	idr = linau_record_get_id(record);
-// 	tse = linau_event_get_timestamp(event);
-// 	tsr = linau_record_get_timestamp(record);
-//
-// 	return (linau_proto_compare_origin(ide, tse, idr, tsr));
-// }
+
+/* TODO */
+void
+linau_event_add_record(struct linau_event *event,
+    const struct linau_record *record)
+{
+
+	pjdlog_debug(3, " . . + linau_event_add_record");
+	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(record != NULL);
+
+	pjdlog_debug(3, " . . . id (%u), timestamp (%llu)",
+	    linau_record_get_id(record),
+	    linau_record_get_timestamp(record));
+
+	pjdlog_debug(3, " . . . About to add a record of a key (%s) to an "
+	    "event", key);
+	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
+
+	TAILQ_INSERT_HEAD(&event->le_records, record, next);
+
+	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
+	PJDLOG_VERIFY(nvlist_error(event) == 0);
+	pjdlog_debug(3, " . . -");
+}
+
+bool
+linau_event_empty(const struct linau_event *event)
+{
+	return (TAILQ_EMPTY(event->le_records));
+}
+
+uint32_t
+linau_event_get_id(const struct linau_event *event)
+{
+	struct linau_record *anyrecord;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(!TAILQ_EMPTY(event));
+
+	anyrecord = TAILQ_FIRST(&event->le_records);
+
+	return (linau_record_get_id(anyrecord));
+}
+
+/* TODO This will be implemented during along the LA->BSM conversion. */
+uint32_t
+linau_event_get_size(const linau_event *event)
+{
+
+	PJDLOG_ASSERT(event != NULL);
+	return (2905);
+}
+
+uint64_t
+linau_event_get_time(const struct linau_event *event)
+{
+	struct linau_record *anyrecord;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(!TAILQ_EMPTY(event));
+
+	anyrecord = TAILQ_FIRST(&event->le_records);
+
+	return (linau_record_get_time(anyrecord));
+}
+
+void
+linau_event_print(const linau_event *event)
+{
+	struct linau_record *record;
+	nvlist_t *fields;
+	const char *name;
+	void *cookie;
+	int type;
+
+	printf("event:\n");
+	printf(" > size (%zu)\n", linau_event_get_size(event));
+
+	TAILQ_FOREACH(record, &event->le_records, lr_next) {
+		printf(" > record:\n");
+		printf(" > > id (%u)", linau_record_get_id(record));
+		printf(" > > time (%llu)", linau_record_get_time(record));
+		printf(" > > size (%zu)", linau_record_get_size(record));
+		cookie = NULL;
+		fields = linau_record_get_fields(record);
+		while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
+			printf(" > > field (%s) ", name);
+			switch (type) {
+			case NV_TYPE_NUMBER:
+				printf("%ju",
+				    (uintmax_t)nvlist_get_number(fields, name));
+				break;
+			case NV_TYPE_STRING:
+				printf("%s", nvlist_get_string(fields, name));
+				break;
+			default:
+				PJDLOG_ABORT("Illegal value inside fields of "
+				    "a record.");
+				break;
+			}
+			printf("\n");
+		}
+	}
+}
+
+/* 0mphere100 */
+int
+linau_event_compare_origin(const linau_event *event, const linau_record *record)
+{
+	uint32_t ide;
+	uint32_t idr;
+	uint64_t tse;
+	uint64_t tsr;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(nvlist_empty(event) == false);
+
+	ide = linau_event_get_id(event);
+	idr = linau_record_get_id(record);
+	tse = linau_event_get_timestamp(event);
+	tsr = linau_record_get_timestamp(record);
+
+	return (linau_proto_compare_origin(ide, tse, idr, tsr));
+}
