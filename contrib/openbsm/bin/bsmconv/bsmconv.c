@@ -10,7 +10,7 @@ int
 main(int argc, char *argv[]) {
 	linau_event *event;
 	linau_record *record;
-	FILE * fp;
+	FILE *fp;
 	size_t counter;
 	int debuglevel;
 

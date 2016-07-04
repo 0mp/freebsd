@@ -8,8 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "linau_record.h"
-#include "linau_field.h"
+#include "linau.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
 
