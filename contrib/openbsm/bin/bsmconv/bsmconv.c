@@ -8,23 +8,19 @@
 
 int
 main(int argc, char *argv[]) {
-	linau_event *event;
-	linau_record *record;
-	FILE *fp;
 	size_t counter;
 	int debuglevel;
+	int optchar;
+	FILE *fp;
+	linau_event *event;
+	linau_record *record;
 
 	pjdlog_init(PJDLOG_MODE_STD);
 
 	/* Parse command line options. */
 	debuglevel = 0;
-	for (;;) {
-		int ch;
-
-		ch = getopt(argc, argv, "v");
-		if (ch == -1)
-			break;
-		switch (ch) {
+	while ((optchar = getopt(argc, argv, "v")) != -1) {
+		switch (optchar) {
 		case 'v':
 			debuglevel++;
 			break;
