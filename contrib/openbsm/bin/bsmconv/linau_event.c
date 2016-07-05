@@ -114,7 +114,7 @@ linau_event_get_time(const struct linau_event *event)
 }
 
 void
-linau_event_print(const linau_event *event)
+linau_event_print(const struct linau_event *event)
 {
 	struct linau_record *record;
 	nvlist_t *fields;
@@ -152,23 +152,24 @@ linau_event_print(const linau_event *event)
 	}
 }
 
-/* 0mphere100 */
 int
-linau_event_compare_origin(const linau_event *event, const linau_record *record)
+linau_event_compare_origin(const struct linau_event *event,
+    const struct linau_record *record)
 {
-	uint32_t ide;
-	uint32_t idr;
-	uint64_t tse;
-	uint64_t tsr;
+	uint32_t eventid;
+	uint32_t recordid;
+	uint64_t eventtime;
+	uint64_t recordtime;
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(nvlist_empty(event) == false);
 
-	ide = linau_event_get_id(event);
-	idr = linau_record_get_id(record);
-	tse = linau_event_get_timestamp(event);
-	tsr = linau_record_get_timestamp(record);
+	eventid = linau_event_get_id(event);
+	recordid = linau_record_get_id(record);
+	eventtime = linau_event_get_timestamp(event);
+	recordtime = linau_record_get_timestamp(record);
 
-	return (linau_proto_compare_origin(ide, tse, idr, tsr));
+	return (linau_proto_compare_origin(eventid, eventtime, recordid,
+	    recordtime));
 }
