@@ -34,7 +34,7 @@ linau_event_destroy(struct linau_event *event)
 
 	record1 = TAILQ_FIRST(&event->le_records);
 	while (record1 != NULL) {
-		record2 = TAILQ_NEXT(record1, next);
+		record2 = TAILQ_NEXT(record1, lr_next);
 		linau_record_destroy(record1);
 		record1 = record2;
 	}
@@ -48,34 +48,27 @@ linau_event_destroy(struct linau_event *event)
 /* TODO */
 void
 linau_event_add_record(struct linau_event *event,
-    const struct linau_record *record)
+    struct linau_record *record)
 {
 
 	pjdlog_debug(3, " . . + linau_event_add_record");
-	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
 
 	pjdlog_debug(3, " . . . id (%u), timestamp (%llu)",
 	    linau_record_get_id(record),
-	    linau_record_get_timestamp(record));
+	    linau_record_get_time(record));
 
-	pjdlog_debug(3, " . . . About to add a record of a key (%s) to an "
-	    "event", key);
-	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
+	TAILQ_INSERT_HEAD(&event->le_records, record, lr_next);
 
-	TAILQ_INSERT_HEAD(&event->le_records, record, next);
-
-	pjdlog_debug(3, " . . . Error (%d)", nvlist_error(event));
-	PJDLOG_VERIFY(nvlist_error(event) == 0);
 	pjdlog_debug(3, " . . -");
 }
 
 bool
 linau_event_empty(const struct linau_event *event)
 {
-	return (TAILQ_EMPTY(event->le_records));
+	return (TAILQ_EMPTY(&event->le_records));
 }
 
 uint32_t
@@ -84,7 +77,7 @@ linau_event_get_id(const struct linau_event *event)
 	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
-	PJDLOG_ASSERT(!TAILQ_EMPTY(event));
+	PJDLOG_ASSERT(linau_event_empty(event) == false);
 
 	anyrecord = TAILQ_FIRST(&event->le_records);
 
@@ -93,7 +86,7 @@ linau_event_get_id(const struct linau_event *event)
 
 /* TODO This will be implemented during along the LA->BSM conversion. */
 uint32_t
-linau_event_get_size(const linau_event *event)
+linau_event_get_size(const struct linau_event *event)
 {
 
 	PJDLOG_ASSERT(event != NULL);
@@ -106,7 +99,7 @@ linau_event_get_time(const struct linau_event *event)
 	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
-	PJDLOG_ASSERT(!TAILQ_EMPTY(event));
+	PJDLOG_ASSERT(!TAILQ_EMPTY(&event->le_records));
 
 	anyrecord = TAILQ_FIRST(&event->le_records);
 
@@ -127,20 +120,20 @@ linau_event_print(const struct linau_event *event)
 
 	TAILQ_FOREACH(record, &event->le_records, lr_next) {
 		printf(" > record:\n");
-		printf(" > > id (%u)", linau_record_get_id(record));
-		printf(" > > time (%llu)", linau_record_get_time(record));
-		printf(" > > size (%zu)", linau_record_get_size(record));
+		printf(" > > id (%u)\n", linau_record_get_id(record));
+		printf(" > > time (%llu)\n", linau_record_get_time(record));
+		printf(" > > size (%zu)\n", linau_record_get_size(record));
 		cookie = NULL;
 		fields = linau_record_get_fields(record);
 		while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
 			printf(" > > field (%s) ", name);
 			switch (type) {
 			case NV_TYPE_NUMBER:
-				printf("%ju",
+				printf("(%ju)",
 				    (uintmax_t)nvlist_get_number(fields, name));
 				break;
 			case NV_TYPE_STRING:
-				printf("%s", nvlist_get_string(fields, name));
+				printf("(%s)", nvlist_get_string(fields, name));
 				break;
 			default:
 				PJDLOG_ABORT("Illegal value inside fields of "
@@ -163,12 +156,12 @@ linau_event_compare_origin(const struct linau_event *event,
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(nvlist_empty(event) == false);
+	PJDLOG_ASSERT(linau_event_empty(event) == false);
 
 	eventid = linau_event_get_id(event);
 	recordid = linau_record_get_id(record);
-	eventtime = linau_event_get_timestamp(event);
-	recordtime = linau_record_get_timestamp(record);
+	eventtime = linau_event_get_time(event);
+	recordtime = linau_record_get_time(record);
 
 	return (linau_proto_compare_origin(eventid, eventtime, recordid,
 	    recordtime));

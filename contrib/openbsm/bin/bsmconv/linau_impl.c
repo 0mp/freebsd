@@ -1,3 +1,5 @@
+#include <ctype.h>
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -80,13 +82,13 @@ linau_proto_set_string(nvlist_t *nvl, const char *nvname, const char *str)
 }
 
 int
-linau_proto_compare_origin(uint32_t id1, uint64_t timestamp1, uint32_t id2,
-    uint64_t timestamp2)
+linau_proto_compare_origin(uint32_t id1, uint64_t time1, uint32_t id2,
+    uint64_t time2)
 {
 
-	if (timestamp1 < timestamp2)
+	if (time1 < time2)
 		return -1;
-	else if (timestamp1 > timestamp2)
+	else if (time1 > time2)
 		return 1;
 	else if (id1 < id2)
 		return -1;

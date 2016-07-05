@@ -42,6 +42,15 @@ linau_record_destroy(struct linau_record *record)
 	free(record);
 }
 
+nvlist_t *
+linau_record_get_fields(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (record->lr_fields);
+}
+
 uint32_t
 linau_record_get_id(const struct linau_record *record)
 {
@@ -49,6 +58,15 @@ linau_record_get_id(const struct linau_record *record)
 	PJDLOG_ASSERT(record != NULL);
 
 	return (record->lr_id);
+}
+
+/* TODO */
+size_t
+linau_record_get_size(const struct linau_record *record)
+{
+
+	(void)record;
+	return (5);
 }
 
 uint64_t
@@ -70,13 +88,13 @@ linau_record_get_type(const struct linau_record *record)
 }
 
 void
-linau_record_set_fields(struct linau_record *record, nvlist_t *fields)
+linau_record_move_fields(struct linau_record *record, nvlist_t *fields)
 {
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fields != NULL);
 
-	return (record->lr_fields = fields);
+	record->lr_fields = fields;
 }
 
 void
@@ -98,7 +116,7 @@ linau_record_set_time(struct linau_record *record, uint64_t time)
 }
 
 void
-linau_record_set_type(struct linau_record *record, const char *type)
+linau_record_move_type(struct linau_record *record, char *type)
 {
 
 	PJDLOG_ASSERT(record != NULL);
@@ -123,10 +141,10 @@ linau_record_parse(const char *buf)
 
 	record = linau_record_create();
 
-	record->lr_type = linau_record_parse_type(buf);
-	record->lr_id = linau_record_parse_id(buf);
-	record->lr_time = linau_record_parse_time(buf);
-	record->lr_fields = linau_record_parse_fields(buf);
+	linau_record_move_type(record, linau_record_parse_type(buf));
+	linau_record_set_id(record, linau_record_parse_id(buf));
+	linau_record_set_time(record, linau_record_parse_time(buf));
+	linau_record_move_fields(record, linau_record_parse_fields(buf));
 
 	pjdlog_debug(3, " . . . > id (%u), time (%ju)",
 	    linau_record_get_id(record), linau_record_get_time(record));
@@ -175,7 +193,12 @@ linau_record_parse_fields(const char *buf)
 
 	buflen = strlen(buf);
 
-	fields = nvlist_create(NV_FLAG_NO_UNIQUE);
+	/*
+	 * XXX NV_FLAG_NO_UNIQUE is currently not supported because I cannot
+	 * link the new library.
+	 */
+	/* fields = nvlist_create(NV_FLAG_NO_UNIQUE); */
+	fields = nvlist_create(0);
 	/* XXX Do we need this VERIFY? */
 	PJDLOG_VERIFY(fields != NULL);
 
@@ -354,7 +377,8 @@ linau_record_fetch(FILE * fp)
  * same.
  */
 int
-linau_record_comapre_origin(const linau_record *reca, const linau_record *recb)
+linau_record_comapre_origin(const struct linau_record *reca,
+    const struct linau_record *recb)
 {
 	uint64_t recatime;
 	uint64_t recbtime;

@@ -2,8 +2,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <nv.h>
-
 #include "linau.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
@@ -12,59 +10,76 @@
 struct linau_field *
 linau_field_create(void)
 {
+	struct linau_field *field;
 
-	return (linau_proto_create());
+	field = calloc(1, sizeof(*field));
+	PJDLOG_VERIFY(field != NULL);
+
+	return (field);
 }
 
 void
-linau_field_destroy(linau_field *field)
+linau_field_destroy(struct linau_field *field)
 {
 
-	linau_proto_destroy(field);
+	free(field->lf_name);
+	free(field->lf_value);
+	free(field);
 }
 
 void
-linau_field_set_name(linau_field *field, const char * name)
+linau_field_shallow_destroy(struct linau_field *field)
 {
 
-	linau_proto_set_string(field, BSMCONV_LINAU_FIELD_NAME_NVNAME, name);
+	free(field);
 }
 
-/* TODO The value is always a string at the moment. */
 void
-linau_field_set_value(linau_field *field, const char * value)
+linau_field_move_name(struct linau_field *field, char *name)
 {
 
-	linau_proto_set_string(field, BSMCONV_LINAU_FIELD_VALUE_NVNAME, value);
-	linau_proto_set_string(field, BSMCONV_LINAU_FIELD_TYPE,
-	    BSMCONV_LINAU_FIELD_TYPE_STRING);
+	PJDLOG_ASSERT(field != NULL);
+	PJDLOG_ASSERT(name != NULL);
+	field->lf_name = name;
 }
 
-linau_field *
+void
+linau_field_move_value(struct linau_field *field, char *value)
+{
+
+	PJDLOG_ASSERT(field != NULL);
+	PJDLOG_ASSERT(value != NULL);
+	field->lf_value = value;
+}
+
+struct linau_field *
 linau_field_parse(const char *buf, size_t *lastposp)
 {
-	size_t namestart;
+	size_t buflen;
 	size_t equalpos;
 	size_t nameend;
+	size_t namestart;
 	size_t valstart;
+	struct linau_field *field;
 	char *name;
 	char *value;
-	linau_field * field;
-	size_t buflen;
 
-	pjdlog_debug(6, " . . > linau_record_parse_field");
+	pjdlog_debug(6, " . . . . . + linau_record_parse_field");
 
 	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(lastposp != NULL);
+
 	buflen = strlen(buf);
 
 	field = linau_field_create();
+	/* XXX Do we need this? */
 	PJDLOG_VERIFY(field != NULL);
 
 	namestart = *lastposp;
-	pjdlog_debug(6, " . . > namestart (%zu) points to (%c)", namestart,
-	    buf[namestart]);
+	pjdlog_debug(6, " . . . . . . namestart (%zu) points to (%c)",
+	    namestart, buf[namestart]);
 
-	/* Skip a comma and spaces. */
+	/* Skip a comma or a whitespace. */
 	if (namestart + 1 < buflen && isspace(buf[namestart]))
 		namestart++;
 	else if (namestart + 1 < buflen && buf[namestart] == ',')
@@ -72,13 +87,15 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	else
 		PJDLOG_ABORT("The record fields should be separated by either "
 		    "a comma or a whitespace");
+
+	/* Skip any number of whitespaces. */
 	while (namestart + 1 < buflen && isspace(buf[namestart]))
 		namestart++;
 
 	PJDLOG_ASSERT(!isspace(buf[namestart]));
 	PJDLOG_ASSERT(buf[namestart] != ',');
 
-	pjdlog_debug(6, " . . > Nonspace namestart (%zu) points to (%c)",
+	pjdlog_debug(6, " . . . . . . Nonspace namestart (%zu) points to (%c)",
 	    namestart, buf[namestart]);
 
 	/* Trailing whitespace is invalid. */
@@ -90,23 +107,17 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	PJDLOG_ASSERT(buf[nameend] != '=');
 
 	name = linau_field_parse_name(buf, namestart, nameend);
-	linau_field_set_name(field, name);
-	free(name);
+	linau_field_move_name(field, name);
 
 	valstart = equalpos + 1;
 	PJDLOG_ASSERT(valstart < buflen);
 
 	value = linau_field_parse_value(buf, valstart);
-	linau_field_set_value(field, value);
-	free(value);
-
-	pjdlog_debug(6, " . . > Field: name: (%s|%zu), value: (%s|%zu)",
-	    nvlist_get_string(field, BSMCONV_LINAU_FIELD_NAME),
-	    strlen(nvlist_get_string(field, BSMCONV_LINAU_FIELD_NAME)),
-	    nvlist_get_string(field, BSMCONV_LINAU_FIELD_VALUE),
-	    strlen(nvlist_get_string(field, BSMCONV_LINAU_FIELD_VALUE)));
+	linau_field_move_value(field, value);
 
 	*lastposp = valstart + strlen(value);
+
+	pjdlog_debug(6, " . . . . . -");
 
 	return (field);
 }
@@ -114,28 +125,23 @@ linau_field_parse(const char *buf, size_t *lastposp)
 char *
 linau_field_parse_name(const char *buf, size_t start, size_t end)
 {
-	size_t len;
-	char *name;
 
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(start <= end);
 
-	len = end - start + 1;
-	name = extract_substring(buf, start, len);
-
-	return (name);
+	return (extract_substring(buf, start, end - start + 1));
 }
 
 char *
 linau_field_parse_value(const char *buf, size_t start)
 {
-	size_t len;
 	size_t end;
 	size_t spacepos;
 	char *value;
-	size_t buflen = strlen(buf);
 
-	PJDLOG_ASSERT(start < buflen);
+	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
+	PJDLOG_ASSERT(start < strlen(buf));
 
 	switch (buf[start]) {
 	case '"':
@@ -151,7 +157,7 @@ linau_field_parse_value(const char *buf, size_t start)
 	default:
 		/* XXX Ugly. */
 		if (!find_position(&spacepos, buf, start, ' ')) {
-			PJDLOG_ASSERT(spacepos == buflen);
+			PJDLOG_ASSERT(spacepos == strlen(buf));
 			spacepos--; // Newline.
 			PJDLOG_ASSERT(buf[spacepos] == '\n');
 		}
@@ -163,10 +169,7 @@ linau_field_parse_value(const char *buf, size_t start)
 		break;
 	}
 
-	len = end - start + 1;
-
-	value = extract_substring(buf, start, len);
+	value = extract_substring(buf, start, end - start + 1);
 
 	return (value);
-
 }
