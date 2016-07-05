@@ -88,14 +88,14 @@ linau_proto_compare_origin(uint32_t id1, uint64_t time1, uint32_t id2,
 
 	if (time1 < time2)
 		return -1;
-	else if (time1 > time2)
+	if (time1 > time2)
 		return 1;
-	else if (id1 < id2)
+	if (id1 < id2)
 		return -1;
-	else if (id1 > id2)
+	if (id1 > id2)
 		return 1;
-	else
-		return 0;
+
+	return 0;
 }
 
 bool

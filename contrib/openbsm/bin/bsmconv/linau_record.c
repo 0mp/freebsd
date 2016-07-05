@@ -357,7 +357,7 @@ linau_record_fetch(FILE * fp)
 	buflen = sbuf_len(inbuf);
 	data = sbuf_data(inbuf);
 	pjdlog_debug(3, "buflen: (%zu)", buflen);
-	/* XXX0mp: Assert or verify? This is a vital assumption. */
+	/* XXX Assert or verify? This is a vital assumption. */
 	PJDLOG_VERIFY(strcmp(data + (buflen - 1), "\n\0") == 0);
 
 	pjdlog_debug(3, "Read record: (%s)", data);

@@ -132,9 +132,11 @@ linau_event_print(const struct linau_event *event)
 				printf("(%ju)",
 				    (uintmax_t)nvlist_get_number(fields, name));
 				break;
+
 			case NV_TYPE_STRING:
 				printf("(%s)", nvlist_get_string(fields, name));
 				break;
+
 			default:
 				PJDLOG_ABORT("Illegal value inside fields of "
 				    "a record.");
