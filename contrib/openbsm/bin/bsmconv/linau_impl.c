@@ -139,18 +139,20 @@ void
 locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
     size_t *nsecsposp, size_t *idposp, size_t *msgendp)
 {
-	pjdlog_debug(6, " . . > linau_record_locate_msg");
-	const char * msgprefix;
-	size_t msgii, strii;
+	size_t buflen;
 	size_t dotpos;
-	size_t msgstart;
+	size_t idstart;
 	size_t msgend;
+	size_t msgii;
+	size_t msgprefixlen;
+	size_t msgstart;
 	size_t nsecsstart;
 	size_t secsstart;
 	size_t separatorpos;
-	size_t idstart;
-	size_t msgprefixlen;
-	size_t buflen;
+	size_t strii;
+	const char * msgprefix;
+
+	pjdlog_debug(6, " . . > linau_record_locate_msg");
 
 	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
@@ -208,8 +210,8 @@ uint32_t
 extract_uint32(const char *buf, size_t start, size_t end)
 {
 	size_t len;
-	uint32_t num;
 	char *numstr;
+	uint32_t num;
 
 	PJDLOG_ASSERT(isdigit(buf[start]) != 0);
 	PJDLOG_ASSERT(isdigit(buf[end]) != 0);
@@ -244,9 +246,9 @@ string_to_uint32(const char *str)
 size_t
 find_string_value_end(const char *buf, size_t start, char stringtype)
 {
+	size_t buflen;
 	size_t end;
 	size_t prevend;
-	size_t buflen;
 
 	PJDLOG_ASSERT(buf != NULL);
 

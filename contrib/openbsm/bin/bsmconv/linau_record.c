@@ -157,11 +157,11 @@ linau_record_parse(const char *buf)
 uint32_t
 linau_record_parse_id(const char *buf)
 {
-	size_t secspos;
-	size_t nsecspos;
 	size_t idpos;
 	size_t msgend;
 	size_t msgstart;
+	size_t nsecspos;
+	size_t secspos;
 	uint32_t id;
 
 	pjdlog_debug(5, " . . . . + linau_record_parse_id");
@@ -232,13 +232,13 @@ linau_record_parse_fields(const char *buf)
 uint64_t
 linau_record_parse_time(const char *buf)
 {
-	size_t secspos;
-	size_t nsecspos;
+	uint64_t time;
+	size_t buflen;
 	size_t idpos;
 	size_t msgend;
 	size_t msgstart;
-	size_t buflen;
-	uint64_t time;
+	size_t nsecspos;
+	size_t secspos;
 	uint32_t nsecs;
 	uint32_t secs;
 
@@ -265,15 +265,15 @@ linau_record_parse_time(const char *buf)
 char *
 linau_record_parse_type(const char *buf)
 {
-	const char * typeprefix;
+	size_t buflen;
 	size_t typeend;
 	size_t typelen;
 	size_t typenextspacepos;
-	size_t typestart;
 	size_t typeprefixlen;
-	char * type;
-	char * typenextspace;
-	size_t buflen;
+	size_t typestart;
+	char *type;
+	char *typenextspace;
+	const char *typeprefix;
 
 	pjdlog_debug(4, " . . . + linau_record_parse_type");
 
@@ -322,7 +322,6 @@ linau_record_parse_type(const char *buf)
 struct linau_record *
 linau_record_fetch(FILE * fp)
 {
-	/* XXX Is it the proper order of the decalarations? */
 	size_t buflen;
 	char *data;
 	struct sbuf *inbuf;

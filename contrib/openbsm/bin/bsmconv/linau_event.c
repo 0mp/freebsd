@@ -68,6 +68,7 @@ linau_event_add_record(struct linau_event *event,
 bool
 linau_event_empty(const struct linau_event *event)
 {
+
 	return (TAILQ_EMPTY(&event->le_records));
 }
 
@@ -109,10 +110,10 @@ linau_event_get_time(const struct linau_event *event)
 void
 linau_event_print(const struct linau_event *event)
 {
-	struct linau_record *record;
+	void *cookie;
 	nvlist_t *fields;
 	const char *name;
-	void *cookie;
+	struct linau_record *record;
 	int type;
 
 	printf("event:\n");
@@ -151,10 +152,10 @@ int
 linau_event_compare_origin(const struct linau_event *event,
     const struct linau_record *record)
 {
-	uint32_t eventid;
-	uint32_t recordid;
 	uint64_t eventtime;
 	uint64_t recordtime;
+	uint32_t eventid;
+	uint32_t recordid;
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
