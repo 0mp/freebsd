@@ -6,8 +6,6 @@
 #include "pjdlog.h"
 
 
-#define	BSMCONV_LINAU_EVENT_ID_NVNAME		"id"
-#define	BSMCONV_LINAU_EVENT_TIMESTAMP_NVNAME	"timestamp"
 #define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
 
 
