@@ -1,12 +1,14 @@
 #ifndef _LINAU_H_
 #define _LINAU_H_
 
+#include <sys/nv.h>
 #include <sys/queue.h>
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include <sys/nv.h>
+#include "bsmau.h"
+
 
 struct linau_event {
 	TAILQ_HEAD(, linau_record) 	le_records;
@@ -42,6 +44,9 @@ void			 linau_event_print(const struct linau_event *event);
 int			 linau_event_compare_origin(
 			    const struct linau_event *event,
 			    const struct linau_record *record);
+
+struct bsmau_tokenlist	*linau_event_to_tokenlist(
+			    const struct linau_event *event);
 
 
 struct			 linau_record *linau_record_create(void);

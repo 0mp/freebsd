@@ -1,11 +1,11 @@
 #ifndef _LINAU_IMPL_H_
 #define _LINAU_IMPL_H_
 
+#include <sys/nv.h>
 #include <sys/types.h>
 
 #include <stdbool.h>
 
-#include <sys/nv.h>
 
 nvlist_t *linau_proto_create(void);
 void linau_proto_destroy(nvlist_t *nvl);

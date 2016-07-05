@@ -167,3 +167,26 @@ linau_event_compare_origin(const struct linau_event *event,
 	return (linau_proto_compare_origin(eventid, eventtime, recordid,
 	    recordtime));
 }
+
+struct bsmau_tokenlist *
+linau_event_to_tokenlist(const struct linau_event *event)
+{
+	struct bsmau_tokenlist *tokenlist;
+
+	PJDLOG_ASSERT(event != NULL);
+
+	/* Initialize tokenlist. */
+	tokenlist = bsmau_tokenlist_create();
+
+	/* Tokenise event's records. */
+	; // TODO
+
+	/* Add the header token. */
+	; // TODO
+
+	/* Add the trailer token. */
+	; // TODO
+
+	return (tokenlist);
+
+}

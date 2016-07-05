@@ -11,6 +11,7 @@ NO_WMISSING_VARIABLE_DECLARATIONS=
 
 PROG=	bsmconv
 SRCS=	bsmconv.c
+SRCS+=	bsmau.c
 SRCS+=	linau_event.c
 SRCS+=	linau_field.c
 SRCS+=	linau_impl.c
