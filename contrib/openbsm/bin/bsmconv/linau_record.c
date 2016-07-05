@@ -25,9 +25,6 @@ linau_record_create(void)
 	record = calloc(1, sizeof(*record));
 	PJDLOG_VERIFY(record != NULL);
 
-	/* record->lr_fields = nvlist_create(NV_FLAG_NO_UNIQUE); */
-	/* PJDLOG_VERIFY(nvlist_error(record->lr_fields) == 0); */
-
 	return (record);
 }
 
@@ -46,60 +43,68 @@ linau_record_destroy(struct linau_record *record)
 }
 
 uint32_t
-linau_record_get_id(const linau_record *record)
-{
-
-	return ((uint32_t)linau_proto_get_number(record,
-	    BSMCONV_LINAU_RECORD_ID_NVNAME));
-}
-
-uint64_t
-linau_record_get_timestamp(const linau_record *record)
-{
-
-	return ((uint64_t)linau_proto_get_number(record,
-	    BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME));
-}
-
-const char *
-linau_record_get_type(const linau_record *record)
-{
-
-	return (linau_proto_get_string(record,
-	    BSMCONV_LINAU_RECORD_TYPE_NVNAME));
-}
-
-void
-linau_record_set_fields(linau_record *record, nvlist_t *fields)
+linau_record_get_id(const struct linau_record *record)
 {
 
 	PJDLOG_ASSERT(record != NULL);
-	nvlist_add_nvlist(record, BSMCONV_LINAU_RECORD_FIELDS_NVNAME, fields);
-	PJDLOG_VERIFY(nvlist_error(record) == 0);
+
+	return (record->lr_id);
+}
+
+uint64_t
+linau_record_get_time(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (record->lr_time);
+}
+
+const char *
+linau_record_get_type(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (record->lr_type);
 }
 
 void
-linau_record_set_id(linau_record *record, uint32_t id)
+linau_record_set_fields(struct linau_record *record, nvlist_t *fields)
 {
 
-	linau_proto_set_number(record, BSMCONV_LINAU_RECORD_ID_NVNAME, id);
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(fields != NULL);
+
+	return (record->lr_fields = fields);
 }
 
 void
-linau_record_set_timestamp(linau_record *record, uint64_t timestamp)
+linau_record_set_id(struct linau_record *record, uint32_t id)
 {
 
-	linau_proto_set_number(record, BSMCONV_LINAU_RECORD_TIMESTAMP_NVNAME,
-	    timestamp);
+	PJDLOG_ASSERT(record != NULL);
+
+	record->lr_id = id;
 }
 
-
-
 void
-linau_record_set_type(linau_record *record, const char *type)
+linau_record_set_time(struct linau_record *record, uint64_t time)
 {
 
-	linau_proto_set_string(record, BSMCONV_LINAU_RECORD_TYPE_NVNAME, type);
+	PJDLOG_ASSERT(record != NULL);
+
+	record->lr_time = time;
+}
+
+void
+linau_record_set_type(struct linau_record *record, const char *type)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(type != NULL);
+
+	record->lr_type = type;
 }
 
 /*
@@ -107,13 +112,9 @@ linau_record_set_type(linau_record *record, const char *type)
  * The function doesn't require data to have/not have a trailing newline.
  */
 struct linau_record *
-linau_record_parse(const char * buf)
+linau_record_parse(const char *buf)
 {
 	struct linau_record *record;
-	nvlist_t *fields;
-	char *type;
-	uint32_t id;
-	uint64_t timestamp;
 
 	pjdlog_debug(3, " . . + linau_record_parse");
 
@@ -127,8 +128,8 @@ linau_record_parse(const char * buf)
 	record->lr_time = linau_record_parse_time(buf);
 	record->lr_fields = linau_record_parse_fields(buf);
 
-	pjdlog_debug(3, " . . . > id (%u), timestamp (%ju)",
-	    linau_record_get_id(record), linau_record_get_timestamp(record));
+	pjdlog_debug(3, " . . . > id (%u), time (%ju)",
+	    linau_record_get_id(record), linau_record_get_time(record));
 
 	pjdlog_debug(3, " . . -");
 
@@ -169,12 +170,13 @@ linau_record_parse_fields(const char *buf)
 
 	pjdlog_debug(5, " . . . . + linau_record_parse_fields");
 
-	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
 
 	buflen = strlen(buf);
 
 	fields = nvlist_create(NV_FLAG_NO_UNIQUE);
+	/* XXX Do we need this VERIFY? */
 	PJDLOG_VERIFY(fields != NULL);
 
 	/* Find the beginning of the field section. */
@@ -193,17 +195,10 @@ linau_record_parse_fields(const char *buf)
 		field = linau_field_parse(buf, &lastpos);
 		PJDLOG_ASSERT(field != NULL);
 
-		/* Append the field to the record. */
-		PJDLOG_ASSERT(nvlist_exists_string(field,
-		    BSMCONV_LINAU_FIELD_TYPE));
-		if (strcmp(nvlist_get_string(field, BSMCONV_LINAU_FIELD_TYPE),
-		    BSMCONV_LINAU_FIELD_TYPE_STRING) == 0)
-			nvlist_move_string(fields, field->lf_name,
-			    field->lf_value);
-		else
-			PJDLOG_ABORT("Invalid type of the field's value.");
+		/* Append the field to the fields list. */
+		nvlist_move_string(fields, field->lf_name, field->lf_value);
 
-		linau_field_destroy(field);
+		linau_field_shallow_destroy(field);
 	}
 
 	pjdlog_debug(5, " . . . . -");
@@ -226,8 +221,8 @@ linau_record_parse_time(const char *buf)
 
 	pjdlog_debug(5, " . . . . + linau_record_parse_time");
 
-	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
 
 	buflen = strlen(buf);
 
@@ -238,6 +233,7 @@ linau_record_parse_time(const char *buf)
 	nsecs = extract_uint32(buf, nsecspos, idpos - 2);
 
 	time = (uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs;
+
 	pjdlog_debug(5, " . . . . -");
 
 	return (time);
@@ -360,18 +356,18 @@ linau_record_fetch(FILE * fp)
 int
 linau_record_comapre_origin(const linau_record *reca, const linau_record *recb)
 {
-	uint64_t recats;
-	uint64_t recbts;
+	uint64_t recatime;
+	uint64_t recbtime;
 	uint32_t recaid;
 	uint32_t recbid;
 
 	PJDLOG_ASSERT(reca != NULL);
 	PJDLOG_ASSERT(recb != NULL);
 
-	recats = linau_record_get_timestamp(reca);
-	recbts = linau_record_get_timestamp(recb);
+	recatime = linau_record_get_time(reca);
+	recbtime = linau_record_get_time(recb);
 	recaid = linau_record_get_id(reca);
 	recbid = linau_record_get_id(recb);
 
-	return (linau_proto_compare_origin(recaid, recats, recbid, recbts));
+	return (linau_proto_compare_origin(recaid, recatime, recbid, recbtime));
 }
