@@ -1,30 +1,23 @@
 #include <stdio.h>
-#include <nv.h>
-#include <unistd.h> /* getopt(3) */
+#include <unistd.h>
 
 #include "linau.h"
-
 #include "pjdlog.h"
 
 int
 main(int argc, char *argv[]) {
-	linau_event *event;
-	linau_record *record;
-	FILE * fp;
-	size_t counter;
 	int debuglevel;
+	int optchar;
+	FILE *fp;
+	struct linau_event *event;
+	struct linau_record *record;
 
 	pjdlog_init(PJDLOG_MODE_STD);
 
 	/* Parse command line options. */
 	debuglevel = 0;
-	for (;;) {
-		int ch;
-
-		ch = getopt(argc, argv, "v");
-		if (ch == -1)
-			break;
-		switch (ch) {
+	while ((optchar = getopt(argc, argv, "v")) != -1) {
+		switch (optchar) {
 		case 'v':
 			debuglevel++;
 			break;
@@ -36,7 +29,6 @@ main(int argc, char *argv[]) {
 	pjdlog_debug_set(debuglevel);
 
 	fp = stdin;
-	counter = 0;
 
 	event = linau_event_create();
 	PJDLOG_VERIFY(event != NULL);
@@ -48,8 +40,7 @@ main(int argc, char *argv[]) {
 			linau_event_destroy(event);
 			event = linau_event_create();
 		}
-		linau_event_add_record(event, record, counter);
-		counter++;
+		linau_event_add_record(event, record);
 	}
 	linau_event_print(event);
 	linau_event_destroy(event);
