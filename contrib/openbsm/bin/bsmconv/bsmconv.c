@@ -25,15 +25,11 @@ process_event(const struct linau_event *event, short eventid)
 
 	PJDLOG_ASSERT(event != NULL);
 
-	/* linau_event_dump(event); */
-
 	aurecordd = linau_event_to_au(event);
 
 	buflen = BSMCONV_BUFFER_SIZE;
 	PJDLOG_VERIFY(au_close_buffer(aurecordd, eventid, buf, &buflen) == 0);
 
-	pjdlog_debug(1, "About to print an event in the BSM format");
-	pjdlog_debug(1, "buflen (%zu)", buflen);
 	write(1, buf, buflen);
 }
 

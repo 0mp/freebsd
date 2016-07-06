@@ -18,9 +18,13 @@
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 
+
 static void	 add_text_token(int aurecordd, const char *name,
 		    const char *value);
 static char	*format_for_text_token(const char *name, const char *value);
+
+static uint32_t	 extract_uint32(const char *buf, size_t start, size_t end);
+static uint32_t	 string_to_uint32(const char *str);
 
 
 static void
@@ -44,6 +48,9 @@ add_text_token(int aurecordd, const char *name, const char *value)
 	/* No need to free tok since au_write(3) takes care of it. */
 }
 
+/*
+ * Join the name and the value into a single 'name=value' string.
+ */
 static char
 *format_for_text_token(const char *name, const char *value)
 {
@@ -69,6 +76,42 @@ static char
 
 	return (text);
 }
+
+static uint32_t
+extract_uint32(const char *buf, size_t start, size_t end)
+{
+	size_t len;
+	char *numstr;
+	uint32_t num;
+
+	PJDLOG_ASSERT(isdigit(buf[start]) != 0);
+	PJDLOG_ASSERT(isdigit(buf[end]) != 0);
+
+	len = end - start + 1;
+	numstr = extract_substring(buf, start, len);
+	num = string_to_uint32(numstr);
+
+	return (num);
+}
+
+static uint32_t
+string_to_uint32(const char *str)
+{
+	char *endp;
+	uint32_t num;
+
+	pjdlog_debug(6, " . . >> string_to_uint32");
+
+	errno = 0;
+	num = (uint32_t)strtoul(str, &endp, 10);
+
+	PJDLOG_VERIFY(str != endp);
+	PJDLOG_VERIFY(*endp == '\0');
+	PJDLOG_VERIFY(num != 0 || errno == 0);
+
+	return (num);
+}
+
 
 
 struct linau_record *

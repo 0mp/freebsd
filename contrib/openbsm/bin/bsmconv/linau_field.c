@@ -7,6 +7,32 @@
 #include "pjdlog.h"
 
 
+static size_t	find_string_value_end(const char *buf, size_t start,
+		    char stringtype);
+
+
+size_t
+find_string_value_end(const char *buf, size_t start, char stringtype)
+{
+	size_t buflen;
+	size_t end;
+	size_t prevend;
+
+	PJDLOG_ASSERT(buf != NULL);
+
+	buflen = strlen(buf);
+	end = start + 1;
+	PJDLOG_ASSERT(end < buflen);
+
+	do {
+		prevend = end;
+		PJDLOG_VERIFY(find_position(&end, buf, prevend, stringtype));
+	} while (buf[end - 1] == '\\');
+
+	return (end);
+}
+
+
 struct linau_field *
 linau_field_create(void)
 {
