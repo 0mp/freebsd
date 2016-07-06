@@ -7,8 +7,6 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "bsmau.h"
-
 
 struct linau_event {
 	TAILQ_HEAD(, linau_record) 	le_records;
@@ -28,8 +26,10 @@ struct linau_field {
 };
 
 
-struct			 linau_event *linau_event_create(void);
+/* linau_event. */
+struct linau_event	*linau_event_create(void);
 void			 linau_event_destroy(struct linau_event *event);
+void			 linau_event_clear(struct linau_event *event);
 
 void	 		 linau_event_add_record(struct linau_event *event,
 			    struct linau_record *record);
@@ -39,16 +39,16 @@ uint32_t		 linau_event_get_id(const struct linau_event *event);
 uint32_t		 linau_event_get_size(const struct linau_event *event);
 uint64_t		 linau_event_get_time(const struct linau_event *event);
 
-void			 linau_event_print(const struct linau_event *event);
+void			 linau_event_dump(const struct linau_event *event);
 
 int			 linau_event_compare_origin(
 			    const struct linau_event *event,
 			    const struct linau_record *record);
 
-struct bsmau_tokenlist	*linau_event_to_tokenlist(
-			    const struct linau_event *event);
+int			 linau_event_to_au(const struct linau_event *event);
 
 
+/* linau_record. */
 struct			 linau_record *linau_record_create(void);
 void			 linau_record_destroy(struct linau_record *record);
 
@@ -84,7 +84,11 @@ int			 linau_record_comapre_origin(
 			    const struct linau_record *reca,
 			    const struct linau_record *recb);
 
+void			 linau_record_to_au(int aurecordd,
+			    const struct linau_record *record);
 
+
+/* linau_field. */
 struct linau_field	*linau_field_create(void);
 void			 linau_field_destroy(struct linau_field *field);
 void			 linau_field_shallow_destroy(struct linau_field *field);

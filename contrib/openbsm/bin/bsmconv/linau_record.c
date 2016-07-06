@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <bsm/libbsm.h>
+
 #include "linau.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
@@ -15,6 +17,56 @@
 
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
+
+static void	 add_text_token(int aurecordd, const char *name,
+		    const char *value);
+static char	*format_for_text_token(const char *name, const char *value);
+
+
+static void
+add_text_token(int aurecordd, const char *name, const char *value)
+{
+	char *text;
+	token_t *tok;
+
+	PJDLOG_ASSERT(name != NULL);
+	PJDLOG_ASSERT(value != NULL);
+	PJDLOG_ASSERT(aurecordd >= 0);
+
+	text = format_for_text_token(name, value);
+	tok = au_to_text(text);
+	PJDLOG_VERIFY(tok != NULL);
+
+	au_write(aurecordd, tok);
+
+	au_free_token(tok);
+}
+
+static char
+*format_for_text_token(const char *name, const char *value)
+{
+	char *text;
+	struct sbuf *buf;
+
+	PJDLOG_ASSERT(name != NULL);
+	PJDLOG_ASSERT(value != NULL);
+
+	buf = sbuf_new_auto();
+	PJDLOG_VERIFY(buf != NULL);
+
+	PJDLOG_VERIFY(sbuf_printf(buf, "%s=%s", name, value) == 0);
+
+	PJDLOG_VERIFY(sbuf_finish(buf) == 0);
+
+	PJDLOG_VERIFY(sbuf_len(buf) != -1);
+	text = malloc(sizeof(*text) * (sbuf_len(buf) + 1));
+	strncpy(text, sbuf_data(buf), sbuf_len(buf));
+	text[sbuf_len(buf)] = '\0';
+
+	sbuf_delete(buf);
+
+	return (text);
+}
 
 
 struct linau_record *
@@ -320,7 +372,7 @@ linau_record_parse_type(const char *buf)
  * Returns NULL on EOF.
  */
 struct linau_record *
-linau_record_fetch(FILE * fp)
+linau_record_fetch(FILE *fp)
 {
 	size_t buflen;
 	char *data;
@@ -393,4 +445,54 @@ linau_record_comapre_origin(const struct linau_record *reca,
 	recbid = linau_record_get_id(recb);
 
 	return (linau_proto_compare_origin(recaid, recatime, recbid, recbtime));
+}
+
+void
+linau_record_to_au(int aurecordd, const struct linau_record *record)
+{
+	char buf[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE];
+	void *cookie;
+	const char *name;
+	nvlist_t *fields;
+	const char *value;
+	int type;
+	int printednum;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(record->lr_type != NULL);
+	PJDLOG_ASSERT(record->lr_fields != NULL);
+	PJDLOG_ASSERT(aurecordd >= 0);
+
+	/* Type to token. */
+	add_text_token(aurecordd, "type", linau_record_get_type(record));
+
+	/* Id to token. */
+	printednum = snprintf(buf, BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE,
+	    "%u", linau_record_get_id(record));
+	PJDLOG_VERIFY(printednum > 0);
+	add_text_token(aurecordd, "id", buf);
+
+	/* Time to token. */
+	printednum = snprintf(buf, BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE,
+	    "%llu", linau_record_get_time(record));
+	PJDLOG_VERIFY(printednum > 0);
+	add_text_token(aurecordd, "time", buf);
+
+	/* Fields to token. */
+	cookie = NULL;
+	fields = linau_record_get_fields(record);
+	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
+		switch (type) {
+		case NV_TYPE_STRING:
+			value = nvlist_get_string(fields, name);
+			add_text_token(aurecordd, name, value);
+			break;
+		default:
+			PJDLOG_ABORT("At the moment only string values are "
+			    "stored within the lr_fields field of a record. "
+			    "The program stumbled upon a non-string value; "
+			    "and hence aborted");
+			break;
+		}
+	}
 }

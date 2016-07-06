@@ -1,6 +1,8 @@
 #include <stddef.h>
 #include <stdlib.h>
 
+#include <bsm/libbsm.h>
+
 #include "linau.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
@@ -25,6 +27,16 @@ linau_event_create(void)
 void
 linau_event_destroy(struct linau_event *event)
 {
+
+	PJDLOG_ASSERT(event != NULL);
+
+	linau_event_clear(event);
+	free(event);
+}
+
+void
+linau_event_clear(struct linau_event *event)
+{
 	struct linau_record *record1;
 	struct linau_record *record2;
 
@@ -37,11 +49,11 @@ linau_event_destroy(struct linau_event *event)
 		record1 = record2;
 	}
 	/* XXX Is this really needed? This is what queue(3) says but I don't
-	 * understand it. */
+	 * understand it. It looks like it reinitialises the tailq. If it's
+	 * true then I need a linau_event_reset function. */
 	TAILQ_INIT(&event->le_records);
-
-	free(event);
 }
+
 
 /* TODO */
 void
@@ -106,7 +118,7 @@ linau_event_get_time(const struct linau_event *event)
 }
 
 void
-linau_event_print(const struct linau_event *event)
+linau_event_dump(const struct linau_event *event)
 {
 	void *cookie;
 	nvlist_t *fields;
@@ -138,7 +150,7 @@ linau_event_print(const struct linau_event *event)
 
 			default:
 				PJDLOG_ABORT("Illegal value inside fields of "
-				    "a record.");
+				    "a record");
 				break;
 			}
 			printf("\n");
@@ -168,25 +180,25 @@ linau_event_compare_origin(const struct linau_event *event,
 	    recordtime));
 }
 
-struct bsmau_tokenlist *
-linau_event_to_tokenlist(const struct linau_event *event)
+int
+linau_event_to_au(const struct linau_event *event)
 {
-	struct bsmau_tokenlist *tokenlist;
+	struct linau_record *record;
+	int aurecordd;
 
 	PJDLOG_ASSERT(event != NULL);
+	/* XXX How can I check if the head is initialized? */
+	/* PJDLOG_ASSERT(event->le_records != NULL); */
 
-	/* Initialize tokenlist. */
-	tokenlist = bsmau_tokenlist_create();
+	/* XXX Should we allow empty events? */
+
+	/* Get a record descriptor. */
+	aurecordd = au_open();
+	PJDLOG_VERIFY(aurecordd >= 0);
 
 	/* Tokenise event's records. */
-	; // TODO
+	TAILQ_FOREACH(record, &event->le_records, lr_next)
+		linau_record_to_au(aurecordd, record);
 
-	/* Add the header token. */
-	; // TODO
-
-	/* Add the trailer token. */
-	; // TODO
-
-	return (tokenlist);
-
+	return (aurecordd);
 }
