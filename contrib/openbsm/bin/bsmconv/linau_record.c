@@ -114,15 +114,6 @@ linau_record_get_id(const struct linau_record *record)
 	return (record->lr_id);
 }
 
-/* TODO */
-size_t
-linau_record_get_size(const struct linau_record *record)
-{
-
-	(void)record;
-	return (5);
-}
-
 uint64_t
 linau_record_get_time(const struct linau_record *record)
 {

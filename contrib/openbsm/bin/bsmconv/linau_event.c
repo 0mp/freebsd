@@ -95,15 +95,6 @@ linau_event_get_id(const struct linau_event *event)
 	return (linau_record_get_id(anyrecord));
 }
 
-/* TODO This will be implemented during along the LA->BSM conversion. */
-uint32_t
-linau_event_get_size(const struct linau_event *event)
-{
-
-	PJDLOG_ASSERT(event != NULL);
-	return (2905);
-}
-
 uint64_t
 linau_event_get_time(const struct linau_event *event)
 {
@@ -127,13 +118,11 @@ linau_event_dump(const struct linau_event *event)
 	int type;
 
 	printf("event:\n");
-	printf(" > size (%zu)\n", linau_event_get_size(event));
 
 	TAILQ_FOREACH(record, &event->le_records, lr_next) {
 		printf(" > record:\n");
 		printf(" > > id (%u)\n", linau_record_get_id(record));
 		printf(" > > time (%llu)\n", linau_record_get_time(record));
-		printf(" > > size (%zu)\n", linau_record_get_size(record));
 		cookie = NULL;
 		fields = linau_record_get_fields(record);
 		while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {

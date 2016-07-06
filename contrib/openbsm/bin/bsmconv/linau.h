@@ -36,7 +36,6 @@ void	 		 linau_event_add_record(struct linau_event *event,
 bool			 linau_event_empty(const struct linau_event *event);
 
 uint32_t		 linau_event_get_id(const struct linau_event *event);
-uint32_t		 linau_event_get_size(const struct linau_event *event);
 uint64_t		 linau_event_get_time(const struct linau_event *event);
 
 void			 linau_event_dump(const struct linau_event *event);
@@ -55,8 +54,6 @@ void			 linau_record_destroy(struct linau_record *record);
 nvlist_t		*linau_record_get_fields(
 			    const struct linau_record *record);
 uint32_t		 linau_record_get_id(const struct linau_record *record);
-size_t			 linau_record_get_size(
-			    const struct linau_record *record);
 uint64_t		 linau_record_get_time(
 			    const struct linau_record *record);
 const char		*linau_record_get_type(
