@@ -136,10 +136,7 @@ linau_event_get_timeval(const struct linau_event *event)
 	PJDLOG_VERIFY(tm != NULL);
 
 	tm->tv_sec = time / (1000 * 1000 * 1000);
-	tm->tv_usec = (time % (1000 * 1000 * 1000)) * 1000;
-
-	PJDLOG_VERIFY(time ==
-	    combine_secs_with_nsecs(tm->tv_sec, 1000 * tm->tv_usec));
+	tm->tv_usec = (time % (1000 * 1000 * 1000)) / 1000;
 
 	return (tm);
 }
