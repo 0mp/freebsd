@@ -21,6 +21,10 @@
 
 static void	 add_text_token(int aurecordd, const char *name,
 		    const char *value);
+static void	 add_number_as_text_token(int aurecordd, const char *name,
+		    uintmax_t num);
+static void	 add_fields_as_text_tokens(int aurecordd,
+		    const nvlist_t *fields);
 static char	*format_for_text_token(const char *name, const char *value);
 
 static uint32_t	 extract_uint32(const char *buf, size_t start, size_t end);
@@ -46,6 +50,48 @@ add_text_token(int aurecordd, const char *name, const char *value)
 	PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 
 	/* No need to free tok since au_write(3) takes care of it. */
+}
+
+static void
+add_number_as_text_token(int aurecordd, const char *name, uintmax_t num)
+{
+	char buf[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE];
+	int printednum;
+
+	PJDLOG_ASSERT(name != NULL);
+	PJDLOG_ASSERT(aurecordd >= 0);
+
+	printednum = snprintf(buf, BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE,
+	    "%ju", num);
+	PJDLOG_VERIFY(printednum > 0);
+
+	add_text_token(aurecordd, name, buf);
+}
+
+static void
+add_fields_as_text_tokens(int aurecordd, const nvlist_t *fields)
+{
+	void *cookie;
+	const char *name;
+	const char *value;
+	int type;
+
+	cookie = NULL;
+
+	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
+		switch (type) {
+		case NV_TYPE_STRING:
+			value = nvlist_get_string(fields, name);
+			add_text_token(aurecordd, name, value);
+			break;
+		default:
+			PJDLOG_ABORT("At the moment only string values are "
+			    "stored within the lr_fields field of a record. "
+			    "The program stumbled upon a non-string value; "
+			    "and hence aborted");
+			break;
+		}
+	}
 }
 
 /*
@@ -485,13 +531,6 @@ linau_record_comapre_origin(const struct linau_record *reca,
 void
 linau_record_to_au(int aurecordd, const struct linau_record *record)
 {
-	char buf[BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE];
-	void *cookie;
-	const char *name;
-	nvlist_t *fields;
-	const char *value;
-	int type;
-	int printednum;
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(record->lr_type != NULL);
@@ -502,32 +541,12 @@ linau_record_to_au(int aurecordd, const struct linau_record *record)
 	add_text_token(aurecordd, "type", linau_record_get_type(record));
 
 	/* Id to token. */
-	printednum = snprintf(buf, BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE,
-	    "%u", linau_record_get_id(record));
-	PJDLOG_VERIFY(printednum > 0);
-	add_text_token(aurecordd, "id", buf);
+	add_number_as_text_token(aurecordd, "id", linau_record_get_id(record));
 
 	/* Time to token. */
-	printednum = snprintf(buf, BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE,
-	    "%llu", linau_record_get_time(record));
-	PJDLOG_VERIFY(printednum > 0);
-	add_text_token(aurecordd, "time", buf);
+	add_number_as_text_token(aurecordd, "time",
+	    linau_record_get_time(record));
 
 	/* Fields to token. */
-	cookie = NULL;
-	fields = linau_record_get_fields(record);
-	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
-		switch (type) {
-		case NV_TYPE_STRING:
-			value = nvlist_get_string(fields, name);
-			add_text_token(aurecordd, name, value);
-			break;
-		default:
-			PJDLOG_ABORT("At the moment only string values are "
-			    "stored within the lr_fields field of a record. "
-			    "The program stumbled upon a non-string value; "
-			    "and hence aborted");
-			break;
-		}
-	}
+	add_fields_as_text_tokens(aurecordd, linau_record_get_fields(record));
 }
