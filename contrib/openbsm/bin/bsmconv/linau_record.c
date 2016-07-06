@@ -35,11 +35,13 @@ add_text_token(int aurecordd, const char *name, const char *value)
 
 	text = format_for_text_token(name, value);
 	tok = au_to_text(text);
+	pjdlog_debug(1, "text: (%s)", text);
 	PJDLOG_VERIFY(tok != NULL);
+	free(text);
 
-	au_write(aurecordd, tok);
+	PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 
-	au_free_token(tok);
+	/* No need to free tok since au_write(3) takes care of it. */
 }
 
 static char

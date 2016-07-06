@@ -10,8 +10,10 @@
 #define BSMCONV_BUFFER_SIZE 8192
 
 
-static void process_events(FILE *fp);
-static void process_event(const struct linau_event *event, short eventid);
+static void	process_events(FILE *fp);
+static void	process_event(const struct linau_event *event, short eventid);
+static void	parse_command_line_options(int argc, char **argv,
+		    int *debuglevelp);
 
 
 static void
@@ -28,13 +30,11 @@ process_event(const struct linau_event *event, short eventid)
 	aurecordd = linau_event_to_au(event);
 
 	buflen = BSMCONV_BUFFER_SIZE;
-	au_close_buffer(aurecordd, eventid, buf, &buflen);
+	PJDLOG_VERIFY(au_close_buffer(aurecordd, eventid, buf, &buflen) == 0);
 
 	pjdlog_debug(1, "About to print an event in the BSM format");
 	pjdlog_debug(1, "buflen (%zu)", buflen);
 	write(1, buf, buflen);
-	write(1, "\n", 1);
-	/* printf("%.*s\n", buflen, buf); */
 }
 
 static void
@@ -50,7 +50,6 @@ process_events(FILE *fp)
 	PJDLOG_VERIFY(event != NULL);
 
 	eventid = 0;
-
 	while ((record = linau_record_fetch(fp)) != NULL) {
 		if (!linau_event_empty(event) &&
 		    linau_event_compare_origin(event, record)) {
@@ -65,16 +64,14 @@ process_events(FILE *fp)
 	linau_event_destroy(event);
 }
 
-int
-main(int argc, char *argv[]) {
+static void
+parse_command_line_options(int argc, char **argv, int *debuglevelp)
+{
 	int debuglevel;
 	int optchar;
 
-	pjdlog_init(PJDLOG_MODE_STD);
-
-	/* Parse command line options. */
 	debuglevel = 0;
-	while ((optchar = getopt(argc, argv, "v")) != -1) {
+	while ((optchar = getopt(argc, argv, "v")) != -1)
 		switch (optchar) {
 		case 'v':
 			debuglevel++;
@@ -82,8 +79,18 @@ main(int argc, char *argv[]) {
 		default:
 			PJDLOG_ABORT("Invalid command line options detected");
 		}
-	}
 
+	*debuglevelp = debuglevel;
+}
+
+int
+main(int argc, char **argv)
+{
+	int debuglevel;
+
+	parse_command_line_options(argc, argv, &debuglevel);
+
+	pjdlog_init(PJDLOG_MODE_STD);
 	pjdlog_debug_set(debuglevel);
 
 	process_events(stdin);
