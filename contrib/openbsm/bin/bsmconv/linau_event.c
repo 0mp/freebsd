@@ -11,6 +11,24 @@
 #define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
 
 
+static struct linau_record	*get_any_record(
+				    const struct linau_event *event);
+
+
+static const struct linau_record *
+get_any_record(const struct linau_event *event)
+{
+	struct linau_record *anyrecord;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(linau_event_empty(event) == false);
+
+	anyrecord = TAILQ_FIRST(&event->le_records);
+
+	return (anyrecord);
+}
+
+
 struct linau_event *
 linau_event_create(void)
 {
@@ -85,27 +103,43 @@ linau_event_empty(const struct linau_event *event)
 uint32_t
 linau_event_get_id(const struct linau_event *event)
 {
-	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(linau_event_empty(event) == false);
 
-	anyrecord = TAILQ_FIRST(&event->le_records);
-
-	return (linau_record_get_id(anyrecord));
+	return (linau_record_get_id(get_any_record(event)));
 }
 
 uint64_t
 linau_event_get_time(const struct linau_event *event)
 {
-	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(!TAILQ_EMPTY(&event->le_records));
 
-	anyrecord = TAILQ_FIRST(&event->le_records);
+	return (linau_record_get_time(get_any_record(event)));
+}
 
-	return (linau_record_get_time(anyrecord));
+struct timeval *
+linau_event_get_timeval(const struct linau_event *event)
+{
+	struct timeval *tm;
+	const struct linau_record *anyrecord;
+
+	PJDLOG_ASSERT(event != NULL);
+
+	anyrecord = get_any_record(event);
+
+	tm = calloc(1, (*tm));
+	PJDLOG_VERIFY(tm != NULL);
+
+	tm->tv_sec = record->time / (1000 * 1000 * 1000);
+	tm->usec = (record->time % (1000 * 1000 * 1000)) * 1000;
+
+	PJDLOG_VERIFY(record->time ==
+	    combine_secs_with_nsecs(tm->sec, 1000 * tm->usec));
+
+	return (tm);
 }
 
 void

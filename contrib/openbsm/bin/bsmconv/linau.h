@@ -38,6 +38,9 @@ bool			 linau_event_empty(const struct linau_event *event);
 uint32_t		 linau_event_get_id(const struct linau_event *event);
 uint64_t		 linau_event_get_time(const struct linau_event *event);
 
+struct timeval		*linau_event_get_timeval(
+			    const struct linau_event *event);
+
 void			 linau_event_dump(const struct linau_event *event);
 
 int			 linau_event_compare_origin(

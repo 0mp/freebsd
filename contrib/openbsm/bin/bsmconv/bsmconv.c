@@ -1,3 +1,5 @@
+#include <sys/time.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -22,15 +24,20 @@ process_event(const struct linau_event *event, short eventid)
 	size_t buflen;
 	u_char buf[BSMCONV_BUFFER_SIZE];
 	int aurecordd;
+	struct timeval *tm;
 
 	PJDLOG_ASSERT(event != NULL);
 
 	aurecordd = linau_event_to_au(event);
+	tm = linau_event_get_timeval(event);
 
 	buflen = BSMCONV_BUFFER_SIZE;
-	PJDLOG_VERIFY(au_close_buffer(aurecordd, eventid, buf, &buflen) == 0);
+	PJDLOG_VERIFY(
+	    au_close_buffer_tm(aurecordd, eventid, buf, &buflen, tm) == 0);
 
 	write(1, buf, buflen);
+
+	free(tm);
 }
 
 static void
