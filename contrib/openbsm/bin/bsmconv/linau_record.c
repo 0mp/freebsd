@@ -25,7 +25,6 @@ static char	*format_for_text_token(const char *name, const char *value);
 
 static uint32_t	 extract_uint32(const char *buf, size_t start, size_t end);
 static uint32_t	 string_to_uint32(const char *str);
-static uint64_t  combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs);
 
 
 static void
@@ -112,14 +111,6 @@ string_to_uint32(const char *str)
 
 	return (num);
 }
-
-static uint64_t
-combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs)
-{
-
-	return ((uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs);
-}
-
 
 
 struct linau_record *

@@ -131,3 +131,10 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	    "msgstart (%zu), msgend (%zu)", secsstart, nsecsstart, idstart,
 	    msgstart, *msgendp);
 }
+
+uint64_t
+combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs)
+{
+
+	return ((uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs);
+}

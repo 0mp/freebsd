@@ -11,8 +11,8 @@
 #define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
 
 
-static struct linau_record	*get_any_record(
-				    const struct linau_event *event);
+static const struct linau_record	*get_any_record(
+					    const struct linau_event *event);
 
 
 static const struct linau_record *
@@ -123,21 +123,23 @@ linau_event_get_time(const struct linau_event *event)
 struct timeval *
 linau_event_get_timeval(const struct linau_event *event)
 {
+	uint64_t time;
+	const struct linau_record *record;
 	struct timeval *tm;
-	const struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
 
-	anyrecord = get_any_record(event);
+	record = get_any_record(event);
+	time = linau_record_get_time(record);
 
-	tm = calloc(1, (*tm));
+	tm = calloc(1, sizeof(*tm));
 	PJDLOG_VERIFY(tm != NULL);
 
-	tm->tv_sec = record->time / (1000 * 1000 * 1000);
-	tm->usec = (record->time % (1000 * 1000 * 1000)) * 1000;
+	tm->tv_sec = time / (1000 * 1000 * 1000);
+	tm->tv_usec = (time % (1000 * 1000 * 1000)) * 1000;
 
-	PJDLOG_VERIFY(record->time ==
-	    combine_secs_with_nsecs(tm->sec, 1000 * tm->usec));
+	PJDLOG_VERIFY(time ==
+	    combine_secs_with_nsecs(tm->tv_sec, 1000 * tm->tv_usec));
 
 	return (tm);
 }
