@@ -32,8 +32,8 @@ process_event(const struct linau_event *event, short eventid)
 	tm = linau_event_get_timeval(event);
 
 	buflen = BSMCONV_BUFFER_SIZE;
-	PJDLOG_VERIFY(
-	    au_close_buffer_tm(aurecordd, eventid, buf, &buflen, tm) == 0);
+	/* PJDLOG_VERIFY( */
+	/*     au_close_buffer_tm(aurecordd, eventid, buf, &buflen, tm) == 0); */
 	(void)eventid;
 
 	write(1, buf, buflen);
