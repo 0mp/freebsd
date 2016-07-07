@@ -21,23 +21,22 @@ static void	parse_command_line_options(int argc, char **argv,
 static void
 process_event(const struct linau_event *event, short eventid)
 {
-	/* size_t buflen; */
-	/* u_char buf[BSMCONV_BUFFER_SIZE]; */
-	/* int aurecordd; */
+	size_t buflen;
+	u_char buf[BSMCONV_BUFFER_SIZE];
+	int aurecordd;
 	struct timeval *tm;
 
-	/* PJDLOG_ASSERT(event != NULL); */
+	PJDLOG_ASSERT(event != NULL);
 
-	/* aurecordd = linau_event_to_au(event); */
+	aurecordd = linau_event_to_au(event);
 	tm = linau_event_get_timeval(event);
 
-	/* buflen = BSMCONV_BUFFER_SIZE; */
-	/* PJDLOG_VERIFY( */
-	/*     au_close_buffer_tm(aurecordd, eventid, buf, &buflen, tm) == 0); */
-	(void)eventid;
+	buflen = BSMCONV_BUFFER_SIZE;
+	PJDLOG_VERIFY(
+	    au_close_buffer_tm(aurecordd, eventid, buf, &buflen, tm) == 0);
 
-	/* write(1, buf, buflen); */
-	linau_event_dump(event);
+	write(1, buf, buflen);
+	/* linau_event_dump(event); */
 
 	free(tm);
 }
