@@ -48,7 +48,8 @@ int			 linau_event_compare_origin(
 			    const struct linau_event *event,
 			    const struct linau_record *record);
 
-int			 linau_event_to_au(const struct linau_event *event);
+int			 linau_event_to_au(const struct linau_event *event,
+			    unsigned short *aueventidp);
 
 
 /* linau_record. */
