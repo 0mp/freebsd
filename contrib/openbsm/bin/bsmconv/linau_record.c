@@ -449,6 +449,40 @@ linau_record_destroy(struct linau_record *record)
 	free(record);
 }
 
+bool
+linau_record_exists_field(const struct linau_record *record, const char *name)
+{
+	nvlist_t *fields;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(record->lr_fields != NULL);
+	PJDLOG_ASSERT(name != NULL);
+
+	fields = linau_record_get_fields(record);
+
+	return (nvlist_exists_string(fields, name));
+}
+
+const char *
+linau_record_get_field(const struct linau_record *record, const char *name)
+{
+	nvlist_t *fields;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(name != NULL);
+	PJDLOG_ASSERT(record->lr_fields != NULL);
+
+	/* XXX Return NULL or exit? */
+	/* if (!linau_record_exists_field(record, name)) */
+	/*         return (NULL); */
+	PJDLOG_VERIFY(linau_record_exists_field(record, name));
+
+
+	fields = linau_record_get_fields(record);
+
+	return (nvlist_get_string(fields, name));
+}
+
 nvlist_t *
 linau_record_get_fields(const struct linau_record *record)
 {
@@ -845,7 +879,7 @@ linau_record_to_au(int aurecordd, const struct linau_record *record)
 	convert_to_au(aurecordd, record, typenum);
 }
 
-int
+static int
 get_linau_type_num(const char *type)
 {
 
@@ -1282,6 +1316,7 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 	case LINAU_TYPE_USER_SELINUX_ERR:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_USER_CMD:
+
 		/* FALLTHROUGH */
 	case LINAU_TYPE_USER_TTY:
 		/* FALLTHROUGH */

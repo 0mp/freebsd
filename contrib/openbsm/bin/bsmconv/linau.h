@@ -56,6 +56,13 @@ int			 linau_event_to_au(const struct linau_event *event,
 struct			 linau_record *linau_record_create(void);
 void			 linau_record_destroy(struct linau_record *record);
 
+bool			 linau_record_exists_field(
+			    const struct linau_record *record,
+			    const char *name);
+
+const char		*linau_record_get_field(
+			    const struct linau_record *record,
+			    const char *name);
 nvlist_t		*linau_record_get_fields(
 			    const struct linau_record *record);
 uint32_t		 linau_record_get_id(const struct linau_record *record);
