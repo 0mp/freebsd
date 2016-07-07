@@ -637,7 +637,7 @@ linau_record_parse_fields(const char *buf)
 	pjdlog_debug(5, " . . . . . lastpos (%zu)", lastpos);
 
 	/* While not all bytes of the buf are processed. */
-	while (lastpos < buflen && buf[lastpos] != '\n') {
+	while (lastpos < buflen) {
 		field = NULL;
 
 		field = linau_field_parse(buf, &lastpos);
@@ -753,7 +753,7 @@ linau_record_fetch(FILE *fp)
 	char rawbuf[BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE];
 	struct linau_record *record;
 
-	pjdlog_debug(3, "linau_record_fetch");
+	pjdlog_debug(3, " . . + linau_record_fetch");
 
 	PJDLOG_ASSERT(fp != NULL);
 
@@ -765,12 +765,12 @@ linau_record_fetch(FILE *fp)
 
 		if (fgets(rawbuf, sizeof(rawbuf), fp) == NULL) {
 			PJDLOG_VERIFY(errno == 0);
-			pjdlog_debug(3, "EOF");
+			pjdlog_debug(3, " . . . EOF");
 			sbuf_delete(inbuf);
 			return NULL; /* EOF */
 		}
 
-		pjdlog_debug(3, "rawbuf: (%s)", rawbuf);
+		pjdlog_debug(3, " . . . rawbuf: (%s)", rawbuf);
 		PJDLOG_VERIFY(sbuf_cat(inbuf, rawbuf) == 0);
 	} while (strstr(rawbuf, "\n\0") == NULL);
 
@@ -780,13 +780,18 @@ linau_record_fetch(FILE *fp)
 	PJDLOG_ASSERT(sbuf_len(inbuf) != -1);
 	buflen = sbuf_len(inbuf);
 	data = sbuf_data(inbuf);
-	pjdlog_debug(3, "buflen: (%zu)", buflen);
+	pjdlog_debug(3, " . . . buflen: (%zu)", buflen);
 	/* XXX Assert or verify? This is a vital assumption. */
 	PJDLOG_VERIFY(strcmp(data + (buflen - 1), "\n\0") == 0);
 
-	pjdlog_debug(3, "Read record: (%s)", data);
+	/* Remove the trailing newline. */
+	data[buflen - 1] = '\0';
+
+	pjdlog_debug(3, " . . . Read record: (%s)", data);
 
 	record = linau_record_parse(data);
+
+	pjdlog_debug(3, " . . -");
 
 	return (record);
 }
