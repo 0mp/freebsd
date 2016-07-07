@@ -51,6 +51,7 @@ linau_field_destroy(struct linau_field *field)
 	free(field->lf_name);
 	free(field->lf_value);
 	free(field);
+	/* XXX Should I change field to NULL now? */
 }
 
 void
