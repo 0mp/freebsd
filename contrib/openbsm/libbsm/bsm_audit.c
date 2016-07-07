@@ -239,17 +239,15 @@ au_assemble(au_record_t *rec, short event, struct timeval *tm)
 		if (errno != ENOSYS && errno != EPERM)
 			return (-1);
 #endif /* HAVE_AUDIT_SYSCALLS */
+		if (tm != NULL)
+			localtm = *tm;
+		else if (gettimeofday(&localtm, NULL) < 0)
+			return (-1);
 		tot_rec_size = rec->len + AUDIT_HEADER_SIZE +
 		    AUDIT_TRAILER_SIZE;
-		header = au_to_header(tot_rec_size, event, 0);
+		header = au_to_header32_tm(tot_rec_size, event, 0, localtm);
 #ifdef HAVE_AUDIT_SYSCALLS
 	} else {
-		if (tm == NULL) {
-			if (gettimeofday(&localtm, NULL) < 0)
-				return (-1);
-		} else {
-			localtm = *tm;
-		}
 		switch (aia.ai_termid.at_type) {
 		case AU_IPv4:
 			hdrsize = (aia.ai_termid.at_addr[0] == INADDR_ANY) ?
@@ -273,7 +271,8 @@ au_assemble(au_record_t *rec, short event, struct timeval *tm)
 			header = au_to_header32_ex_tm(tot_rec_size, event,
 			    0, localtm, &aia);
 		else
-			header = au_to_header(tot_rec_size, event, 0);
+			header = au_to_header32_tm(tot_rec_size, event, 0,
+			    localtm);
 	}
 #endif /* HAVE_AUDIT_SYSCALLS */
 	if (header == NULL)
