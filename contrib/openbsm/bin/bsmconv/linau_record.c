@@ -176,8 +176,9 @@ linau_record_destroy(struct linau_record *record)
 
 	PJDLOG_ASSERT(record != NULL);
 
-	if (record->lr_type != NULL)
-		free(record->lr_type);
+	free(record->lr_type);
+
+	free(record->lr_text);
 
 	nvlist_destroy(record->lr_fields);
 
@@ -200,6 +201,15 @@ linau_record_get_id(const struct linau_record *record)
 	PJDLOG_ASSERT(record != NULL);
 
 	return (record->lr_id);
+}
+
+const char *
+linau_record_get_text(const struct linau_record *record)
+{
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(record->lr_text != NULL);
+
+	return (record->lr_text);
 }
 
 uint64_t
@@ -237,6 +247,23 @@ linau_record_set_id(struct linau_record *record, uint32_t id)
 	PJDLOG_ASSERT(record != NULL);
 
 	record->lr_id = id;
+}
+
+void
+linau_record_set_text(struct linau_record *record, const char *text)
+{
+	size_t len;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(text != NULL);
+	PJDLOG_ASSERT(strchr(text, '\0') != NULL);
+
+	len = strlen(text);
+
+	record->lr_text = malloc(sizeof(*record->lr_text) * (len + 1));
+	PJDLOG_VERIFY(record->lr_text != NULL);
+
+	PJDLOG_VERIFY(strlcpy(record->lr_text, text, len + 1) == len);
 }
 
 void
@@ -278,6 +305,7 @@ linau_record_parse(const char *buf)
 	linau_record_set_id(record, linau_record_parse_id(buf));
 	linau_record_set_time(record, linau_record_parse_time(buf));
 	linau_record_move_fields(record, linau_record_parse_fields(buf));
+	linau_record_set_text(record, buf);
 
 	pjdlog_debug(3, " . . . > id (%u), time (%ju)",
 	    linau_record_get_id(record), linau_record_get_time(record));

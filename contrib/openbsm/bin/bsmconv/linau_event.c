@@ -154,6 +154,7 @@ linau_event_dump(const struct linau_event *event)
 
 	TAILQ_FOREACH(record, &event->le_records, lr_next) {
 		printf(" > record:\n");
+		printf(" > > text (%s)\n", linau_record_get_text(record));
 		printf(" > > id (%u)\n", linau_record_get_id(record));
 		printf(" > > time (%llu)\n", linau_record_get_time(record));
 		cookie = NULL;
