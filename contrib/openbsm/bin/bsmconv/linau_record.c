@@ -794,10 +794,13 @@ linau_record_fetch(FILE *fp)
 /*
  * Compare the records' timestamps and ids.
  *
- * Firstly, the function compare by the timestamps and secondly by the ids.
+ * The logic follows the follwing pattern:
+ * - Compare by the times and return either 1 or -1 if they differ;
+ * - Compare by the ids and return either 1 or -1 if they differ;
+ * - Return 0 if both times and ids matches.
  *
- * Returns -1 if reca seems to be earlier in terms of the timestamp and the id
- * and 1 if recb seems to be earlier. 0 if the timestamp and the ids are the
+ * Returns -1 if reca seems to be earlier in terms of the time and the id
+ * and 1 if recb seems to be earlier. 0 if the time and the ids are the
  * same.
  */
 int
