@@ -22,61 +22,88 @@
 static int get_linau_type_num(const char *type);
 static void convert_to_au(int aurecordd, const struct linau_record *record,
     int typenum);
+static const char *field_name_from_field_name_id(int fieldnameid);
 
 static uint32_t extract_uint32(const char *buf, size_t start, size_t end);
 static uint32_t string_to_uint32(const char *str);
 
-#include <sys/types.h>
+/*
+ * XXX Should I change those if's to else if's?
+ *
+ * XXX And how about using this macro instead:
+ * #define	STRING_CMP(str1, str2, retval) do {			\
+ *         if (strcmp((str1), (str2)) == 0)				\
+ *                 return ((retval));					\
+ * } while(0);								\
+ *
+ * Mariusz says that I should use else if's but I am not fully convinced yet.
+ * else if's would damage the readability due to the presence of the commented
+ * out deprecated defines like LINAU_TYPE_GET_STR.
+ */
 static int
 get_linau_type_num(const char *type)
 {
 
 	PJDLOG_ASSERT(type != NULL);
 
-	if (strcmp(LINAU_TYPE_GET_STR, type) == 0)
-		return (LINAU_TYPE_GET);
-	if (strcmp(LINAU_TYPE_SET_STR, type) == 0)
-		return (LINAU_TYPE_SET);
-	if (strcmp(LINAU_TYPE_LIST_STR, type) == 0)
-		return (LINAU_TYPE_LIST);
-	if (strcmp(LINAU_TYPE_ADD_STR, type) == 0)
-		return (LINAU_TYPE_ADD);
-	if (strcmp(LINAU_TYPE_DEL_STR, type) == 0)
-		return (LINAU_TYPE_DEL);
+	/* if (strcmp(LINAU_TYPE_GET_STR, type) == 0) */
+	/*         return (LINAU_TYPE_GET); */
+	/* if (strcmp(LINAU_TYPE_SET_STR, type) == 0) */
+	/*         return (LINAU_TYPE_SET); */
+	/* if (strcmp(LINAU_TYPE_LIST_STR, type) == 0) */
+	/*         return (LINAU_TYPE_LIST); */
+	/* if (strcmp(LINAU_TYPE_ADD_STR, type) == 0) */
+	/*         return (LINAU_TYPE_ADD); */
+	/* if (strcmp(LINAU_TYPE_DEL_STR, type) == 0) */
+	/*         return (LINAU_TYPE_DEL); */
 	if (strcmp(LINAU_TYPE_USER_STR, type) == 0)
 		return (LINAU_TYPE_USER);
-	if (strcmp(AUDILINAU_TYPE_SIGNAL_INFO_STR, type) == 0)
-		return (AUDILINAU_TYPE_SIGNAL_INFO);
-	if (strcmp(LINAU_TYPE_ADD_RULE_STR, type) == 0)
-		return (LINAU_TYPE_ADD_RULE);
-	if (strcmp(LINAU_TYPE_DEL_RULE_STR, type) == 0)
-		return (LINAU_TYPE_DEL_RULE);
-	if (strcmp(LINAU_TYPE_LIST_RULES_STR, type) == 0)
-		return (LINAU_TYPE_LIST_RULES);
-	if (strcmp(LINAU_TYPE_TRIM_STR, type) == 0)
-		return (LINAU_TYPE_TRIM);
-	if (strcmp(LINAU_TYPE_MAKE_EQUIV_STR, type) == 0)
-		return (LINAU_TYPE_MAKE_EQUIV);
-	if (strcmp(LINAU_TYPE_TTY_GET_STR, type) == 0)
-		return (LINAU_TYPE_TTY_GET);
-	if (strcmp(LINAU_TYPE_TTY_SET_STR, type) == 0)
-		return (LINAU_TYPE_TTY_SET);
-	if (strcmp(LINAU_TYPE_SET_FEATURE_STR, type) == 0)
-		return (LINAU_TYPE_SET_FEATURE);
-	if (strcmp(LINAU_TYPE_GET_FEATURE_STR, type) == 0)
-		return (LINAU_TYPE_GET_FEATURE);
-	if (strcmp(AUDILINAU_TYPE_USER_ACCT_STR, type) == 0)
-		return (AUDILINAU_TYPE_USER_ACCT);
-	if (strcmp(AUDILINAU_TYPE_CRED_ACQ_STR, type) == 0)
-		return (AUDILINAU_TYPE_CRED_ACQ);
-	if (strcmp(AUDILINAU_TYPE_USER_START_STR, type) == 0)
-		return (AUDILINAU_TYPE_USER_START);
-	if (strcmp(AUDILINAU_TYPE_USER_AVC_STR, type) == 0)
-		return (AUDILINAU_TYPE_USER_AVC);
-	if (strcmp(AUDILINAU_TYPE_USER_ERR_STR, type) == 0)
-		return (AUDILINAU_TYPE_USER_ERR);
-	if (strcmp(AUDILINAU_TYPE_USYS_CONFIG_STR, type) == 0)
-		return (AUDILINAU_TYPE_USYS_CONFIG);
+	if (strcmp(LINAU_TYPE_LOGIN_STR, type) == 0)
+		return (LINAU_TYPE_LOGIN);
+	/* if (strcmp(LINAU_TYPE_SIGNAL_INFO_STR, type) == 0) */
+	/*         return (LINAU_TYPE_SIGNAL_INFO); */
+	/* if (strcmp(LINAU_TYPE_ADD_RULE_STR, type) == 0) */
+	/*         return (LINAU_TYPE_ADD_RULE); */
+	/* if (strcmp(LINAU_TYPE_DEL_RULE_STR, type) == 0) */
+	/*         return (LINAU_TYPE_DEL_RULE); */
+	/* if (strcmp(LINAU_TYPE_LIST_RULES_STR, type) == 0) */
+	/*         return (LINAU_TYPE_LIST_RULES); */
+	/* if (strcmp(LINAU_TYPE_TRIM_STR, type) == 0) */
+	/*         return (LINAU_TYPE_TRIM); */
+	/* if (strcmp(LINAU_TYPE_MAKE_EQUIV_STR, type) == 0) */
+	/*         return (LINAU_TYPE_MAKE_EQUIV); */
+	/* if (strcmp(LINAU_TYPE_TTY_GET_STR, type) == 0) */
+	/*         return (LINAU_TYPE_TTY_GET); */
+	/* if (strcmp(LINAU_TYPE_TTY_SET_STR, type) == 0) */
+	/*         return (LINAU_TYPE_TTY_SET); */
+	/* if (strcmp(LINAU_TYPE_SET_FEATURE_STR, type) == 0) */
+	/*         return (LINAU_TYPE_SET_FEATURE); */
+	/* if (strcmp(LINAU_TYPE_GET_FEATURE_STR, type) == 0) */
+	/*         return (LINAU_TYPE_GET_FEATURE); */
+	if (strcmp(LINAU_TYPE_USER_AUTH_STR, type) == 0)
+		return (LINAU_TYPE_USER_AUTH);
+	if (strcmp(LINAU_TYPE_USER_ACCT_STR, type) == 0)
+		return (LINAU_TYPE_USER_ACCT);
+	if (strcmp(LINAU_TYPE_USER_MGMT_STR, type) == 0)
+		return (LINAU_TYPE_USER_MGMT);
+	if (strcmp(LINAU_TYPE_CRED_ACQ_STR, type) == 0)
+		return (LINAU_TYPE_CRED_ACQ);
+	if (strcmp(LINAU_TYPE_CRED_DISP_STR, type) == 0)
+		return (LINAU_TYPE_CRED_DISP);
+	if (strcmp(LINAU_TYPE_USER_START_STR, type) == 0)
+		return (LINAU_TYPE_USER_START);
+	if (strcmp(LINAU_TYPE_USER_END_STR, type) == 0)
+		return (LINAU_TYPE_USER_END);
+	if (strcmp(LINAU_TYPE_USER_AVC_STR, type) == 0)
+		return (LINAU_TYPE_USER_AVC);
+	if (strcmp(LINAU_TYPE_USER_CHAUTHTOK_STR, type) == 0)
+		return (LINAU_TYPE_USER_CHAUTHTOK);
+	if (strcmp(LINAU_TYPE_USER_ERR_STR, type) == 0)
+		return (LINAU_TYPE_USER_ERR);
+	if (strcmp(LINAU_TYPE_CRED_REFR_STR, type) == 0)
+		return (LINAU_TYPE_CRED_REFR);
+	if (strcmp(LINAU_TYPE_USYS_CONFIG_STR, type) == 0)
+		return (LINAU_TYPE_USYS_CONFIG);
 	if (strcmp(LINAU_TYPE_USER_LOGIN_STR, type) == 0)
 		return (LINAU_TYPE_USER_LOGIN);
 	if (strcmp(LINAU_TYPE_USER_LOGOUT_STR, type) == 0)
@@ -135,8 +162,8 @@ get_linau_type_num(const char *type)
 		return (LINAU_TYPE_DAEMON_ABORT);
 	if (strcmp(LINAU_TYPE_DAEMON_CONFIG_STR, type) == 0)
 		return (LINAU_TYPE_DAEMON_CONFIG);
-	if (strcmp(LINAU_TYPE_DAEMON_RECONFIG_STR, type) == 0)
-		return (LINAU_TYPE_DAEMON_RECONFIG);
+	/* if (strcmp(LINAU_TYPE_DAEMON_RECONFIG_STR, type) == 0) */
+	/*         return (LINAU_TYPE_DAEMON_RECONFIG); */
 	if (strcmp(LINAU_TYPE_DAEMON_ROTATE_STR, type) == 0)
 		return (LINAU_TYPE_DAEMON_ROTATE);
 	if (strcmp(LINAU_TYPE_DAEMON_RESUME_STR, type) == 0)
@@ -149,8 +176,8 @@ get_linau_type_num(const char *type)
 		return (LINAU_TYPE_DAEMON_ERR);
 	if (strcmp(LINAU_TYPE_SYSCALL_STR, type) == 0)
 		return (LINAU_TYPE_SYSCALL);
-	if (strcmp(LINAU_TYPE_FS_WATCH_STR, type) == 0)
-		return (LINAU_TYPE_FS_WATCH);
+	/* if (strcmp(LINAU_TYPE_FS_WATCH_STR, type) == 0) */
+	/*         return (LINAU_TYPE_FS_WATCH); */
 	if (strcmp(LINAU_TYPE_PATH_STR, type) == 0)
 		return (LINAU_TYPE_PATH);
 	if (strcmp(LINAU_TYPE_IPC_STR, type) == 0)
@@ -163,8 +190,8 @@ get_linau_type_num(const char *type)
 		return (LINAU_TYPE_SOCKADDR);
 	if (strcmp(LINAU_TYPE_CWD_STR, type) == 0)
 		return (LINAU_TYPE_CWD);
-	if (strcmp(LINAU_TYPE_FS_INODE_STR, type) == 0)
-		return (LINAU_TYPE_FS_INODE);
+	/* if (strcmp(LINAU_TYPE_FS_INODE_STR, type) == 0) */
+	/*         return (LINAU_TYPE_FS_INODE); */
 	if (strcmp(LINAU_TYPE_EXECVE_STR, type) == 0)
 		return (LINAU_TYPE_EXECVE);
 	if (strcmp(LINAU_TYPE_IPC_SET_PERM_STR, type) == 0)
@@ -247,6 +274,8 @@ get_linau_type_num(const char *type)
 		return (LINAU_TYPE_ANOM_LINK);
 	if (strcmp(LINAU_TYPE_INTEGRITY_DATA_STR, type) == 0)
 		return (LINAU_TYPE_INTEGRITY_DATA);
+	if (strcmp(LINAU_TYPE_INTEGRITY_METADATA_STR, type) == 0)
+		return (LINAU_TYPE_INTEGRITY_METADATA);
 	if (strcmp(LINAU_TYPE_INTEGRITY_STATUS_STR, type) == 0)
 		return (LINAU_TYPE_INTEGRITY_STATUS);
 	if (strcmp(LINAU_TYPE_INTEGRITY_HASH_STR, type) == 0)
@@ -393,55 +422,58 @@ static void
 convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 {
 	token_t *tok;
+	size_t availablefields;
 
 	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(aurecordd >= 0);
+
+	availablefields = 0;
 
 	switch (typenum) {
 	case LINAU_TYPE_UNDEFINED:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_GET:
-		/* FALLTHROUGH */
-	case LINAU_TYPE_SET:
-		/* FALLTHROUGH */
-	case LINAU_TYPE_LIST:
-		/* FALLTHROUGH */
-	case LINAU_TYPE_ADD:
-		/* FALLTHROUGH */
-	case LINAU_TYPE_DEL:
-		/* FALLTHROUGH */
+	/* case LINAU_TYPE_GET: */
+	/* case LINAU_TYPE_SET: */
+	/* case LINAU_TYPE_LIST: */
+	/* case LINAU_TYPE_ADD: */
+	/* case LINAU_TYPE_DEL: */
 	case LINAU_TYPE_USER:
 		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_SIGNAL_INFO:
+	case LINAU_TYPE_LOGIN:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_ADD_RULE:
+	/* case LINAU_TYPE_SIGNAL_INFO: */
+	/* case LINAU_TYPE_ADD_RULE: */
+	/* case LINAU_TYPE_DEL_RULE: */
+	/* case LINAU_TYPE_LIST_RULES: */
+	/* case LINAU_TYPE_TRIM: */
+	/* case LINAU_TYPE_MAKE_EQUIV: */
+	/* case LINAU_TYPE_TTY_GET: */
+	/* case LINAU_TYPE_TTY_SET: */
+	/* case LINAU_TYPE_SET_FEATURE: */
+	/* case LINAU_TYPE_GET_FEATURE: */
+	case LINAU_TYPE_USER_AUTH:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_DEL_RULE:
+	case LINAU_TYPE_USER_ACCT:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_LIST_RULES:
+	case LINAU_TYPE_USER_MGMT:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_TRIM:
+	case LINAU_TYPE_CRED_ACQ:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_MAKE_EQUIV:
+	case LINAU_TYPE_CRED_DISP:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_TTY_GET:
+	case LINAU_TYPE_USER_START:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_TTY_SET:
+	case LINAU_TYPE_USER_END:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_SET_FEATURE:
+	case LINAU_TYPE_USER_AVC:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_GET_FEATURE:
+	case LINAU_TYPE_USER_CHAUTHTOK:
 		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_USER_ACCT:
+	case LINAU_TYPE_USER_ERR:
 		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_CRED_ACQ:
+	case LINAU_TYPE_CRED_REFR:
 		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_USER_START:
-		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_USER_AVC:
-		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_USER_ERR:
-		/* FALLTHROUGH */
-	case AUDILINAU_TYPE_USYS_CONFIG:
+	case LINAU_TYPE_USYS_CONFIG:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_USER_LOGIN:
 		/* FALLTHROUGH */
@@ -466,8 +498,18 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 	case LINAU_TYPE_USER_SELINUX_ERR:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_USER_CMD:
+		/* Check existance of the required fields. */
 
-		/* FALLTHROUGH */
+		; // TODO
+//		if (availablefields != linau_record_get_fields_count(record)) {
+//			/* Genereate a text token. */
+//			; //TODO
+//		} else {
+//			/* Genereate tokens. */
+//			; //TODO
+//		}
+		break;
+
 	case LINAU_TYPE_USER_TTY:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_CHUSER_ID:
@@ -502,8 +544,7 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 		/* FALLTHROUGH */
 	case LINAU_TYPE_DAEMON_CONFIG:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_DAEMON_RECONFIG:
-		/* FALLTHROUGH */
+	/* case LINAU_TYPE_DAEMON_RECONFIG: */
 	case LINAU_TYPE_DAEMON_ROTATE:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_DAEMON_RESUME:
@@ -516,8 +557,7 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 		/* FALLTHROUGH */
 	case LINAU_TYPE_SYSCALL:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_FS_WATCH:
-		/* FALLTHROUGH */
+	/* case LINAU_TYPE_FS_WATCH: */
 	case LINAU_TYPE_PATH:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_IPC:
@@ -530,8 +570,7 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 		/* FALLTHROUGH */
 	case LINAU_TYPE_CWD:
 		/* FALLTHROUGH */
-	case LINAU_TYPE_FS_INODE:
-		/* FALLTHROUGH */
+	/* case LINAU_TYPE_FS_INODE: */
 	case LINAU_TYPE_EXECVE:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_IPC_SET_PERM:
@@ -613,6 +652,8 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 	case LINAU_TYPE_ANOM_LINK:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_INTEGRITY_DATA:
+		/* FALLTHROUGH */
+	case LINAU_TYPE_INTEGRITY_METADATA:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_INTEGRITY_STATUS:
 		/* FALLTHROUGH */
@@ -753,12 +794,492 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 	case LINAU_TYPE_VIRT_MACHINE_ID:
 		/* FALLTHROUGH */
 	default:
+		/*
+		 * XXX Should default call PJDLOG_ABORT? If we cannot tell what
+		 * kind of record we are dealing with it should be marked as
+		 * LINAU_TYPE_UNDEFINED.
+		 */
 		tok = au_to_text(linau_record_get_text(record));
 		PJDLOG_VERIFY(tok != NULL);
 		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 		break;
 	}
+}
 
+static const char *
+field_name_from_field_name_id(int fieldnameid)
+{
+
+	switch(fieldnameid) {
+	case LINAU_FIELD_NAME_UNDEFINED:
+		return (LINAU_FIELD_NAME_UNDEFINED_STR);
+	case LINAU_FIELD_NAME_A0:
+		return (LINAU_FIELD_NAME_A0_STR);
+	case LINAU_FIELD_NAME_A1:
+		return (LINAU_FIELD_NAME_A1_STR);
+	case LINAU_FIELD_NAME_A2:
+		return (LINAU_FIELD_NAME_A2_STR);
+	case LINAU_FIELD_NAME_A3:
+		return (LINAU_FIELD_NAME_A3_STR);
+	case LINAU_FIELD_NAME_A_EXECVE_SYSCALL:
+		/* XXX This case should be taken care of separately. */
+		PJDLOG_ABORT("LINAU_FIELD_NAME_A_EXECVE_SYSCALL is not "
+		    "implemented yet");
+	case LINAU_FIELD_NAME_ACCT:
+		return (LINAU_FIELD_NAME_ACCT_STR);
+	case LINAU_FIELD_NAME_ACL:
+		return (LINAU_FIELD_NAME_ACL_STR);
+	case LINAU_FIELD_NAME_ACTION:
+		return (LINAU_FIELD_NAME_ACTION_STR);
+	case LINAU_FIELD_NAME_ADDED:
+		return (LINAU_FIELD_NAME_ADDED_STR);
+	case LINAU_FIELD_NAME_ADDR:
+		return (LINAU_FIELD_NAME_ADDR_STR);
+	case LINAU_FIELD_NAME_APPARMOR:
+		return (LINAU_FIELD_NAME_APPARMOR_STR);
+	case LINAU_FIELD_NAME_ARCH:
+		return (LINAU_FIELD_NAME_ARCH_STR);
+	case LINAU_FIELD_NAME_ARGC:
+		return (LINAU_FIELD_NAME_ARGC_STR);
+	case LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT:
+		return (LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT_STR);
+	case LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME:
+		return (LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME_STR);
+	case LINAU_FIELD_NAME_AUDIT_ENABLED:
+		return (LINAU_FIELD_NAME_AUDIT_ENABLED_STR);
+	case LINAU_FIELD_NAME_AUDIT_FAILURE:
+		return (LINAU_FIELD_NAME_AUDIT_FAILURE_STR);
+	case LINAU_FIELD_NAME_AUID:
+		return (LINAU_FIELD_NAME_AUID_STR);
+	case LINAU_FIELD_NAME_BANNERS:
+		return (LINAU_FIELD_NAME_BANNERS_STR);
+	case LINAU_FIELD_NAME_BOOL:
+		return (LINAU_FIELD_NAME_BOOL_STR);
+	case LINAU_FIELD_NAME_BUS:
+		return (LINAU_FIELD_NAME_BUS_STR);
+	case LINAU_FIELD_NAME_CAPABILITY:
+		return (LINAU_FIELD_NAME_CAPABILITY_STR);
+	case LINAU_FIELD_NAME_CAP_FE:
+		return (LINAU_FIELD_NAME_CAP_FE_STR);
+	case LINAU_FIELD_NAME_CAP_FI:
+		return (LINAU_FIELD_NAME_CAP_FI_STR);
+	case LINAU_FIELD_NAME_CAP_FP:
+		return (LINAU_FIELD_NAME_CAP_FP_STR);
+	case LINAU_FIELD_NAME_CAP_FVER:
+		return (LINAU_FIELD_NAME_CAP_FVER_STR);
+	case LINAU_FIELD_NAME_CAP_PE:
+		return (LINAU_FIELD_NAME_CAP_PE_STR);
+	case LINAU_FIELD_NAME_CAP_PI:
+		return (LINAU_FIELD_NAME_CAP_PI_STR);
+	case LINAU_FIELD_NAME_CAP_PP:
+		return (LINAU_FIELD_NAME_CAP_PP_STR);
+	case LINAU_FIELD_NAME_CATEGORY:
+		return (LINAU_FIELD_NAME_CATEGORY_STR);
+	case LINAU_FIELD_NAME_CGROUP:
+		return (LINAU_FIELD_NAME_CGROUP_STR);
+	case LINAU_FIELD_NAME_CHANGED:
+		return (LINAU_FIELD_NAME_CHANGED_STR);
+	case LINAU_FIELD_NAME_CIPHER:
+		return (LINAU_FIELD_NAME_CIPHER_STR);
+	case LINAU_FIELD_NAME_CLASS:
+		return (LINAU_FIELD_NAME_CLASS_STR);
+	case LINAU_FIELD_NAME_CMD:
+		return (LINAU_FIELD_NAME_CMD_STR);
+	case LINAU_FIELD_NAME_CODE:
+		return (LINAU_FIELD_NAME_CODE_STR);
+	case LINAU_FIELD_NAME_COMM:
+		return (LINAU_FIELD_NAME_COMM_STR);
+	case LINAU_FIELD_NAME_COMPAT:
+		return (LINAU_FIELD_NAME_COMPAT_STR);
+	case LINAU_FIELD_NAME_CWD:
+		return (LINAU_FIELD_NAME_CWD_STR);
+	case LINAU_FIELD_NAME_DADDR:
+		return (LINAU_FIELD_NAME_DADDR_STR);
+	case LINAU_FIELD_NAME_DATA:
+		return (LINAU_FIELD_NAME_DATA_STR);
+	case LINAU_FIELD_NAME_DEFAULT:
+		return (LINAU_FIELD_NAME_DEFAULT_STR);
+	case LINAU_FIELD_NAME_DEV:
+		return (LINAU_FIELD_NAME_DEV_STR);
+	/* case LINAU_FIELD_NAME2_DEV: */
+	/*         return (LINAU_FIELD_NAME2_DEV_STR); */
+	case LINAU_FIELD_NAME_DEVICE:
+		return (LINAU_FIELD_NAME_DEVICE_STR);
+	case LINAU_FIELD_NAME_DIR:
+		return (LINAU_FIELD_NAME_DIR_STR);
+	case LINAU_FIELD_NAME_DIRECTION:
+		return (LINAU_FIELD_NAME_DIRECTION_STR);
+	case LINAU_FIELD_NAME_DMAC:
+		return (LINAU_FIELD_NAME_DMAC_STR);
+	case LINAU_FIELD_NAME_DPORT:
+		return (LINAU_FIELD_NAME_DPORT_STR);
+	case LINAU_FIELD_NAME_EGID:
+		return (LINAU_FIELD_NAME_EGID_STR);
+	case LINAU_FIELD_NAME_ENFORCING:
+		return (LINAU_FIELD_NAME_ENFORCING_STR);
+	case LINAU_FIELD_NAME_ENTRIES:
+		return (LINAU_FIELD_NAME_ENTRIES_STR);
+	case LINAU_FIELD_NAME_EUID:
+		return (LINAU_FIELD_NAME_EUID_STR);
+	case LINAU_FIELD_NAME_EXE:
+		return (LINAU_FIELD_NAME_EXE_STR);
+	case LINAU_FIELD_NAME_EXIT:
+		return (LINAU_FIELD_NAME_EXIT_STR);
+	case LINAU_FIELD_NAME_FAM:
+		return (LINAU_FIELD_NAME_FAM_STR);
+	case LINAU_FIELD_NAME_FAMILY:
+		return (LINAU_FIELD_NAME_FAMILY_STR);
+	case LINAU_FIELD_NAME_FD:
+		return (LINAU_FIELD_NAME_FD_STR);
+	case LINAU_FIELD_NAME_FILE:
+		return (LINAU_FIELD_NAME_FILE_STR);
+	case LINAU_FIELD_NAME_FLAGS:
+		return (LINAU_FIELD_NAME_FLAGS_STR);
+	case LINAU_FIELD_NAME_FE:
+		return (LINAU_FIELD_NAME_FE_STR);
+	case LINAU_FIELD_NAME_FEATURE:
+		return (LINAU_FIELD_NAME_FEATURE_STR);
+	case LINAU_FIELD_NAME_FI:
+		return (LINAU_FIELD_NAME_FI_STR);
+	case LINAU_FIELD_NAME_FP:
+		return (LINAU_FIELD_NAME_FP_STR);
+	/* case LINAU_FIELD_NAME_FP2: */
+	/*         return (LINAU_FIELD_NAME_FP2_STR); */
+	case LINAU_FIELD_NAME_FORMAT:
+		return (LINAU_FIELD_NAME_FORMAT_STR);
+	case LINAU_FIELD_NAME_FSGID:
+		return (LINAU_FIELD_NAME_FSGID_STR);
+	case LINAU_FIELD_NAME_FSUID:
+		return (LINAU_FIELD_NAME_FSUID_STR);
+	case LINAU_FIELD_NAME_FVER:
+		return (LINAU_FIELD_NAME_FVER_STR);
+	case LINAU_FIELD_NAME_GID:
+		return (LINAU_FIELD_NAME_GID_STR);
+	case LINAU_FIELD_NAME_GRANTORS:
+		return (LINAU_FIELD_NAME_GRANTORS_STR);
+	case LINAU_FIELD_NAME_GRP:
+		return (LINAU_FIELD_NAME_GRP_STR);
+	case LINAU_FIELD_NAME_HOOK:
+		return (LINAU_FIELD_NAME_HOOK_STR);
+	case LINAU_FIELD_NAME_HOSTNAME:
+		return (LINAU_FIELD_NAME_HOSTNAME_STR);
+	case LINAU_FIELD_NAME_ICMP_TYPE:
+		return (LINAU_FIELD_NAME_ICMP_TYPE_STR);
+	case LINAU_FIELD_NAME_ID:
+		return (LINAU_FIELD_NAME_ID_STR);
+	case LINAU_FIELD_NAME_IGID:
+		return (LINAU_FIELD_NAME_IGID_STR);
+	case LINAU_FIELD_NAME_IMG:
+		return (LINAU_FIELD_NAME_IMG_STR);
+	case LINAU_FIELD_NAME_INIF:
+		return (LINAU_FIELD_NAME_INIF_STR);
+	case LINAU_FIELD_NAME_IP:
+		return (LINAU_FIELD_NAME_IP_STR);
+	case LINAU_FIELD_NAME_IPID:
+		return (LINAU_FIELD_NAME_IPID_STR);
+	case LINAU_FIELD_NAME_INO:
+		return (LINAU_FIELD_NAME_INO_STR);
+	case LINAU_FIELD_NAME_INODE:
+		return (LINAU_FIELD_NAME_INODE_STR);
+	case LINAU_FIELD_NAME_INODE_GID:
+		return (LINAU_FIELD_NAME_INODE_GID_STR);
+	case LINAU_FIELD_NAME_INODE_UID:
+		return (LINAU_FIELD_NAME_INODE_UID_STR);
+	case LINAU_FIELD_NAME_INVALID_CONTEXT:
+		return (LINAU_FIELD_NAME_INVALID_CONTEXT_STR);
+	case LINAU_FIELD_NAME_IPX:
+		return (LINAU_FIELD_NAME_IPX_STR);
+	case LINAU_FIELD_NAME_ITEM:
+		return (LINAU_FIELD_NAME_ITEM_STR);
+	case LINAU_FIELD_NAME_ITEMS:
+		return (LINAU_FIELD_NAME_ITEMS_STR);
+	case LINAU_FIELD_NAME_IUID:
+		return (LINAU_FIELD_NAME_IUID_STR);
+	case LINAU_FIELD_NAME_KERNEL:
+		return (LINAU_FIELD_NAME_KERNEL_STR);
+	case LINAU_FIELD_NAME_KEY:
+		return (LINAU_FIELD_NAME_KEY_STR);
+	case LINAU_FIELD_NAME_KIND:
+		return (LINAU_FIELD_NAME_KIND_STR);
+	case LINAU_FIELD_NAME_KSIZE:
+		return (LINAU_FIELD_NAME_KSIZE_STR);
+	case LINAU_FIELD_NAME_LADDR:
+		return (LINAU_FIELD_NAME_LADDR_STR);
+	case LINAU_FIELD_NAME_LEN:
+		return (LINAU_FIELD_NAME_LEN_STR);
+	case LINAU_FIELD_NAME_LPORT:
+		return (LINAU_FIELD_NAME_LPORT_STR);
+	case LINAU_FIELD_NAME_LIST:
+		return (LINAU_FIELD_NAME_LIST_STR);
+	case LINAU_FIELD_NAME_MAC:
+		return (LINAU_FIELD_NAME_MAC_STR);
+	case LINAU_FIELD_NAME_MACPROTO:
+		return (LINAU_FIELD_NAME_MACPROTO_STR);
+	case LINAU_FIELD_NAME_MAJ:
+		return (LINAU_FIELD_NAME_MAJ_STR);
+	case LINAU_FIELD_NAME_MAJOR:
+		return (LINAU_FIELD_NAME_MAJOR_STR);
+	case LINAU_FIELD_NAME_MINOR:
+		return (LINAU_FIELD_NAME_MINOR_STR);
+	case LINAU_FIELD_NAME_MODE:
+		return (LINAU_FIELD_NAME_MODE_STR);
+	case LINAU_FIELD_NAME_MODEL:
+		return (LINAU_FIELD_NAME_MODEL_STR);
+	case LINAU_FIELD_NAME_MSG:
+		return (LINAU_FIELD_NAME_MSG_STR);
+	case LINAU_FIELD_NAME_NARGS:
+		return (LINAU_FIELD_NAME_NARGS_STR);
+	case LINAU_FIELD_NAME_NAME:
+		return (LINAU_FIELD_NAME_NAME_STR);
+	case LINAU_FIELD_NAME_NAMETYPE:
+		return (LINAU_FIELD_NAME_NAMETYPE_STR);
+	case LINAU_FIELD_NAME_NET:
+		return (LINAU_FIELD_NAME_NET_STR);
+	case LINAU_FIELD_NAME_NEW:
+		return (LINAU_FIELD_NAME_NEW_STR);
+	case LINAU_FIELD_NAME_NEW_CHARDEV:
+		return (LINAU_FIELD_NAME_NEW_CHARDEV_STR);
+	case LINAU_FIELD_NAME_NEW_DISK:
+		return (LINAU_FIELD_NAME_NEW_DISK_STR);
+	case LINAU_FIELD_NAME_NEW_ENABLED:
+		return (LINAU_FIELD_NAME_NEW_ENABLED_STR);
+	case LINAU_FIELD_NAME_NEW_FS:
+		return (LINAU_FIELD_NAME_NEW_FS_STR);
+	case LINAU_FIELD_NAME_NEW_GID:
+		return (LINAU_FIELD_NAME_NEW_GID_STR);
+	case LINAU_FIELD_NAME_NEW_LEVEL:
+		return (LINAU_FIELD_NAME_NEW_LEVEL_STR);
+	case LINAU_FIELD_NAME_NEW_LOCK:
+		return (LINAU_FIELD_NAME_NEW_LOCK_STR);
+	case LINAU_FIELD_NAME_NEW_LOG_PASSWD:
+		return (LINAU_FIELD_NAME_NEW_LOG_PASSWD_STR);
+	case LINAU_FIELD_NAME_NEW_MEM:
+		return (LINAU_FIELD_NAME_NEW_MEM_STR);
+	case LINAU_FIELD_NAME_NEW_NET:
+		return (LINAU_FIELD_NAME_NEW_NET_STR);
+	case LINAU_FIELD_NAME_NEW_PE:
+		return (LINAU_FIELD_NAME_NEW_PE_STR);
+	case LINAU_FIELD_NAME_NEW_PI:
+		return (LINAU_FIELD_NAME_NEW_PI_STR);
+	case LINAU_FIELD_NAME_NEW_PP:
+		return (LINAU_FIELD_NAME_NEW_PP_STR);
+	case LINAU_FIELD_NAME_NEW_RANGE:
+		return (LINAU_FIELD_NAME_NEW_RANGE_STR);
+	case LINAU_FIELD_NAME_NEW_RNG:
+		return (LINAU_FIELD_NAME_NEW_RNG_STR);
+	case LINAU_FIELD_NAME_NEW_ROLE:
+		return (LINAU_FIELD_NAME_NEW_ROLE_STR);
+	case LINAU_FIELD_NAME_NEW_SEUSER:
+		return (LINAU_FIELD_NAME_NEW_SEUSER_STR);
+	case LINAU_FIELD_NAME_NEW_VCPU:
+		return (LINAU_FIELD_NAME_NEW_VCPU_STR);
+	case LINAU_FIELD_NAME_NLNK_FAM:
+		return (LINAU_FIELD_NAME_NLNK_FAM_STR);
+	case LINAU_FIELD_NAME_NLNK_GRP:
+		return (LINAU_FIELD_NAME_NLNK_GRP_STR);
+	case LINAU_FIELD_NAME_NLNK_PID:
+		return (LINAU_FIELD_NAME_NLNK_PID_STR);
+	case LINAU_FIELD_NAME_OAUID:
+		return (LINAU_FIELD_NAME_OAUID_STR);
+	case LINAU_FIELD_NAME_OBJ:
+		return (LINAU_FIELD_NAME_OBJ_STR);
+	case LINAU_FIELD_NAME_OBJ_GID:
+		return (LINAU_FIELD_NAME_OBJ_GID_STR);
+	case LINAU_FIELD_NAME_OBJ_UID:
+		return (LINAU_FIELD_NAME_OBJ_UID_STR);
+	case LINAU_FIELD_NAME_OFLAG:
+		return (LINAU_FIELD_NAME_OFLAG_STR);
+	case LINAU_FIELD_NAME_OGID:
+		return (LINAU_FIELD_NAME_OGID_STR);
+	case LINAU_FIELD_NAME_OCOMM:
+		return (LINAU_FIELD_NAME_OCOMM_STR);
+	case LINAU_FIELD_NAME_OLD:
+		return (LINAU_FIELD_NAME_OLD_STR);
+	/* case LINAU_FIELD_NAME2_OLD: */
+	/*         return (LINAU_FIELD_NAME2_OLD_STR); */
+	case LINAU_FIELD_NAME_OLD_AUID:
+		return (LINAU_FIELD_NAME_OLD_AUID_STR);
+	case LINAU_FIELD_NAME_OLD_CHARDEV:
+		return (LINAU_FIELD_NAME_OLD_CHARDEV_STR);
+	case LINAU_FIELD_NAME_OLD_DISK:
+		return (LINAU_FIELD_NAME_OLD_DISK_STR);
+	case LINAU_FIELD_NAME_OLD_ENABLED:
+		return (LINAU_FIELD_NAME_OLD_ENABLED_STR);
+	case LINAU_FIELD_NAME_OLD_ENFORCING:
+		return (LINAU_FIELD_NAME_OLD_ENFORCING_STR);
+	case LINAU_FIELD_NAME_OLD_FS:
+		return (LINAU_FIELD_NAME_OLD_FS_STR);
+	case LINAU_FIELD_NAME_OLD_LEVEL:
+		return (LINAU_FIELD_NAME_OLD_LEVEL_STR);
+	case LINAU_FIELD_NAME_OLD_LOCK:
+		return (LINAU_FIELD_NAME_OLD_LOCK_STR);
+	case LINAU_FIELD_NAME_OLD_LOG_PASSWD:
+		return (LINAU_FIELD_NAME_OLD_LOG_PASSWD_STR);
+	case LINAU_FIELD_NAME_OLD_MEM:
+		return (LINAU_FIELD_NAME_OLD_MEM_STR);
+	case LINAU_FIELD_NAME_OLD_NET:
+		return (LINAU_FIELD_NAME_OLD_NET_STR);
+	case LINAU_FIELD_NAME_OLD_PE:
+		return (LINAU_FIELD_NAME_OLD_PE_STR);
+	case LINAU_FIELD_NAME_OLD_PI:
+		return (LINAU_FIELD_NAME_OLD_PI_STR);
+	case LINAU_FIELD_NAME_OLD_PP:
+		return (LINAU_FIELD_NAME_OLD_PP_STR);
+	case LINAU_FIELD_NAME_OLD_PROM:
+		return (LINAU_FIELD_NAME_OLD_PROM_STR);
+	case LINAU_FIELD_NAME_OLD_RANGE:
+		return (LINAU_FIELD_NAME_OLD_RANGE_STR);
+	case LINAU_FIELD_NAME_OLD_RNG:
+		return (LINAU_FIELD_NAME_OLD_RNG_STR);
+	case LINAU_FIELD_NAME_OLD_ROLE:
+		return (LINAU_FIELD_NAME_OLD_ROLE_STR);
+	case LINAU_FIELD_NAME_OLD_SES:
+		return (LINAU_FIELD_NAME_OLD_SES_STR);
+	case LINAU_FIELD_NAME_OLD_SEUSER:
+		return (LINAU_FIELD_NAME_OLD_SEUSER_STR);
+	case LINAU_FIELD_NAME_OLD_VAL:
+		return (LINAU_FIELD_NAME_OLD_VAL_STR);
+	case LINAU_FIELD_NAME_OLD_VCPU:
+		return (LINAU_FIELD_NAME_OLD_VCPU_STR);
+	case LINAU_FIELD_NAME_OP:
+		return (LINAU_FIELD_NAME_OP_STR);
+	case LINAU_FIELD_NAME_OPID:
+		return (LINAU_FIELD_NAME_OPID_STR);
+	case LINAU_FIELD_NAME_OSES:
+		return (LINAU_FIELD_NAME_OSES_STR);
+	case LINAU_FIELD_NAME_OUID:
+		return (LINAU_FIELD_NAME_OUID_STR);
+	case LINAU_FIELD_NAME_OUTIF:
+		return (LINAU_FIELD_NAME_OUTIF_STR);
+	case LINAU_FIELD_NAME_PARENT:
+		return (LINAU_FIELD_NAME_PARENT_STR);
+	case LINAU_FIELD_NAME_PATH:
+		return (LINAU_FIELD_NAME_PATH_STR);
+	case LINAU_FIELD_NAME_PER:
+		return (LINAU_FIELD_NAME_PER_STR);
+	case LINAU_FIELD_NAME_PERM:
+		return (LINAU_FIELD_NAME_PERM_STR);
+	case LINAU_FIELD_NAME_PERM_MASK:
+		return (LINAU_FIELD_NAME_PERM_MASK_STR);
+	case LINAU_FIELD_NAME_PERMISSIVE:
+		return (LINAU_FIELD_NAME_PERMISSIVE_STR);
+	case LINAU_FIELD_NAME_PFS:
+		return (LINAU_FIELD_NAME_PFS_STR);
+	case LINAU_FIELD_NAME_PID:
+		return (LINAU_FIELD_NAME_PID_STR);
+	case LINAU_FIELD_NAME_PPID:
+		return (LINAU_FIELD_NAME_PPID_STR);
+	case LINAU_FIELD_NAME_PRINTER:
+		return (LINAU_FIELD_NAME_PRINTER_STR);
+	case LINAU_FIELD_NAME_PROM:
+		return (LINAU_FIELD_NAME_PROM_STR);
+	case LINAU_FIELD_NAME_PROCTITLE:
+		return (LINAU_FIELD_NAME_PROCTITLE_STR);
+	case LINAU_FIELD_NAME_PROTO:
+		return (LINAU_FIELD_NAME_PROTO_STR);
+	case LINAU_FIELD_NAME_QBYTES:
+		return (LINAU_FIELD_NAME_QBYTES_STR);
+	case LINAU_FIELD_NAME_RANGE:
+		return (LINAU_FIELD_NAME_RANGE_STR);
+	case LINAU_FIELD_NAME_RDEV:
+		return (LINAU_FIELD_NAME_RDEV_STR);
+	case LINAU_FIELD_NAME_REASON:
+		return (LINAU_FIELD_NAME_REASON_STR);
+	case LINAU_FIELD_NAME_REMOVED:
+		return (LINAU_FIELD_NAME_REMOVED_STR);
+	case LINAU_FIELD_NAME_RES:
+		return (LINAU_FIELD_NAME_RES_STR);
+	case LINAU_FIELD_NAME_RESRC:
+		return (LINAU_FIELD_NAME_RESRC_STR);
+	case LINAU_FIELD_NAME_RESULT:
+		return (LINAU_FIELD_NAME_RESULT_STR);
+	case LINAU_FIELD_NAME_ROLE:
+		return (LINAU_FIELD_NAME_ROLE_STR);
+	case LINAU_FIELD_NAME_RPORT:
+		return (LINAU_FIELD_NAME_RPORT_STR);
+	case LINAU_FIELD_NAME_SADDR:
+		return (LINAU_FIELD_NAME_SADDR_STR);
+	case LINAU_FIELD_NAME_SAUID:
+		return (LINAU_FIELD_NAME_SAUID_STR);
+	case LINAU_FIELD_NAME_SCONTEXT:
+		return (LINAU_FIELD_NAME_SCONTEXT_STR);
+	case LINAU_FIELD_NAME_SELECTED:
+		return (LINAU_FIELD_NAME_SELECTED_STR);
+	case LINAU_FIELD_NAME_SEPERM:
+		return (LINAU_FIELD_NAME_SEPERM_STR);
+	case LINAU_FIELD_NAME_SEQNO:
+		return (LINAU_FIELD_NAME_SEQNO_STR);
+	case LINAU_FIELD_NAME_SEPERMS:
+		return (LINAU_FIELD_NAME_SEPERMS_STR);
+	case LINAU_FIELD_NAME_SERESULT:
+		return (LINAU_FIELD_NAME_SERESULT_STR);
+	case LINAU_FIELD_NAME_SES:
+		return (LINAU_FIELD_NAME_SES_STR);
+	case LINAU_FIELD_NAME_SEUSER:
+		return (LINAU_FIELD_NAME_SEUSER_STR);
+	case LINAU_FIELD_NAME_SGID:
+		return (LINAU_FIELD_NAME_SGID_STR);
+	case LINAU_FIELD_NAME_SIG:
+		return (LINAU_FIELD_NAME_SIG_STR);
+	case LINAU_FIELD_NAME_SIGEV_SIGNO:
+		return (LINAU_FIELD_NAME_SIGEV_SIGNO_STR);
+	case LINAU_FIELD_NAME_SMAC:
+		return (LINAU_FIELD_NAME_SMAC_STR);
+	case LINAU_FIELD_NAME_SPID:
+		return (LINAU_FIELD_NAME_SPID_STR);
+	case LINAU_FIELD_NAME_SPORT:
+		return (LINAU_FIELD_NAME_SPORT_STR);
+	case LINAU_FIELD_NAME_STATE:
+		return (LINAU_FIELD_NAME_STATE_STR);
+	case LINAU_FIELD_NAME_SUBJ:
+		return (LINAU_FIELD_NAME_SUBJ_STR);
+	case LINAU_FIELD_NAME_SUCCESS:
+		return (LINAU_FIELD_NAME_SUCCESS_STR);
+	case LINAU_FIELD_NAME_SUID:
+		return (LINAU_FIELD_NAME_SUID_STR);
+	case LINAU_FIELD_NAME_SYSCALL:
+		return (LINAU_FIELD_NAME_SYSCALL_STR);
+	case LINAU_FIELD_NAME_TABLE:
+		return (LINAU_FIELD_NAME_TABLE_STR);
+	case LINAU_FIELD_NAME_TCLASS:
+		return (LINAU_FIELD_NAME_TCLASS_STR);
+	case LINAU_FIELD_NAME_TCONTEXT:
+		return (LINAU_FIELD_NAME_TCONTEXT_STR);
+	case LINAU_FIELD_NAME_TERMINAL:
+		return (LINAU_FIELD_NAME_TERMINAL_STR);
+	case LINAU_FIELD_NAME_TTY:
+		return (LINAU_FIELD_NAME_TTY_STR);
+	case LINAU_FIELD_NAME_TYPE:
+		return (LINAU_FIELD_NAME_TYPE_STR);
+	case LINAU_FIELD_NAME_UID:
+		return (LINAU_FIELD_NAME_UID_STR);
+	case LINAU_FIELD_NAME_UNIT:
+		return (LINAU_FIELD_NAME_UNIT_STR);
+	case LINAU_FIELD_NAME_URI:
+		return (LINAU_FIELD_NAME_URI_STR);
+	case LINAU_FIELD_NAME_USER:
+		return (LINAU_FIELD_NAME_USER_STR);
+	case LINAU_FIELD_NAME_UUID:
+		return (LINAU_FIELD_NAME_UUID_STR);
+	case LINAU_FIELD_NAME_VAL:
+		return (LINAU_FIELD_NAME_VAL_STR);
+	case LINAU_FIELD_NAME_VER:
+		return (LINAU_FIELD_NAME_VER_STR);
+	case LINAU_FIELD_NAME_VIRT:
+		return (LINAU_FIELD_NAME_VIRT_STR);
+	case LINAU_FIELD_NAME_VM:
+		return (LINAU_FIELD_NAME_VM_STR);
+	case LINAU_FIELD_NAME_VM_CTX:
+		return (LINAU_FIELD_NAME_VM_CTX_STR);
+	case LINAU_FIELD_NAME_VM_PID:
+		return (LINAU_FIELD_NAME_VM_PID_STR);
+	case LINAU_FIELD_NAME_WATCH:
+		return (LINAU_FIELD_NAME_WATCH_STR);
+	default:
+		PJDLOG_ABORT("Field name should be marked as "
+		    "LINAU_FIELD_NAME_UNDEFINED if "
+		    "it is not a standard name.");
+	}
 }
 
 static uint32_t
