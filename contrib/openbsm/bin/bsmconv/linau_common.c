@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "linau_impl.h"
+#include "linau_common.h"
 #include "pjdlog.h"
-
 
 int
 linau_proto_compare_origin(uint32_t id1, uint64_t time1, uint32_t id2,
@@ -65,6 +64,7 @@ void
 locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
     size_t *nsecsposp, size_t *idposp, size_t *msgendp)
 {
+	const char * msgprefix;
 	size_t buflen;
 	size_t dotpos;
 	size_t idstart;
@@ -76,13 +76,13 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	size_t secsstart;
 	size_t separatorpos;
 	size_t strii;
-	const char * msgprefix;
-
-	pjdlog_debug(6, " . . > linau_record_locate_msg");
 
 	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
+
 	buflen = strlen(buf);
+
+	pjdlog_debug(6, " . . > linau_record_locate_msg");
 
 	msgprefix = "msg=audit(";
 	msgprefixlen = strlen(msgprefix);

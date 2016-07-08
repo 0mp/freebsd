@@ -3,20 +3,20 @@
 #include <string.h>
 
 #include "linau.h"
+#include "linau_common.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
 
+static size_t find_string_value_end(const char *buf, size_t start,
+    char stringtype);
 
-static size_t	find_string_value_end(const char *buf, size_t start,
-		    char stringtype);
-
-
-size_t
+static size_t
 find_string_value_end(const char *buf, size_t start, char stringtype)
 {
 	size_t buflen;
 	size_t end;
-	size_t prevend;
+	/* XXX How to call such variables like endchrp? */
+	char *endchrp;
 
 	PJDLOG_ASSERT(buf != NULL);
 
@@ -25,13 +25,13 @@ find_string_value_end(const char *buf, size_t start, char stringtype)
 	PJDLOG_ASSERT(end < buflen);
 
 	do {
-		prevend = end;
-		PJDLOG_VERIFY(find_position(&end, buf, prevend, stringtype));
+		endchrp = strchr(buf + end, stringtype);
+		PJDLOG_VERIFY(endchrp != NULL);
+		end = endchrp - buf;
 	} while (buf[end - 1] == '\\');
 
 	return (end);
 }
-
 
 struct linau_field *
 linau_field_create(void)
@@ -67,6 +67,7 @@ linau_field_move_name(struct linau_field *field, char *name)
 
 	PJDLOG_ASSERT(field != NULL);
 	PJDLOG_ASSERT(name != NULL);
+
 	field->lf_name = name;
 }
 
@@ -76,25 +77,26 @@ linau_field_move_value(struct linau_field *field, char *value)
 
 	PJDLOG_ASSERT(field != NULL);
 	PJDLOG_ASSERT(value != NULL);
+
 	field->lf_value = value;
 }
 
 struct linau_field *
 linau_field_parse(const char *buf, size_t *lastposp)
 {
+	struct linau_field *field;
+	char *name;
+	char *value;
 	size_t buflen;
 	size_t equalpos;
 	size_t nameend;
 	size_t namestart;
 	size_t valstart;
-	struct linau_field *field;
-	char *name;
-	char *value;
-
-	pjdlog_debug(6, " . . . . . + linau_record_parse_field");
 
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(lastposp != NULL);
+
+	pjdlog_debug(6, " . . . . . + linau_record_parse_field");
 
 	buflen = strlen(buf);
 
@@ -162,9 +164,9 @@ linau_field_parse_name(const char *buf, size_t start, size_t end)
 char *
 linau_field_parse_value(const char *buf, size_t start)
 {
+	char *value;
 	size_t end;
 	size_t spacepos;
-	char *value;
 
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);

@@ -5,30 +5,25 @@
 #include <bsm/audit_kevents.h>
 
 #include "linau.h"
+#include "linau_common.h"
 #include "linau_impl.h"
 #include "pjdlog.h"
 
-
+#define	BSMCONV_LINAU_EVENT_AU_BUFFER		8192
 #define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
 
-
-static const struct linau_record	*get_any_record(
-					    const struct linau_event *event);
-static unsigned short			 determine_aueventid(
-					    const struct linau_event *event);
-
+static const struct linau_record *get_any_record(
+    const struct linau_event *event);
+static unsigned short determine_aueventid(const struct linau_event *event);
 
 static const struct linau_record *
 get_any_record(const struct linau_event *event)
 {
-	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
-	PJDLOG_ASSERT(linau_event_empty(event) == false);
+	PJDLOG_ASSERT(!linau_event_empty(event));
 
-	anyrecord = TAILQ_FIRST(&event->le_records);
-
-	return (anyrecord);
+	return (TAILQ_FIRST(&event->le_records));
 }
 
 /* TODO This is a temporary solution. */
@@ -40,7 +35,6 @@ determine_aueventid(const struct linau_event *event)
 
 	return (AUE_NULL);
 }
-
 
 struct linau_event *
 linau_event_create(void)
@@ -92,10 +86,10 @@ linau_event_add_record(struct linau_event *event,
     struct linau_record *record)
 {
 
-	pjdlog_debug(3, " . . + linau_event_add_record");
-
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
+
+	pjdlog_debug(3, " . . + linau_event_add_record");
 
 	pjdlog_debug(3, " . . . id (%u), timestamp (%llu)",
 	    linau_record_get_id(record),
@@ -118,7 +112,7 @@ linau_event_get_id(const struct linau_event *event)
 {
 
 	PJDLOG_ASSERT(event != NULL);
-	PJDLOG_ASSERT(linau_event_empty(event) == false);
+	PJDLOG_ASSERT(!linau_event_empty(event));
 
 	return (linau_record_get_id(get_any_record(event)));
 }
@@ -163,6 +157,8 @@ linau_event_dump(const struct linau_event *event)
 	struct linau_record *record;
 	int type;
 
+	PJDLOG_ASSERT(event != NULL);
+
 	printf("event:\n");
 
 	TAILQ_FOREACH(record, &event->le_records, lr_next) {
@@ -194,6 +190,9 @@ linau_event_dump(const struct linau_event *event)
 	}
 }
 
+/*
+ * Return 0 if the event is empty. Otherwise, see linau_record_comapre_origin().
+ */
 int
 linau_event_compare_origin(const struct linau_event *event,
     const struct linau_record *record)
@@ -205,7 +204,9 @@ linau_event_compare_origin(const struct linau_event *event,
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(linau_event_empty(event) == false);
+
+	if (linau_event_empty(event))
+		return (0);
 
 	eventid = linau_event_get_id(event);
 	recordid = linau_record_get_id(record);
@@ -216,17 +217,18 @@ linau_event_compare_origin(const struct linau_event *event,
 	    recordtime));
 }
 
+/*
+ * TODO We allow empty events. Create a test to be sure that this function is
+ * empty-event proof.
+ */
 int
 linau_event_to_au(const struct linau_event *event, unsigned short *aueventidp)
 {
 	struct linau_record *record;
 	int aurecordd;
 
+	PJDLOG_ASSERT(aueventidp != NULL);
 	PJDLOG_ASSERT(event != NULL);
-	/* XXX How can I check if the head is initialized? */
-	/* PJDLOG_ASSERT(event->le_records != NULL); */
-
-	/* XXX Should we allow empty events? */
 
 	/* Get a record descriptor. */
 	aurecordd = au_open();
@@ -234,9 +236,35 @@ linau_event_to_au(const struct linau_event *event, unsigned short *aueventidp)
 
 	/* Tokenise event's records. */
 	TAILQ_FOREACH(record, &event->le_records, lr_next)
-		linau_record_to_au(aurecordd, record);
+		linau_record_to_au(record, aurecordd);
 
 	*aueventidp = determine_aueventid(event);
 
 	return (aurecordd);
+}
+
+u_char *
+linau_event_process(const struct linau_event *event, size_t *buflenp)
+{
+	u_char *buf;
+	struct timeval *tm;
+	int aurecordd;
+	unsigned short aueventid;
+
+	PJDLOG_ASSERT(event != NULL);
+
+	*buflenp = BSMCONV_LINAU_EVENT_AU_BUFFER;
+
+	buf = malloc(sizeof(*buf) * *buflenp);
+	PJDLOG_VERIFY(buf != NULL);
+
+	aurecordd = linau_event_to_au(event, &aueventid);
+	tm = linau_event_get_timeval(event);
+
+	PJDLOG_VERIFY(
+	    au_close_buffer_tm(aurecordd, aueventid, buf, buflenp, tm) == 0);
+
+	free(tm);
+
+	return (buf);
 }

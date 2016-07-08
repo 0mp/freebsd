@@ -2,30 +2,16 @@
 #define _LINAU_H_
 
 #include <sys/nv.h>
-#include <sys/queue.h>
+#include <sys/types.h>
 
 #include <stdint.h>
 #include <stdio.h>
 
+struct linau_event;
 
-struct linau_event {
-	TAILQ_HEAD(, linau_record) 	le_records;
-};
+struct linau_record;
 
-struct linau_record {
-	char				*lr_type;
-	uint32_t			 lr_id;
-	uint64_t			 lr_time;
-	char				*lr_text;
-	TAILQ_ENTRY(linau_record)	 lr_next;
-	nvlist_t			*lr_fields;
-};
-
-struct linau_field {
-	char	*lf_name;
-	char	*lf_value;
-};
-
+struct linau_field;
 
 /* linau_event. */
 struct linau_event	*linau_event_create(void);
@@ -51,6 +37,8 @@ int			 linau_event_compare_origin(
 int			 linau_event_to_au(const struct linau_event *event,
 			    unsigned short *aueventidp);
 
+u_char			*linau_event_process(const struct linau_event *event,
+			    size_t *buflenp);
 
 /* linau_record. */
 struct			 linau_record *linau_record_create(void);
@@ -97,9 +85,8 @@ int			 linau_record_comapre_origin(
 			    const struct linau_record *reca,
 			    const struct linau_record *recb);
 
-void			 linau_record_to_au(int aurecordd,
-			    const struct linau_record *record);
-
+void			 linau_record_to_au(const struct linau_record *record,
+			    int aurecordd);
 
 /* linau_field. */
 struct linau_field	*linau_field_create(void);
