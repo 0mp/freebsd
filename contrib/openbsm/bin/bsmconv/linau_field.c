@@ -51,6 +51,7 @@ linau_field_destroy(struct linau_field *field)
 	free(field->lf_name);
 	free(field->lf_value);
 	free(field);
+	/* XXX Should I change field to NULL now? */
 }
 
 void
@@ -184,8 +185,7 @@ linau_field_parse_value(const char *buf, size_t start)
 		/* XXX Ugly. */
 		if (!find_position(&spacepos, buf, start, ' ')) {
 			PJDLOG_ASSERT(spacepos == strlen(buf));
-			spacepos--; // Newline.
-			PJDLOG_ASSERT(buf[spacepos] == '\n');
+			PJDLOG_ASSERT(buf[spacepos] == '\0');
 		}
 		end = spacepos - 1;
 
