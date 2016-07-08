@@ -215,12 +215,12 @@ au_write(int d, token_t *tok)
  * XXX: Assumes there is sufficient space for the header and trailer.
  */
 static int
-au_assemble(au_record_t *rec, short event, struct timeval *tm)
+au_assemble(au_record_t *rec, short event, struct timeval *rectm)
 {
 #ifdef HAVE_AUDIT_SYSCALLS
 	struct in6_addr *aptr;
 	struct auditinfo_addr aia;
-	struct timeval localtm;
+	struct timeval tm;
 	size_t hdrsize;
 #endif /* HAVE_AUDIT_SYSCALLS */
 	token_t *header, *tok, *trailer;
@@ -239,13 +239,13 @@ au_assemble(au_record_t *rec, short event, struct timeval *tm)
 		if (errno != ENOSYS && errno != EPERM)
 			return (-1);
 #endif /* HAVE_AUDIT_SYSCALLS */
-		if (tm != NULL)
-			localtm = *tm;
-		else if (gettimeofday(&localtm, NULL) < 0)
+		if (rectm != NULL)
+			tm = *rectm;
+		else if (gettimeofday(&tm, NULL) < 0)
 			return (-1);
 		tot_rec_size = rec->len + AUDIT_HEADER_SIZE +
 		    AUDIT_TRAILER_SIZE;
-		header = au_to_header32_tm(tot_rec_size, event, 0, localtm);
+		header = au_to_header32_tm(tot_rec_size, event, 0, tm);
 #ifdef HAVE_AUDIT_SYSCALLS
 	} else {
 		switch (aia.ai_termid.at_type) {
@@ -268,11 +268,10 @@ au_assemble(au_record_t *rec, short event, struct timeval *tm)
 		 * that we are using an extended header.
 		 */
 		if (hdrsize > AUDIT_HEADER_SIZE)
-			header = au_to_header32_ex_tm(tot_rec_size, event,
-			    0, localtm, &aia);
+			header = au_to_header32_ex_tm(tot_rec_size, event, 0,
+			    tm, &aia);
 		else
-			header = au_to_header32_tm(tot_rec_size, event, 0,
-			    localtm);
+			header = au_to_header32_tm(tot_rec_size, event, 0, tm);
 	}
 #endif /* HAVE_AUDIT_SYSCALLS */
 	if (header == NULL)
