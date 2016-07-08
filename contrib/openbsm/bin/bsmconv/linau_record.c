@@ -18,7 +18,8 @@
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 
-#define	GET_NUM_OF_ARGS(...) (sizeof((int[]){__VA_ARGS__})/sizeof(int))
+#define	GET_NUM_ARGS(...) (sizeof((int[]){__VA_ARGS__})/sizeof(int))
+#define	PREPEND_NUM_ARGS(...) GET_NUM_ARGS(__VA_ARGS__), __VA_ARGS__
 
 static int get_linau_type_num(const char *type);
 static void convert_to_au(int aurecordd, const struct linau_record *record,
