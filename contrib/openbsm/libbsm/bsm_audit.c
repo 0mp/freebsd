@@ -215,12 +215,12 @@ au_write(int d, token_t *tok)
  * XXX: Assumes there is sufficient space for the header and trailer.
  */
 static int
-au_assemble(au_record_t *rec, short event)
+au_assemble(au_record_t *rec, short event, struct timeval *tm)
 {
 #ifdef HAVE_AUDIT_SYSCALLS
 	struct in6_addr *aptr;
 	struct auditinfo_addr aia;
-	struct timeval tm;
+	struct timeval localtm;
 	size_t hdrsize;
 #endif /* HAVE_AUDIT_SYSCALLS */
 	token_t *header, *tok, *trailer;
@@ -239,13 +239,15 @@ au_assemble(au_record_t *rec, short event)
 		if (errno != ENOSYS && errno != EPERM)
 			return (-1);
 #endif /* HAVE_AUDIT_SYSCALLS */
+		if (tm != NULL)
+			localtm = *tm;
+		else if (gettimeofday(&localtm, NULL) < 0)
+			return (-1);
 		tot_rec_size = rec->len + AUDIT_HEADER_SIZE +
 		    AUDIT_TRAILER_SIZE;
-		header = au_to_header(tot_rec_size, event, 0);
+		header = au_to_header32_tm(tot_rec_size, event, 0, localtm);
 #ifdef HAVE_AUDIT_SYSCALLS
 	} else {
-		if (gettimeofday(&tm, NULL) < 0)
-			return (-1);
 		switch (aia.ai_termid.at_type) {
 		case AU_IPv4:
 			hdrsize = (aia.ai_termid.at_addr[0] == INADDR_ANY) ?
@@ -267,9 +269,10 @@ au_assemble(au_record_t *rec, short event)
 		 */
 		if (hdrsize > AUDIT_HEADER_SIZE)
 			header = au_to_header32_ex_tm(tot_rec_size, event,
-			    0, tm, &aia);
+			    0, localtm, &aia);
 		else
-			header = au_to_header(tot_rec_size, event, 0);
+			header = au_to_header32_tm(tot_rec_size, event, 0,
+			    localtm);
 	}
 #endif /* HAVE_AUDIT_SYSCALLS */
 	if (header == NULL)
@@ -364,7 +367,7 @@ au_close(int d, int keep, short event)
 		goto cleanup;
 	}
 
-	if (au_assemble(rec, event) < 0) {
+	if (au_assemble(rec, event, NULL) < 0) {
 		/*
 		 * XXXRW: This is also not supposed to happen, but might if we
 		 * are unable to allocate header and trailer memory.
@@ -388,7 +391,8 @@ cleanup:
  * record size returned via same argument on success.
  */
 int
-au_close_buffer(int d, short event, u_char *buffer, size_t *buflen)
+au_close_buffer_tm(int d, short event, u_char *buffer, size_t *buflen,
+    struct timeval *tm)
 {
 	size_t tot_rec_size;
 	au_record_t *rec;
@@ -413,7 +417,7 @@ au_close_buffer(int d, short event, u_char *buffer, size_t *buflen)
 		goto cleanup;
 	}
 
-	if (au_assemble(rec, event) < 0) {
+	if (au_assemble(rec, event, tm) < 0) {
 		/* XXXRW: See au_close() comment. */
 		retval = -1;
 		goto cleanup;
@@ -425,6 +429,13 @@ au_close_buffer(int d, short event, u_char *buffer, size_t *buflen)
 cleanup:
 	au_teardown(rec);
 	return (retval);
+}
+
+int
+au_close_buffer(int d, short event, u_char *buffer, size_t *buflen)
+{
+
+	return (au_close_buffer_tm(d, event, buffer, buflen, NULL));
 }
 
 /*

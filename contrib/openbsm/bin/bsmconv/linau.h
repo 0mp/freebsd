@@ -14,9 +14,10 @@ struct linau_event {
 
 struct linau_record {
 	char				*lr_type;
-	uint32_t			lr_id;
-	uint64_t			lr_time;
-	TAILQ_ENTRY(linau_record)	lr_next;
+	uint32_t			 lr_id;
+	uint64_t			 lr_time;
+	char				*lr_text;
+	TAILQ_ENTRY(linau_record)	 lr_next;
 	nvlist_t			*lr_fields;
 };
 
@@ -38,22 +39,35 @@ bool			 linau_event_empty(const struct linau_event *event);
 uint32_t		 linau_event_get_id(const struct linau_event *event);
 uint64_t		 linau_event_get_time(const struct linau_event *event);
 
+struct timeval		*linau_event_get_timeval(
+			    const struct linau_event *event);
+
 void			 linau_event_dump(const struct linau_event *event);
 
 int			 linau_event_compare_origin(
 			    const struct linau_event *event,
 			    const struct linau_record *record);
 
-int			 linau_event_to_au(const struct linau_event *event);
+int			 linau_event_to_au(const struct linau_event *event,
+			    unsigned short *aueventidp);
 
 
 /* linau_record. */
 struct			 linau_record *linau_record_create(void);
 void			 linau_record_destroy(struct linau_record *record);
 
+bool			 linau_record_exists_field(
+			    const struct linau_record *record,
+			    const char *name);
+
+const char		*linau_record_get_field(
+			    const struct linau_record *record,
+			    const char *name);
 nvlist_t		*linau_record_get_fields(
 			    const struct linau_record *record);
 uint32_t		 linau_record_get_id(const struct linau_record *record);
+const char		*linau_record_get_text(
+			    const struct linau_record *record);
 uint64_t		 linau_record_get_time(
 			    const struct linau_record *record);
 const char		*linau_record_get_type(
@@ -66,6 +80,8 @@ void			 linau_record_move_type(struct linau_record *record,
 
 void			 linau_record_set_id(struct linau_record *record,
 			    uint32_t id);
+void			 linau_record_set_text(struct linau_record *record,
+			    const char *text);
 void			 linau_record_set_time(struct linau_record *record,
 			    uint64_t time);
 

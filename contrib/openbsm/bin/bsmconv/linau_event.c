@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include <bsm/libbsm.h>
+#include <bsm/audit_kevents.h>
 
 #include "linau.h"
 #include "linau_impl.h"
@@ -9,6 +10,36 @@
 
 
 #define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
+
+
+static const struct linau_record	*get_any_record(
+					    const struct linau_event *event);
+static unsigned short			 determine_aueventid(
+					    const struct linau_event *event);
+
+
+static const struct linau_record *
+get_any_record(const struct linau_event *event)
+{
+	struct linau_record *anyrecord;
+
+	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(linau_event_empty(event) == false);
+
+	anyrecord = TAILQ_FIRST(&event->le_records);
+
+	return (anyrecord);
+}
+
+/* TODO This is a temporary solution. */
+static unsigned short
+determine_aueventid(const struct linau_event *event)
+{
+
+	(void)event;
+
+	return (AUE_NULL);
+}
 
 
 struct linau_event *
@@ -85,27 +116,42 @@ linau_event_empty(const struct linau_event *event)
 uint32_t
 linau_event_get_id(const struct linau_event *event)
 {
-	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(linau_event_empty(event) == false);
 
-	anyrecord = TAILQ_FIRST(&event->le_records);
-
-	return (linau_record_get_id(anyrecord));
+	return (linau_record_get_id(get_any_record(event)));
 }
 
 uint64_t
 linau_event_get_time(const struct linau_event *event)
 {
-	struct linau_record *anyrecord;
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(!TAILQ_EMPTY(&event->le_records));
 
-	anyrecord = TAILQ_FIRST(&event->le_records);
+	return (linau_record_get_time(get_any_record(event)));
+}
 
-	return (linau_record_get_time(anyrecord));
+struct timeval *
+linau_event_get_timeval(const struct linau_event *event)
+{
+	uint64_t time;
+	const struct linau_record *record;
+	struct timeval *tm;
+
+	PJDLOG_ASSERT(event != NULL);
+
+	record = get_any_record(event);
+	time = linau_record_get_time(record);
+
+	tm = calloc(1, sizeof(*tm));
+	PJDLOG_VERIFY(tm != NULL);
+
+	tm->tv_sec = time / (1000 * 1000 * 1000);
+	tm->tv_usec = (time % (1000 * 1000 * 1000)) / 1000;
+
+	return (tm);
 }
 
 void
@@ -121,6 +167,7 @@ linau_event_dump(const struct linau_event *event)
 
 	TAILQ_FOREACH(record, &event->le_records, lr_next) {
 		printf(" > record:\n");
+		printf(" > > text (%s)\n", linau_record_get_text(record));
 		printf(" > > id (%u)\n", linau_record_get_id(record));
 		printf(" > > time (%llu)\n", linau_record_get_time(record));
 		cookie = NULL;
@@ -170,7 +217,7 @@ linau_event_compare_origin(const struct linau_event *event,
 }
 
 int
-linau_event_to_au(const struct linau_event *event)
+linau_event_to_au(const struct linau_event *event, unsigned short *aueventidp)
 {
 	struct linau_record *record;
 	int aurecordd;
@@ -188,6 +235,8 @@ linau_event_to_au(const struct linau_event *event)
 	/* Tokenise event's records. */
 	TAILQ_FOREACH(record, &event->le_records, lr_next)
 		linau_record_to_au(aurecordd, record);
+
+	*aueventidp = determine_aueventid(event);
 
 	return (aurecordd);
 }

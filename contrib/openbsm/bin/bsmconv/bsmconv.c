@@ -1,8 +1,11 @@
+#include <sys/time.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 
 #include <bsm/libbsm.h>
+#include <bsm/audit_record.h>
 
 #include "linau.h"
 #include "pjdlog.h"
@@ -11,26 +14,32 @@
 
 
 static void	process_events(FILE *fp);
-static void	process_event(const struct linau_event *event, short eventid);
+static void	process_event(const struct linau_event *event);
 static void	parse_command_line_options(int argc, char **argv,
 		    int *debuglevelp);
 
 
 static void
-process_event(const struct linau_event *event, short eventid)
+process_event(const struct linau_event *event)
 {
 	size_t buflen;
 	u_char buf[BSMCONV_BUFFER_SIZE];
 	int aurecordd;
+	struct timeval *tm;
+	unsigned short aueventid;
 
 	PJDLOG_ASSERT(event != NULL);
 
-	aurecordd = linau_event_to_au(event);
+	aurecordd = linau_event_to_au(event, &aueventid);
+	tm = linau_event_get_timeval(event);
 
 	buflen = BSMCONV_BUFFER_SIZE;
-	PJDLOG_VERIFY(au_close_buffer(aurecordd, eventid, buf, &buflen) == 0);
+	PJDLOG_VERIFY(
+	    au_close_buffer_tm(aurecordd, aueventid, buf, &buflen, tm) == 0);
 
 	write(1, buf, buflen);
+
+	free(tm);
 }
 
 static void
@@ -38,24 +47,21 @@ process_events(FILE *fp)
 {
 	struct linau_event *event;
 	struct linau_record *record;
-	short eventid;
 
 	PJDLOG_ASSERT(fp != NULL);
 
 	event = linau_event_create();
 	PJDLOG_VERIFY(event != NULL);
 
-	eventid = 0;
 	while ((record = linau_record_fetch(fp)) != NULL) {
 		if (!linau_event_empty(event) &&
 		    linau_event_compare_origin(event, record)) {
-			process_event(event, eventid);
+			process_event(event);
 			linau_event_clear(event);
-			eventid++;
 		}
 		linau_event_add_record(event, record);
 	}
-	process_event(event, eventid);
+	process_event(event);
 
 	linau_event_destroy(event);
 }

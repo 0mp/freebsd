@@ -16,6 +16,7 @@ void		 locate_msg(const char *buf, size_t *msgstartp,
 		    size_t *secsposp, size_t *nsecsposp, size_t *idposp,
 		    size_t *msgendp);
 char		*extract_substring(const char *buf, size_t start, size_t len);
+uint64_t	 combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs);
 
 
 #endif
