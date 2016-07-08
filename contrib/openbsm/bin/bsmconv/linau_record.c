@@ -18,6 +18,7 @@
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 
+#define	GET_NUM_OF_ARGS(...) (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 
 static int get_linau_type_num(const char *type);
 static void convert_to_au(int aurecordd, const struct linau_record *record,
@@ -499,6 +500,7 @@ convert_to_au(int aurecordd, const struct linau_record *record, int typenum)
 		/* FALLTHROUGH */
 	case LINAU_TYPE_USER_CMD:
 		/* Check existance of the required fields. */
+		(void)field_name_from_field_name_id(1);
 
 		; // TODO
 //		if (availablefields != linau_record_get_fields_count(record)) {
@@ -1278,7 +1280,7 @@ field_name_from_field_name_id(int fieldnameid)
 	default:
 		PJDLOG_ABORT("Field name should be marked as "
 		    "LINAU_FIELD_NAME_UNDEFINED if "
-		    "it is not a standard name.");
+		    "it is not a standard name");
 	}
 }
 
@@ -1775,4 +1777,3 @@ linau_record_to_au(const struct linau_record *record, int aurecordd)
 	/* Generate a token. */
 	convert_to_au(aurecordd, record, typenum);
 }
-
