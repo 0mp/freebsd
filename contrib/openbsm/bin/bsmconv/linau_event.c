@@ -169,6 +169,8 @@ linau_event_dump(const struct linau_event *event)
 		printf(" > > text (%s)\n", linau_record_get_text(record));
 		printf(" > > id (%u)\n", linau_record_get_id(record));
 		printf(" > > time (%llu)\n", linau_record_get_time(record));
+		printf(" > > fields count (%zu)\n",
+		    linau_record_get_fields_count(record));
 		cookie = NULL;
 		fields = linau_record_get_fields(record);
 		while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {

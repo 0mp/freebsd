@@ -849,6 +849,7 @@ struct linau_record {
 	char				*lr_type;
 	uint64_t			 lr_time;
 	nvlist_t			*lr_fields;
+	size_t				 lr_fields_count;
 	char				*lr_text;
 	TAILQ_ENTRY(linau_record)	 lr_next;
 };

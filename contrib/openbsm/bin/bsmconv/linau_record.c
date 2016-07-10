@@ -1333,6 +1333,8 @@ linau_record_create(void)
 	record = calloc(1, sizeof(*record));
 	PJDLOG_VERIFY(record != NULL);
 
+	PJDLOG_ASSERT(record->lr_fields_count == 0);
+
 	return (record);
 }
 
@@ -1394,6 +1396,14 @@ linau_record_get_fields(const struct linau_record *record)
 	return (record->lr_fields);
 }
 
+size_t
+linau_record_get_fields_count(const struct linau_record *record)
+{
+	PJDLOG_ASSERT(record != NULL);
+
+	return (record->lr_fields_count);
+}
+
 uint32_t
 linau_record_get_id(const struct linau_record *record)
 {
@@ -1439,6 +1449,19 @@ linau_record_move_fields(struct linau_record *record, nvlist_t *fields)
 	PJDLOG_ASSERT(fields != NULL);
 
 	record->lr_fields = fields;
+}
+
+void
+linau_record_set_fields_count(struct linau_record *record, size_t fields_count)
+{
+	PJDLOG_ASSERT(record != NULL);
+	/*
+	 * XXX This assert is check whether it makes sense to set fields_count.
+	 */
+	PJDLOG_ASSERT(record->lr_fields != NULL);
+
+	record->lr_fields_count = fields_count;
+
 }
 
 void
@@ -1494,6 +1517,7 @@ struct linau_record *
 linau_record_parse(const char *buf)
 {
 	struct linau_record *record;
+	size_t fields_count;
 
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
@@ -1505,7 +1529,9 @@ linau_record_parse(const char *buf)
 	linau_record_move_type(record, linau_record_parse_type(buf));
 	linau_record_set_id(record, linau_record_parse_id(buf));
 	linau_record_set_time(record, linau_record_parse_time(buf));
-	linau_record_move_fields(record, linau_record_parse_fields(buf));
+	linau_record_move_fields(record, linau_record_parse_fields(buf,
+	     &fields_count));
+	linau_record_set_fields_count(record, fields_count);
 	linau_record_set_text(record, buf);
 
 	pjdlog_debug(3, " . . . > id (%u), time (%ju)",
@@ -1542,10 +1568,15 @@ linau_record_parse_id(const char *buf)
 	return (id);
 }
 
+/*
+ * XXX Is size_t *fields_countp a nice way to pass the number of fields back to
+ * the caller?
+ */
 nvlist_t *
-linau_record_parse_fields(const char *buf)
+linau_record_parse_fields(const char *buf, size_t *fields_countp)
 {
 	size_t buflen;
+	size_t fields_count;
 	size_t lastpos;
 	size_t msgend;
 	struct linau_field *field;
@@ -1560,12 +1591,14 @@ linau_record_parse_fields(const char *buf)
 
 	/*
 	 * XXX NV_FLAG_NO_UNIQUE is currently not supported because I cannot
-	 * link the new library.
+	 * link the new library. I failed to make install the library from
+	 * sources either.
 	 */
 	/* fields = nvlist_create(NV_FLAG_NO_UNIQUE); */
 	fields = nvlist_create(0);
 	/* XXX Do we need this VERIFY? */
 	PJDLOG_VERIFY(fields != NULL);
+	PJDLOG_VERIFY(nvlist_error(fields) == 0);
 
 	/* Find the beginning of the field section. */
 	PJDLOG_VERIFY(find_position(&msgend, buf, 0, ')'));
@@ -1577,6 +1610,7 @@ linau_record_parse_fields(const char *buf)
 	pjdlog_debug(5, " . . . . . lastpos (%zu)", lastpos);
 
 	/* While not all bytes of the buf are processed. */
+	fields_count = 0;
 	while (lastpos < buflen) {
 		field = NULL;
 
@@ -1586,10 +1620,14 @@ linau_record_parse_fields(const char *buf)
 		/* Append the field to the fields list. */
 		nvlist_move_string(fields, field->lf_name, field->lf_value);
 
+		fields_count++;
+
 		linau_field_shallow_destroy(field);
 	}
 
 	pjdlog_debug(5, " . . . . -");
+
+	*fields_countp = fields_count;
 
 	return (fields);
 }
