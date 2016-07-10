@@ -20,7 +20,6 @@
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 
 static uint32_t extract_uint32(const char *buf, size_t start, size_t end);
-static uint32_t string_to_uint32(const char *str);
 
 static uint32_t
 extract_uint32(const char *buf, size_t start, size_t end)
@@ -38,26 +37,6 @@ extract_uint32(const char *buf, size_t start, size_t end)
 	len = end - start + 1;
 	numstr = extract_substring(buf, start, len);
 	num = string_to_uint32(numstr);
-
-	return (num);
-}
-
-static uint32_t
-string_to_uint32(const char *str)
-{
-	char *endp;
-	uint32_t num;
-
-	PJDLOG_ASSERT(str != NULL);
-
-	pjdlog_debug(6, " . . >> string_to_uint32");
-
-	errno = 0;
-	num = (uint32_t)strtoul(str, &endp, 10);
-
-	PJDLOG_VERIFY(str != endp);
-	PJDLOG_VERIFY(*endp == '\0');
-	PJDLOG_VERIFY(num != 0 || errno == 0);
 
 	return (num);
 }
@@ -176,6 +155,26 @@ linau_record_get_type(const struct linau_record *record)
 	PJDLOG_ASSERT(record != NULL);
 
 	return (record->lr_type);
+}
+
+bool
+linau_record_try_get_uint32_field(const struct linau_record *record,
+    const char *fieldname, uint32_t *fieldvalp)
+{
+	const char *fieldvalstr;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(fieldname != NULL);
+	PJDLOG_ASSERT(fieldvalp != NULL);
+
+	if (!linau_record_exists_field(record, fieldname))
+		return (false);
+
+	fieldvalstr = linau_record_get_field(record, fieldname);
+
+	*fieldvalp = string_to_uint32(fieldvalstr);
+
+	return (true);
 }
 
 void

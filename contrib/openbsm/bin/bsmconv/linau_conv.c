@@ -1,6 +1,7 @@
 #include <sys/types.h>
 
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <bsm/libbsm.h>
@@ -1247,11 +1248,99 @@
 #define	GET_NUM_ARGS(...) (sizeof((int[]){__VA_ARGS__})/sizeof(int))
 #define	PREPEND_NUM_ARGS(...) GET_NUM_ARGS(__VA_ARGS__), __VA_ARGS__
 
-static const char *field_name_from_field_name_id(int fieldnameid);
+static pid_t try_get_pid_field(const struct linau_record *record,
+    const char *fieldname);
+static token_t *generate_token_process32(const struct linau_record *record);
+
 static size_t count_desired_fields(const struct linau_record *record,
     size_t desiredfieldscount, ...);
+static const char *field_name_from_field_name_id(int fieldnameid);
 
+static pid_t
+try_get_pid_field(const struct linau_record *record, const char *fieldname)
+{
+	pid_t pid;
 
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(fieldname != NULL);
+
+	mpjdlog_set_level(5);
+	mpjdlog_log_header();
+
+	if (!linau_record_try_get_uint32_field(record, fieldname, &pid))
+		pid = -1;
+
+	mpjdlog_log_trailer();
+
+	return (pid);
+}
+
+/*
+ * XXX Assume that all the fields have reasonable data, so there are no
+ * easter eggs like pid='hummus'.
+ */
+static token_t *
+generate_token_process32(const struct linau_record *record)
+{
+	token_t *tok;
+	au_id_t auid;
+	uid_t euid;
+	gid_t egid;
+	uid_t ruid;
+	gid_t rgid;
+	pid_t pid;
+	au_asid_t sid;
+	au_tid_t *tid;
+
+	PJDLOG_ASSERT(record != NULL);
+
+	mpjdlog_set_level(4);
+	mpjdlog_log_header();
+
+	/* Audit ID. */
+	auid = try_get_pid_field(record, LINAU_FIELD_NAME_AUID_STR);
+	/* Effective User ID. */
+	euid = try_get_pid_field(record, LINAU_FIELD_NAME_EUID_STR);
+	/* Effective Group ID. */
+	egid = try_get_pid_field(record, LINAU_FIELD_NAME_EGID_STR);
+	/*
+	 * Real User ID.
+	 * XXX Unavailable AFAIK.
+	 */
+	ruid = -1;
+	/*
+	 * Real Group ID.
+	 * XXX Unavailable AFAIK.
+	 */
+	rgid = -1;
+	/* Process ID. */
+	pid = try_get_pid_field(record, LINAU_FIELD_NAME_PID_STR);
+	/*
+	 * Session ID.
+	 * XXX Map to a field which represents login session id in the
+	 * Linux Audit format.
+	 */
+	sid = try_get_pid_field(record, LINAU_FIELD_NAME_SES_STR);
+	/*
+	 * Terminal Port ID.
+	 * XXX Unavailable AFAIK.
+	 */
+	sid = -1;
+	/*
+	 * Terminal Machine Address.
+	 * XXX Unavailable AFAIK.
+	 */
+	tid = calloc(1, sizeof(*tid));
+
+	tok = au_to_process32(auid, euid, egid, ruid, rgid, pid, sid, tid);
+	PJDLOG_VERIFY(tok != NULL);
+
+	free(tid);
+
+	mpjdlog_log_trailer();
+
+	return (tok);
+}
 
 static size_t
 count_desired_fields(const struct linau_record *record,
@@ -2164,6 +2253,7 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	token_t *tok;
 	size_t foundfieldscount;
 	size_t desiredfieldscount;
+	size_t totalfieldscount;
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
@@ -2246,11 +2336,13 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 		/* Check existance of the required fields. */
 		/* XXX I don't know how to format this. */
 		desiredfieldscount = GET_NUM_ARGS(LINAU_TYPE_USER_CMD_FIELDS);
-
 		foundfieldscount = count_desired_fields(record,
 		    desiredfieldscount, LINAU_TYPE_USER_CMD_FIELDS);
+		totalfieldscount = linau_record_get_fields_count(record);
 
 		mpjdlog_log("foundfieldscount (%zu)", foundfieldscount);
+
+		PJDLOG_ASSERT(foundfieldscount <= totalfieldscount);
 
 		if (foundfieldscount == desiredfieldscount) {
 			/* It is possible to generate desired tokens. */
@@ -2259,12 +2351,37 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 			 * that there are no easter eggs like pid="hummus".
 			 */
 
+			/* Add a process koken. */
+			mpjdlog_log("About to generate a process token.");
+			tok = generate_token_process32(record);
+			PJDLOG_VERIFY(tok != NULL);
+			PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+			mpjdlog_log("Added a process token.");
 
+			/* Add a text token with the msg field. */
+			tok = au_to_text(linau_record_get_field(record,
+			    LINAU_FIELD_NAME_MSG_STR));
+			PJDLOG_VERIFY(tok != NULL);
+			PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+			mpjdlog_log("Added a text token with the msg field.");
 
+			if (foundfieldscount < totalfieldscount) {
+				/*
+				 * TODO For the time being this function does
+				 * not extract processed fields. It just
+				 * prints the whole lr_text structure field
+				 * from the linau_record structure instead.
+				 */
+				tok = au_to_text(linau_record_get_text(
+				    record));
+				PJDLOG_VERIFY(tok != NULL);
+				PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+			}
 		} else {
-			;
+			tok = au_to_text(linau_record_get_text(record));
+			PJDLOG_VERIFY(tok != NULL);
+			PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 		}
-
 		break;
 
 	case LINAU_TYPE_USER_TTY:

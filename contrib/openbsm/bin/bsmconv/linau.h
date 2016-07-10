@@ -61,6 +61,10 @@ uint64_t		 linau_record_get_time(
 const char		*linau_record_get_type(
 			    const struct linau_record *record);
 
+bool			 linau_record_try_get_uint32_field(
+			    const struct linau_record *record,
+			    const char *fieldname, uint32_t *fieldvalp);
+
 void			 linau_record_move_fields(struct linau_record *record,
 			    nvlist_t *fields);
 void			 linau_record_move_type(struct linau_record *record,
