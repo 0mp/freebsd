@@ -8,8 +8,22 @@
 
 #include "linau_conv.h"
 #include "linau.h"
-#include "mpjdlog.h"
 #include "pjdlog.h"
+
+static pid_t try_get_pid_field(const struct linau_record *record,
+    const char *fieldname);
+static token_t *generate_token_process32(const struct linau_record *record);
+
+static size_t count_desired_fields(const struct linau_record *record,
+    size_t desiredfieldscount, ...);
+static const char *field_name_from_field_name_id(int fieldnameid);
+
+static void generate_tokens(int aurecordd, const struct linau_record *record,
+    size_t tokenscount, ...);
+static void generate_text_tokens(int aurecordd,
+    const struct linau_record *record, size_t fieldscount, ...);
+static void generate_text_token_from_record(int aurecordd,
+    const struct linau_record *record);
 
 #define LINAU_TYPE_UNDEFINED_STR		""
 /* #define	LINAU_TYPE_GET_STR			"GET" */
@@ -388,7 +402,8 @@
 #define LINAU_FIELD_NAME_A1_STR			"a1"
 #define LINAU_FIELD_NAME_A2_STR			"a2"
 #define LINAU_FIELD_NAME_A3_STR			"a3"
-#define LINAU_FIELD_NAME_A_EXECVE_SYSCALL_STR	"" /* TODO This one needs special attention. */
+/* TODO This one needs special attention. */
+#define LINAU_FIELD_NAME_A_EXECVE_SYSCALL_STR	""
 #define	LINAU_FIELD_NAME_ACCT_STR		"acct"
 #define	LINAU_FIELD_NAME_ACL_STR		"acl"
 #define	LINAU_FIELD_NAME_ACTION_STR		"action"
@@ -398,7 +413,8 @@
 #define	LINAU_FIELD_NAME_ARCH_STR		"arch"
 #define	LINAU_FIELD_NAME_ARGC_STR		"argc"
 #define	LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT_STR	"audit_backlog_limit"
-#define	LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME_STR	"audit_backlog_wait_time"
+#define	LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME_STR	\
+    "audit_backlog_wait_time"
 #define	LINAU_FIELD_NAME_AUDIT_ENABLED_STR	"audit_enabled"
 #define	LINAU_FIELD_NAME_AUDIT_FAILURE_STR	"audit_failure"
 #define	LINAU_FIELD_NAME_AUID_STR		"auid"
@@ -620,7 +636,8 @@
 #define LINAU_FIELD_NAME_A1				2
 #define LINAU_FIELD_NAME_A2				3
 #define LINAU_FIELD_NAME_A3				4
-#define LINAU_FIELD_NAME_A_EXECVE_SYSCALL		5 /* TODO This one needs special attention. */
+/* TODO This one needs special attention. */
+#define LINAU_FIELD_NAME_A_EXECVE_SYSCALL		5
 #define	LINAU_FIELD_NAME_ACCT				6
 #define	LINAU_FIELD_NAME_ACL				7
 #define	LINAU_FIELD_NAME_ACTION				8
@@ -1229,32 +1246,269 @@
 #define	LINAU_TYPE_VIRT_MACHINE_ID_FIELDS		\
     LINAU_FIELD_NAME_UNDEFINED
 
+#define LINAU_TYPE_UNDEFINED_TOKENS
+/* #define	LINAU_TYPE_GET_TOKENS				 */
+/* #define	LINAU_TYPE_SET_TOKENS				 */
+/* #define	LINAU_TYPE_LIST_TOKENS				 */
+/* #define	LINAU_TYPE_ADD_TOKENS				 */
+/* #define	LINAU_TYPE_DEL_TOKENS				 */
+#define	LINAU_TYPE_USER_TOKENS
+#define	LINAU_TYPE_LOGIN_TOKENS
+/* #define	LINAU_TYPE_SIGNAL_INFO_TOKENS			 */
+/* #define	LINAU_TYPE_ADD_RULE_TOKENS			 */
+/* #define	LINAU_TYPE_DEL_RULE_TOKENS			 */
+/* #define	LINAU_TYPE_LIST_RULES_TOKENS			 */
+/* #define	LINAU_TYPE_TRIM_TOKENS				 */
+/* #define	LINAU_TYPE_MAKE_EQUIV_TOKENS			 */
+/* #define	LINAU_TYPE_TTY_GET_TOKENS			 */
+/* #define	LINAU_TYPE_TTY_SET_TOKENS			 */
+/* #define	LINAU_TYPE_SET_FEATURE_TOKENS			 */
+/* #define	LINAU_TYPE_GET_FEATURE_TOKENS			 */
+#define	LINAU_TYPE_USER_AUTH_TOKENS
+#define	LINAU_TYPE_USER_ACCT_TOKENS
+#define	LINAU_TYPE_USER_MGMT_TOKENS
+#define	LINAU_TYPE_CRED_ACQ_TOKENS
+#define	LINAU_TYPE_CRED_DISP_TOKENS
+#define	LINAU_TYPE_USER_START_TOKENS
+#define	LINAU_TYPE_USER_END_TOKENS
+#define	LINAU_TYPE_USER_AVC_TOKENS
+#define	LINAU_TYPE_USER_CHAUTHTOK_TOKENS
+#define	LINAU_TYPE_USER_ERR_TOKENS
+#define	LINAU_TYPE_CRED_REFR_TOKENS
+#define	LINAU_TYPE_USYS_CONFIG_TOKENS
+#define	LINAU_TYPE_USER_LOGIN_TOKENS
+#define	LINAU_TYPE_USER_LOGOUT_TOKENS
+#define	LINAU_TYPE_ADD_USER_TOKENS
+#define	LINAU_TYPE_DEL_USER_TOKENS
+#define	LINAU_TYPE_ADD_GROUP_TOKENS
+#define	LINAU_TYPE_DEL_GROUP_TOKENS
+#define	LINAU_TYPE_DAC_CHECK_TOKENS
+#define	LINAU_TYPE_CHGRP_ID_TOKENS
+#define	LINAU_TYPE_TEST_TOKENS
+#define	LINAU_TYPE_TRUSTED_APP_TOKENS
+#define	LINAU_TYPE_USER_SELINUX_ERR_TOKENS
+#define	LINAU_TYPE_USER_CMD_TOKENS			\
+    generate_token_process32
+#define	LINAU_TYPE_USER_TTY_TOKENS
+#define	LINAU_TYPE_CHUSER_ID_TOKENS
+#define	LINAU_TYPE_GRP_AUTH_TOKENS
+#define	LINAU_TYPE_MAC_CHECK_TOKENS
+#define	LINAU_TYPE_ACCT_LOCK_TOKENS
+#define	LINAU_TYPE_ACCT_UNLOCK_TOKENS
+#define	LINAU_TYPE_SYSTEM_BOOT_TOKENS
+#define	LINAU_TYPE_SYSTEM_SHUTDOWN_TOKENS
+#define	LINAU_TYPE_SYSTEM_RUNLEVEL_TOKENS
+#define	LINAU_TYPE_SERVICE_START_TOKENS
+#define	LINAU_TYPE_SERVICE_STOP_TOKENS
+#define	LINAU_TYPE_GRP_MGMT_TOKENS
+#define	LINAU_TYPE_GRP_CHAUTHTOK_TOKENS
+#define	LINAU_TYPE_DAEMON_START_TOKENS
+#define	LINAU_TYPE_DAEMON_END_TOKENS
+#define	LINAU_TYPE_DAEMON_ABORT_TOKENS
+#define	LINAU_TYPE_DAEMON_CONFIG_TOKENS
+/* #define	LINAU_TYPE_DAEMON_RECONFIG_TOKENS		 */
+#define	LINAU_TYPE_DAEMON_ROTATE_TOKENS
+#define	LINAU_TYPE_DAEMON_RESUME_TOKENS
+#define	LINAU_TYPE_DAEMON_ACCEPT_TOKENS
+#define	LINAU_TYPE_DAEMON_CLOSE_TOKENS
+#define	LINAU_TYPE_DAEMON_ERR_TOKENS
+#define	LINAU_TYPE_SYSCALL_TOKENS
+/* #define	LINAU_TYPE_FS_WATCH_TOKENS			 */
+#define	LINAU_TYPE_PATH_TOKENS
+#define	LINAU_TYPE_IPC_TOKENS
+#define	LINAU_TYPE_SOCKETCALL_TOKENS
+#define	LINAU_TYPE_CONFIG_CHANGE_TOKENS
+#define	LINAU_TYPE_SOCKADDR_TOKENS
+#define	LINAU_TYPE_CWD_TOKENS
+/* #define	LINAU_TYPE_FS_INODE_TOKENS			 */
+#define	LINAU_TYPE_EXECVE_TOKENS
+#define	LINAU_TYPE_IPC_SET_PERM_TOKENS
+#define	LINAU_TYPE_MQ_OPEN_TOKENS
+#define	LINAU_TYPE_MQ_SENDRECV_TOKENS
+#define	LINAU_TYPE_MQ_NOTIFY_TOKENS
+#define	LINAU_TYPE_MQ_GETSETATTR_TOKENS
+#define	LINAU_TYPE_KERNEL_OTHER_TOKENS
+#define	LINAU_TYPE_FD_PAIR_TOKENS
+#define	LINAU_TYPE_OBJ_PID_TOKENS
+#define	LINAU_TYPE_TTY_TOKENS
+#define	LINAU_TYPE_EOE_TOKENS
+#define	LINAU_TYPE_BPRM_FCAPS_TOKENS
+#define	LINAU_TYPE_CAPSET_TOKENS
+#define	LINAU_TYPE_MMAP_TOKENS
+#define	LINAU_TYPE_NETFILTER_PKT_TOKENS
+#define	LINAU_TYPE_NETFILTER_CFG_TOKENS
+#define	LINAU_TYPE_SECCOMP_TOKENS
+#define	LINAU_TYPE_PROCTITLE_TOKENS
+#define	LINAU_TYPE_FEATURE_CHANGE_TOKENS
+#define	LINAU_TYPE_AVC_TOKENS
+#define	LINAU_TYPE_SELINUX_ERR_TOKENS
+#define	LINAU_TYPE_AVC_PATH_TOKENS
+#define	LINAU_TYPE_MAC_POLICY_LOAD_TOKENS
+#define	LINAU_TYPE_MAC_STATUS_TOKENS
+#define	LINAU_TYPE_MAC_CONFIG_CHANGE_TOKENS
+#define	LINAU_TYPE_MAC_UNLBL_ALLOW_TOKENS
+#define	LINAU_TYPE_MAC_CIPSOV4_ADD_TOKENS
+#define	LINAU_TYPE_MAC_CIPSOV4_DEL_TOKENS
+#define	LINAU_TYPE_MAC_MAP_ADD_TOKENS
+#define	LINAU_TYPE_MAC_MAP_DEL_TOKENS
+#define	LINAU_TYPE_MAC_IPSEC_ADDSA_TOKENS
+#define	LINAU_TYPE_MAC_IPSEC_DELSA_TOKENS
+#define	LINAU_TYPE_MAC_IPSEC_ADDSPD_TOKENS
+#define	LINAU_TYPE_MAC_IPSEC_DELSPD_TOKENS
+#define	LINAU_TYPE_MAC_IPSEC_EVENT_TOKENS
+#define	LINAU_TYPE_MAC_UNLBL_STCADD_TOKENS
+#define	LINAU_TYPE_MAC_UNLBL_STCDEL_TOKENS
+#define	LINAU_TYPE_ANOM_PROMISCUOUS_TOKENS
+#define	LINAU_TYPE_ANOM_ABEND_TOKENS
+#define	LINAU_TYPE_ANOM_LINK_TOKENS
+#define	LINAU_TYPE_INTEGRITY_DATA_TOKENS
+#define	LINAU_TYPE_INTEGRITY_METADATA_TOKENS
+#define	LINAU_TYPE_INTEGRITY_STATUS_TOKENS
+#define	LINAU_TYPE_INTEGRITY_HASH_TOKENS
+#define	LINAU_TYPE_INTEGRITY_PCR_TOKENS
+#define	LINAU_TYPE_INTEGRITY_RULE_TOKENS
+#define	LINAU_TYPE_AA_TOKENS
+#define	LINAU_TYPE_APPARMOR_AUDIT_TOKENS
+#define	LINAU_TYPE_APPARMOR_ALLOWED_TOKENS
+#define	LINAU_TYPE_APPARMOR_DENIED_TOKENS
+#define	LINAU_TYPE_APPARMOR_HINT_TOKENS
+#define	LINAU_TYPE_APPARMOR_STATUS_TOKENS
+#define	LINAU_TYPE_APPARMOR_ERROR_TOKENS
+#define	LINAU_TYPE_KERNEL_TOKENS
+#define	LINAU_TYPE_ANOM_LOGIN_FAILURES_TOKENS
+#define	LINAU_TYPE_ANOM_LOGIN_TIME_TOKENS
+#define	LINAU_TYPE_ANOM_LOGIN_SESSIONS_TOKENS
+#define	LINAU_TYPE_ANOM_LOGIN_ACCT_TOKENS
+#define	LINAU_TYPE_ANOM_LOGIN_LOCATION_TOKENS
+#define	LINAU_TYPE_ANOM_MAX_DAC_TOKENS
+#define	LINAU_TYPE_ANOM_MAX_MAC_TOKENS
+#define	LINAU_TYPE_ANOM_AMTU_FAIL_TOKENS
+#define	LINAU_TYPE_ANOM_RBAC_FAIL_TOKENS
+#define	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL_TOKENS
+#define	LINAU_TYPE_ANOM_CRYPTO_FAIL_TOKENS
+#define	LINAU_TYPE_ANOM_ACCESS_FS_TOKENS
+#define	LINAU_TYPE_ANOM_EXEC_TOKENS
+#define	LINAU_TYPE_ANOM_MK_EXEC_TOKENS
+#define	LINAU_TYPE_ANOM_ADD_ACCT_TOKENS
+#define	LINAU_TYPE_ANOM_DEL_ACCT_TOKENS
+#define	LINAU_TYPE_ANOM_MOD_ACCT_TOKENS
+#define	LINAU_TYPE_ANOM_ROOT_TRANS_TOKENS
+#define	LINAU_TYPE_RESP_ANOMALY_TOKENS
+#define	LINAU_TYPE_RESP_ALERT_TOKENS
+#define	LINAU_TYPE_RESP_KILL_PROC_TOKENS
+#define	LINAU_TYPE_RESP_TERM_ACCESS_TOKENS
+#define	LINAU_TYPE_RESP_ACCT_REMOTE_TOKENS
+#define	LINAU_TYPE_RESP_ACCT_LOCK_TIMED_TOKENS
+#define	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED_TOKENS
+#define	LINAU_TYPE_RESP_ACCT_LOCK_TOKENS
+#define	LINAU_TYPE_RESP_TERM_LOCK_TOKENS
+#define	LINAU_TYPE_RESP_SEBOOL_TOKENS
+#define	LINAU_TYPE_RESP_EXEC_TOKENS
+#define	LINAU_TYPE_RESP_SINGLE_TOKENS
+#define	LINAU_TYPE_RESP_HALT_TOKENS
+#define	LINAU_TYPE_USER_ROLE_CHANGE_TOKENS
+#define	LINAU_TYPE_ROLE_ASSIGN_TOKENS
+#define	LINAU_TYPE_ROLE_REMOVE_TOKENS
+#define	LINAU_TYPE_LABEL_OVERRIDE_TOKENS
+#define	LINAU_TYPE_LABEL_LEVEL_CHANGE_TOKENS
+#define	LINAU_TYPE_USER_LABELED_EXPORT_TOKENS
+#define	LINAU_TYPE_USER_UNLABELED_EXPORT_TOKENS
+#define	LINAU_TYPE_DEV_ALLOC_TOKENS
+#define	LINAU_TYPE_DEV_DEALLOC_TOKENS
+#define	LINAU_TYPE_FS_RELABEL_TOKENS
+#define	LINAU_TYPE_USER_MAC_POLICY_LOAD_TOKENS
+#define	LINAU_TYPE_ROLE_MODIFY_TOKENS
+#define	LINAU_TYPE_USER_MAC_CONFIG_CHANGE_TOKENS
+#define	LINAU_TYPE_CRYPTO_TEST_USER_TOKENS
+#define	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER_TOKENS
+#define	LINAU_TYPE_CRYPTO_LOGIN_TOKENS
+#define	LINAU_TYPE_CRYPTO_LOGOUT_TOKENS
+#define	LINAU_TYPE_CRYPTO_KEY_USER_TOKENS
+#define	LINAU_TYPE_CRYPTO_FAILURE_USER_TOKENS
+#define	LINAU_TYPE_CRYPTO_REPLAY_USER_TOKENS
+#define	LINAU_TYPE_CRYPTO_SESSION_TOKENS
+#define	LINAU_TYPE_CRYPTO_IKE_SA_TOKENS
+#define	LINAU_TYPE_CRYPTO_IPSEC_SA_TOKENS
+#define	LINAU_TYPE_VIRT_CONTROL_TOKENS
+#define	LINAU_TYPE_VIRT_RESOURCE_TOKENS
+#define	LINAU_TYPE_VIRT_MACHINE_ID_TOKENS
+
 /*
- * PREPEND_NUM_ARGS is a macro which takes a variable argument list of numbers.
+ * CONVERT_RECORD_TO_AU()
+ *
+ * @summary - This macro converts a record to tokens and saves it to the
+ * given audit record descriptor.
+ *
+ * @param record - The record to convert.
+ *
+ * @param aurecordd - The audit record descriptor. You can read more about
+ * this variable in au_open(3) (aurecordd is the d parameter from the man
+ * pages).
+ *
+ * @param linautype - The number assosiated with the type of the record.
+ * For example if record->lr_type is "USER_CMD" then linautype should be
+ * equal to LINAU_TYPE_USER_CMD. In fact, what matters is the name of the
+ * defined variable itself since we use the variable names concatenation to
+ * get access to defines like LINAU_TYPE_USER_CMD_FIELDS.
+ */
+#define	CONVERT_RECORD_TO_AU(aurecordd, record, linautype) do {		\
+	foundfieldscount = count_desired_fields(record,			\
+	    prepend_num_args(int, linautype ## _FIELDS));		\
+									\
+	desiredfieldscount = get_num_args(int, linautype ## _FIELDS);	\
+	totalfieldscount = linau_record_get_fields_count(record);	\
+									\
+	if (foundfieldscount == desiredfieldscount) {			\
+		generate_tokens(aurecordd, record,			\
+		    prepend_num_args(void*, linautype ## _TOKENS));	\
+									\
+		if (desiredfieldscount < totalfieldscount) {		\
+			generate_text_tokens(aurecordd, record,		\
+			    prepend_num_args(int,			\
+			    linautype ## _FIELDS));			\
+		}							\
+	} else {							\
+		generate_text_token_from_record(aurecordd, record);	\
+	}								\
+} while (0)
+
+/*
+ * prepend_num_args is a macro which takes a type and a variable argument
+ * list of elements of that type.
  * As a result it returns the very same variable argument list with
  * an additional number prepended to the list.  This number indicates the total
  * count of elements in the variable argument list.
  *
- * For example
+ * Example 1 (int numbers):
  *
- *     PREPEND_NUM_ARGS(100, 4, 29, 616)
+ *     prepend_num_args(int, 100, 4, 29, 616)
  *
  * evaluates to
  *
  *     4, 100, 4, 29, 616
  *
- * GET_NUM_ARGS is just a helper macro to get PREPEND_NUM_ARGS to work.
+ * Example 2 (function pointers):
+ *
+ *	prepend_num_args(void*, f, g, h)
+ *
+ * evaluates to
+ *
+ *	3, f, g, h
+ *
+ * get_num_args is just a helper macro to get prepend_num_args to work.
+ * It simply counts the number of elements in the list.
+ *
+ * Example:
+ *
+ *	get_num_args(int, 1, 55, 616, 616)
+ *
+ * evaluates to
+ *
+ *	4
  */
-#define	GET_NUM_ARGS(...) (sizeof((int[]){__VA_ARGS__})/sizeof(int))
-#define	PREPEND_NUM_ARGS(...) GET_NUM_ARGS(__VA_ARGS__), __VA_ARGS__
-
-static pid_t try_get_pid_field(const struct linau_record *record,
-    const char *fieldname);
-static token_t *generate_token_process32(const struct linau_record *record);
-
-static size_t count_desired_fields(const struct linau_record *record,
-    size_t desiredfieldscount, ...);
-static const char *field_name_from_field_name_id(int fieldnameid);
+#define	get_num_args(type, ...) ((sizeof(type[]){__VA_ARGS__})/sizeof(type))
+#define	prepend_num_args(type, ...) \
+    get_num_args(type, __VA_ARGS__), __VA_ARGS__
 
 static pid_t
 try_get_pid_field(const struct linau_record *record, const char *fieldname)
@@ -1264,13 +1518,10 @@ try_get_pid_field(const struct linau_record *record, const char *fieldname)
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fieldname != NULL);
 
-	mpjdlog_set_level(5);
-	mpjdlog_log_header();
 
 	if (!linau_record_try_get_uint32_field(record, fieldname, &pid))
 		pid = -1;
 
-	mpjdlog_log_trailer();
 
 	return (pid);
 }
@@ -1294,26 +1545,29 @@ generate_token_process32(const struct linau_record *record)
 
 	PJDLOG_ASSERT(record != NULL);
 
-	mpjdlog_set_level(4);
-	mpjdlog_log_header();
-
 	/* Audit ID. */
+	pjdlog_debug(3, "auid");
 	auid = try_get_pid_field(record, LINAU_FIELD_NAME_AUID_STR);
 	/* Effective User ID. */
+	pjdlog_debug(3, "euid");
 	euid = try_get_pid_field(record, LINAU_FIELD_NAME_EUID_STR);
 	/* Effective Group ID. */
+	pjdlog_debug(3, "egid");
 	egid = try_get_pid_field(record, LINAU_FIELD_NAME_EGID_STR);
 	/*
 	 * Real User ID.
 	 * XXX Unavailable AFAIK.
 	 */
+	pjdlog_debug(3, "ruid");
 	ruid = -1;
 	/*
 	 * Real Group ID.
 	 * XXX Unavailable AFAIK.
 	 */
+	pjdlog_debug(3, "rgid");
 	rgid = -1;
 	/* Process ID. */
+	pjdlog_debug(3, "pid");
 	pid = try_get_pid_field(record, LINAU_FIELD_NAME_PID_STR);
 	/*
 	 * Session ID.
@@ -1337,9 +1591,63 @@ generate_token_process32(const struct linau_record *record)
 
 	free(tid);
 
-	mpjdlog_log_trailer();
-
 	return (tok);
+}
+
+/* TODO */
+static void
+generate_tokens(int aurecordd, const struct linau_record *record,
+    size_t tokenscount, ...)
+{
+	va_list ap;
+	token_t *tok;
+	token_t *(*fp)(const struct linau_record*);
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(aurecordd >= 0);
+
+	va_start(ap, tokenscount);
+
+	while (tokenscount > 0) {
+
+		fp = va_arg(ap, token_t*(*)(const struct linau_record*));
+		tok = (*fp)(record);
+		PJDLOG_VERIFY(tok != NULL);
+		PJDLOG_VERIFY(au_write(aurecordd, tok));
+
+		tokenscount--;
+	}
+
+	va_end(ap);
+
+	return;
+}
+
+/* TODO */
+static void
+generate_text_tokens(int aurecordd, const struct linau_record *record,
+    size_t fieldscount, ...)
+{
+	(void)fieldscount;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(aurecordd >= 0);
+
+	return;
+}
+
+static void
+generate_text_token_from_record(int aurecordd,
+    const struct linau_record *record)
+{
+	token_t *tok;
+
+	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(record != NULL);
+
+	tok = au_to_text(linau_record_get_text(record));
+	PJDLOG_VERIFY(tok != NULL);
+	PJDLOG_VERIFY(au_write(aurecordd, tok));
 }
 
 static size_t
@@ -2258,9 +2566,6 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
 
-	mpjdlog_set_level(3);
-	mpjdlog_log_header();
-
 	desiredfieldscount = 0;
 
 	switch (typenum) {
@@ -2332,56 +2637,7 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	case LINAU_TYPE_USER_SELINUX_ERR:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_USER_CMD:
-		mpjdlog_log("LINAU_TYPE_USER_CMD");
-		/* Check existance of the required fields. */
-		/* XXX I don't know how to format this. */
-		desiredfieldscount = GET_NUM_ARGS(LINAU_TYPE_USER_CMD_FIELDS);
-		foundfieldscount = count_desired_fields(record,
-		    desiredfieldscount, LINAU_TYPE_USER_CMD_FIELDS);
-		totalfieldscount = linau_record_get_fields_count(record);
-
-		mpjdlog_log("foundfieldscount (%zu)", foundfieldscount);
-
-		PJDLOG_ASSERT(foundfieldscount <= totalfieldscount);
-
-		if (foundfieldscount == desiredfieldscount) {
-			/* It is possible to generate desired tokens. */
-			/*
-			 * XXX Assume that the fields are reasonable which means
-			 * that there are no easter eggs like pid="hummus".
-			 */
-
-			/* Add a process koken. */
-			mpjdlog_log("About to generate a process token.");
-			tok = generate_token_process32(record);
-			PJDLOG_VERIFY(tok != NULL);
-			PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-			mpjdlog_log("Added a process token.");
-
-			/* Add a text token with the msg field. */
-			tok = au_to_text(linau_record_get_field(record,
-			    LINAU_FIELD_NAME_MSG_STR));
-			PJDLOG_VERIFY(tok != NULL);
-			PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-			mpjdlog_log("Added a text token with the msg field.");
-
-			if (foundfieldscount < totalfieldscount) {
-				/*
-				 * TODO For the time being this function does
-				 * not extract processed fields. It just
-				 * prints the whole lr_text structure field
-				 * from the linau_record structure instead.
-				 */
-				tok = au_to_text(linau_record_get_text(
-				    record));
-				PJDLOG_VERIFY(tok != NULL);
-				PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-			}
-		} else {
-			tok = au_to_text(linau_record_get_text(record));
-			PJDLOG_VERIFY(tok != NULL);
-			PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-		}
+		CONVERT_RECORD_TO_AU(aurecordd, record, LINAU_TYPE_USER_CMD);
 		break;
 
 	case LINAU_TYPE_USER_TTY:
@@ -2669,15 +2925,13 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 		/* FALLTHROUGH */
 	default:
 		/*
-		 * XXX Should default call PJDLOG_ABORT? If we cannot tell what
-		 * kind of record we are dealing with it should be marked as
-		 * LINAU_TYPE_UNDEFINED.
+		 * XXX Should default: call PJDLOG_ABORT? If we cannot tell
+		 * what kind of a record we are dealing with it should be
+		 * marked as LINAU_TYPE_UNDEFINED.
 		 */
 		tok = au_to_text(linau_record_get_text(record));
 		PJDLOG_VERIFY(tok != NULL);
 		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 		break;
 	}
-
-	mpjdlog_log_trailer();
 }

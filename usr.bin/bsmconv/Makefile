@@ -17,7 +17,6 @@ SRCS+=	linau_event.c
 SRCS+=	linau_field.c
 SRCS+=	linau_record.c
 SRCS+=	pjdlog.c
-SRCS+=	mpjdlog.c
 
 LIBADD+=sbuf util nv bsm
 MAN=

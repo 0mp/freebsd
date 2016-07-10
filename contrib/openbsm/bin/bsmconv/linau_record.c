@@ -13,7 +13,6 @@
 #include "linau_common.h"
 #include "linau_conv.h"
 #include "linau_impl.h"
-#include "mpjdlog.h"
 #include "pjdlog.h"
 
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
