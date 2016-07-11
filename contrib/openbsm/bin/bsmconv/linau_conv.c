@@ -12,17 +12,19 @@
 
 static pid_t try_get_pid_field(const struct linau_record *record,
     const char *fieldname);
+
 static token_t *generate_token_process32(const struct linau_record *record);
+static token_t *generate_token_text_from_msg(const struct linau_record *record);
 
 static size_t count_desired_fields(const struct linau_record *record,
     size_t desiredfieldscount, ...);
 static const char *field_name_from_field_name_id(int fieldnameid);
 
-static void generate_tokens(int aurecordd, const struct linau_record *record,
+static void write_tokens(int aurecordd, const struct linau_record *record,
     size_t tokenscount, ...);
-static void generate_text_tokens(int aurecordd,
+static void write_text_tokens(int aurecordd,
     const struct linau_record *record, size_t fieldscount, ...);
-static void generate_text_token_from_record(int aurecordd,
+static void write_text_token_from_record(int aurecordd,
     const struct linau_record *record);
 
 #define LINAU_TYPE_UNDEFINED_STR		""
@@ -1288,7 +1290,8 @@ static void generate_text_token_from_record(int aurecordd,
 #define	LINAU_TYPE_TRUSTED_APP_TOKENS
 #define	LINAU_TYPE_USER_SELINUX_ERR_TOKENS
 #define	LINAU_TYPE_USER_CMD_TOKENS			\
-    generate_token_process32
+    generate_token_process32,				\
+    generate_token_text_from_msg
 #define	LINAU_TYPE_USER_TTY_TOKENS
 #define	LINAU_TYPE_CHUSER_ID_TOKENS
 #define	LINAU_TYPE_GRP_AUTH_TOKENS
@@ -1459,16 +1462,16 @@ static void generate_text_token_from_record(int aurecordd,
 	totalfieldscount = linau_record_get_fields_count(record);	\
 									\
 	if (foundfieldscount == desiredfieldscount) {			\
-		generate_tokens(aurecordd, record,			\
+		write_tokens(aurecordd, record,				\
 		    prepend_num_args(void*, linautype ## _TOKENS));	\
 									\
 		if (desiredfieldscount < totalfieldscount) {		\
-			generate_text_tokens(aurecordd, record,		\
+			write_text_tokens(aurecordd, record,		\
 			    prepend_num_args(int,			\
 			    linautype ## _FIELDS));			\
 		}							\
 	} else {							\
-		generate_text_token_from_record(aurecordd, record);	\
+		write_text_token_from_record(aurecordd, record);	\
 	}								\
 } while (0)
 
@@ -1602,7 +1605,7 @@ generate_token_process32(const struct linau_record *record)
 
 /* TODO */
 static void
-generate_tokens(int aurecordd, const struct linau_record *record,
+write_tokens(int aurecordd, const struct linau_record *record,
     size_t tokenscount, ...)
 {
 	va_list ap;
@@ -1629,7 +1632,7 @@ generate_tokens(int aurecordd, const struct linau_record *record,
 
 /* TODO */
 static void
-generate_text_tokens(int aurecordd, const struct linau_record *record,
+write_text_tokens(int aurecordd, const struct linau_record *record,
     size_t fieldscount, ...)
 {
 	(void)fieldscount;
@@ -1641,8 +1644,7 @@ generate_text_tokens(int aurecordd, const struct linau_record *record,
 }
 
 static void
-generate_text_token_from_record(int aurecordd,
-    const struct linau_record *record)
+write_text_token_from_record(int aurecordd, const struct linau_record *record)
 {
 	token_t *tok;
 
@@ -1652,6 +1654,22 @@ generate_text_token_from_record(int aurecordd,
 	tok = au_to_text(linau_record_get_text(record));
 	PJDLOG_VERIFY(tok != NULL);
 	PJDLOG_VERIFY(au_write(aurecordd, tok));
+}
+
+static token_t *
+generate_token_text_from_msg(const struct linau_record *record)
+{
+	const char *msg;
+	token_t *tok;
+
+	PJDLOG_ASSERT(record != NULL);
+
+	msg = linau_record_get_field(record, LINAU_FIELD_NAME_MSG_STR);
+
+	tok = au_to_text(msg);
+	PJDLOG_VERIFY(tok != NULL);
+
+	return (tok);
 }
 
 static size_t
