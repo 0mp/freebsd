@@ -23,6 +23,13 @@ linau_proto_compare_origin(uint32_t id1, uint64_t time1, uint32_t id2,
 	return 0;
 }
 
+uint64_t
+combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs)
+{
+
+	return ((uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs);
+}
+
 bool
 find_position(size_t *posp, const char *buf, size_t start, char chr)
 {
@@ -132,9 +139,20 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	    msgstart, *msgendp);
 }
 
-uint64_t
-combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs)
+uint32_t
+string_to_uint32(const char *str)
 {
+	char *endp;
+	uint32_t num;
 
-	return ((uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs);
+	PJDLOG_ASSERT(str != NULL);
+
+	errno = 0;
+	num = (uint32_t)strtoul(str, &endp, 10);
+
+	PJDLOG_VERIFY(str != endp);
+	PJDLOG_VERIFY(*endp == '\0');
+	PJDLOG_VERIFY(num != 0 || errno == 0);
+
+	return (num);
 }

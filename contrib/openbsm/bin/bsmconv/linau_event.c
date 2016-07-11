@@ -14,7 +14,8 @@
 
 static const struct linau_record *get_any_record(
     const struct linau_event *event);
-static unsigned short determine_aueventid(const struct linau_event *event);
+static unsigned short au_event_type_from_linau_event(
+    const struct linau_event *event);
 
 static const struct linau_record *
 get_any_record(const struct linau_event *event)
@@ -26,9 +27,14 @@ get_any_record(const struct linau_event *event)
 	return (TAILQ_FIRST(&event->le_records));
 }
 
-/* TODO This is a temporary solution. */
+/*
+ * TODO This is a temporary solution.
+ *
+ * XXX If this function goes public one day it should return short instead of
+ * unsigned short.
+ */
 static unsigned short
-determine_aueventid(const struct linau_event *event)
+au_event_type_from_linau_event(const struct linau_event *event)
 {
 
 	(void)event;
@@ -73,9 +79,6 @@ linau_event_clear(struct linau_event *event)
 		linau_record_destroy(record1);
 		record1 = record2;
 	}
-	/* XXX Is this really needed? This is what queue(3) says but I don't
-	 * understand it. It looks like it reinitialises the tailq. If it's
-	 * true then I need a linau_event_reset function. */
 	TAILQ_INIT(&event->le_records);
 }
 
@@ -166,6 +169,8 @@ linau_event_dump(const struct linau_event *event)
 		printf(" > > text (%s)\n", linau_record_get_text(record));
 		printf(" > > id (%u)\n", linau_record_get_id(record));
 		printf(" > > time (%llu)\n", linau_record_get_time(record));
+		printf(" > > fields count (%zu)\n",
+		    linau_record_get_fields_count(record));
 		cookie = NULL;
 		fields = linau_record_get_fields(record);
 		while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
@@ -238,7 +243,7 @@ linau_event_to_au(const struct linau_event *event, unsigned short *aueventidp)
 	TAILQ_FOREACH(record, &event->le_records, lr_next)
 		linau_record_to_au(record, aurecordd);
 
-	*aueventidp = determine_aueventid(event);
+	*aueventidp = au_event_type_from_linau_event(event);
 
 	return (aurecordd);
 }

@@ -8,9 +8,7 @@
 #include <stdio.h>
 
 struct linau_event;
-
 struct linau_record;
-
 struct linau_field;
 
 /* linau_event. */
@@ -43,6 +41,8 @@ u_char			*linau_event_process(const struct linau_event *event,
 /* linau_record. */
 struct			 linau_record *linau_record_create(void);
 void			 linau_record_destroy(struct linau_record *record);
+nvlist_t		*linau_record_clone_fields(
+			    const struct linau_record *record);
 
 bool			 linau_record_exists_field(
 			    const struct linau_record *record,
@@ -53,6 +53,8 @@ const char		*linau_record_get_field(
 			    const char *name);
 nvlist_t		*linau_record_get_fields(
 			    const struct linau_record *record);
+size_t			 linau_record_get_fields_count(
+			    const struct linau_record *record);
 uint32_t		 linau_record_get_id(const struct linau_record *record);
 const char		*linau_record_get_text(
 			    const struct linau_record *record);
@@ -61,11 +63,17 @@ uint64_t		 linau_record_get_time(
 const char		*linau_record_get_type(
 			    const struct linau_record *record);
 
+bool			 linau_record_try_get_uint32_field(
+			    const struct linau_record *record,
+			    const char *fieldname, uint32_t *fieldvalp);
+
 void			 linau_record_move_fields(struct linau_record *record,
 			    nvlist_t *fields);
 void			 linau_record_move_type(struct linau_record *record,
 			    char *type);
 
+void			 linau_record_set_fields_count(
+			    struct linau_record *record, size_t fields_count);
 void			 linau_record_set_id(struct linau_record *record,
 			    uint32_t id);
 void			 linau_record_set_text(struct linau_record *record,
@@ -74,7 +82,8 @@ void			 linau_record_set_time(struct linau_record *record,
 			    uint64_t time);
 
 struct linau_record	*linau_record_parse(const char * buf);
-nvlist_t		*linau_record_parse_fields(const char *buf);
+nvlist_t		*linau_record_parse_fields(const char *buf,
+			    size_t *fields_countp);
 uint32_t		 linau_record_parse_id(const char *buf);
 uint64_t		 linau_record_parse_time(const char *buf);
 char			*linau_record_parse_type(const char *buf);
