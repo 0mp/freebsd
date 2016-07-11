@@ -1525,6 +1525,17 @@ static void write_text_token_from_record(int aurecordd,
 #define	prepend_num_args(type, ...) \
     get_num_args(type, __VA_ARGS__), __VA_ARGS__
 
+struct linau_conv_token {
+	token_t	*(*lct_genrate)(const struct linau_record *);
+	int	 lct_fields[];
+};
+
+struct linau_conv_record_type {
+	int			 lcrt_id;
+	char			*lcrt_str;
+	struct linau_conv_token	 lcrt_tokens[];
+};
+
 static pid_t
 try_get_pid_field(const struct linau_record *record, const char *fieldname)
 {
