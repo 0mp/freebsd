@@ -68,6 +68,24 @@ linau_record_destroy(struct linau_record *record)
 	free(record);
 }
 
+nvlist_t *
+linau_record_clone_fields(const struct linau_record *record)
+{
+	const nvlist_t *fields;
+	nvlist_t *newfields;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(linau_record_get_fields(record) != NULL);
+
+	fields = linau_record_get_fields(record);
+
+	newfields = nvlist_clone(fields);
+	PJDLOG_VERIFY(nvlist_error(fields) == 0);
+	PJDLOG_VERIFY(newfields != NULL);
+
+	return (newfields);
+}
+
 bool
 linau_record_exists_field(const struct linau_record *record, const char *name)
 {

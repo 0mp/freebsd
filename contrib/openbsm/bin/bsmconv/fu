@@ -88,6 +88,10 @@ while [ "$#" -gt 0 ]; do
         shift
         shift
         ;;
+    rp)
+        "$BIN" < "$2" | praudit
+        shift
+        ;;
     usage|help|-h|*)
         fu_usage
         ;;

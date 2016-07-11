@@ -41,6 +41,8 @@ u_char			*linau_event_process(const struct linau_event *event,
 /* linau_record. */
 struct			 linau_record *linau_record_create(void);
 void			 linau_record_destroy(struct linau_record *record);
+nvlist_t		*linau_record_clone_fields(
+			    const struct linau_record *record);
 
 bool			 linau_record_exists_field(
 			    const struct linau_record *record,

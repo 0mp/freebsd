@@ -14,6 +14,8 @@ static pid_t try_get_pid_field(const struct linau_record *record,
     const char *fieldname);
 
 static token_t *generate_token_process32(const struct linau_record *record);
+static token_t *generate_token_text_from_field(
+    const struct linau_record *record, const char *fieldname);
 static token_t *generate_token_text_from_msg(const struct linau_record *record);
 
 static size_t count_desired_fields(const struct linau_record *record,
@@ -957,6 +959,7 @@ static void write_text_token_from_record(int aurecordd,
  * project's wiki.
  */
 #define	LINAU_TYPE_USER_CMD_FIELDS			\
+    LINAU_FIELD_NAME_PID,				\
     LINAU_FIELD_NAME_UID,				\
     LINAU_FIELD_NAME_AUID,				\
     LINAU_FIELD_NAME_SES,				\
@@ -1437,30 +1440,37 @@ static void write_text_token_from_record(int aurecordd,
 #define	LINAU_TYPE_VIRT_MACHINE_ID_TOKENS
 
 /*
- * CONVERT_RECORD_TO_AU()
+ * This macro converts a record to tokens and saves it to the given audit
+ * record descriptor (see au_write(3)).
  *
- * @summary - This macro converts a record to tokens and saves it to the
- * given audit record descriptor.
- *
- * @param record - The record to convert.
- *
- * @param aurecordd - The audit record descriptor. You can read more about
- * this variable in au_open(3) (aurecordd is the d parameter from the man
- * pages).
- *
- * @param linautype - The number assosiated with the type of the record.
- * For example if record->lr_type is "USER_CMD" then linautype should be
- * equal to LINAU_TYPE_USER_CMD. In fact, what matters is the name of the
- * defined variable itself since we use the variable names concatenation to
- * get access to defines like LINAU_TYPE_USER_CMD_FIELDS.
+ * Parameters:
+ * record	The record to convert.
+ * aurecordd	The audit record descriptor.  You can read more about
+ *		this variable in au_open(3) (aurecordd is what au_open(3)
+ *		returns).
+ * linautype	The name of the number define which assosiated with the
+ *		type of the record.  For example if record->lr_type
+ *		is "USER_CMD" then linautype should be equal
+ *		to LINAU_TYPE_USER_CMD.  In fact, what matters is the
+ *		name of the defined variable itself since the function uses
+ *		linautype to concatenate suffixes like _FIELDS to get
+ *		access to the defines like LINAU_TYPE_USER_CMD_FIELDS.
  */
 #define	CONVERT_RECORD_TO_AU(aurecordd, record, linautype) do {		\
+	size_t foundfieldscount, desiredfieldscount, totalfieldscount;	\
 	foundfieldscount = count_desired_fields(record,			\
 	    prepend_num_args(int, linautype ## _FIELDS));		\
 									\
 	desiredfieldscount = get_num_args(int, linautype ## _FIELDS);	\
+									\
 	totalfieldscount = linau_record_get_fields_count(record);	\
 									\
+	/*								\
+	 * desiredfieldscount is always >= 1 because every type has	\
+	 * at least LINAU_FIELD_NAME_UNDEFINED listed			\
+	 * in their field list. A field list is for example		\
+	 * LINAU_TYPE_USER_CMD_FIELDS for LINAU_TYPE_USER_CMD.		\
+	 */								\
 	if (foundfieldscount == desiredfieldscount) {			\
 		write_tokens(aurecordd, record,				\
 		    prepend_num_args(void*, linautype ## _TOKENS));	\
@@ -1508,6 +1518,8 @@ static void write_text_token_from_record(int aurecordd,
  * evaluates to
  *
  *	4
+ *
+ * These macors don't work if the list is empty.
  */
 #define	get_num_args(type, ...) ((sizeof(type[]){__VA_ARGS__})/sizeof(type))
 #define	prepend_num_args(type, ...) \
@@ -1603,7 +1615,6 @@ generate_token_process32(const struct linau_record *record)
 	return (tok);
 }
 
-/* TODO */
 static void
 write_tokens(int aurecordd, const struct linau_record *record,
     size_t tokenscount, ...)
@@ -1618,7 +1629,7 @@ write_tokens(int aurecordd, const struct linau_record *record,
 	va_start(ap, tokenscount);
 
 	while (tokenscount > 0) {
-		fp = va_arg(ap, token_t*(*)(const struct linau_record*));
+		fp = va_arg(ap, typeof(fp));
 		tok = (*fp)(record);
 		PJDLOG_VERIFY(tok != NULL);
 		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
@@ -1630,17 +1641,53 @@ write_tokens(int aurecordd, const struct linau_record *record,
 	return;
 }
 
-/* TODO */
+/*
+ * Generate a text token for every field in a record which is not in the list
+ * of fields passed as an argument to this function.
+ *
+ * Parameters:
+ * aurecordd	The record descriptor. See au_write(3).
+ * record	The record which fields are to be converted to text tokens.
+ * fieldscount	The number of fields' ids in the variadic list.
+ * ...		The list of fields' ids. For example: LINAU_FIELD_NAME_SES,
+ *		LINAU_FIELD_NAME_MSG, LINAU_FIELD_NAME_AUID.
+ */
 static void
 write_text_tokens(int aurecordd, const struct linau_record *record,
     size_t fieldscount, ...)
 {
-	(void)fieldscount;
+	va_list ap;
+	void *cookie;
+	const char *fieldname;
+	nvlist_t *fields;
+	const char *name;
+	token_t *tok;
+	int fieldid;
+	int type;
 
 	PJDLOG_ASSERT(aurecordd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 
-	return;
+	fields = linau_record_clone_fields(record);
+
+	va_start(ap, fieldscount);
+	/* Remove the fields from the copy of fields which occure in ap. */
+	while (fieldscount > 0) {
+		fieldid = va_arg(ap, int);
+		fieldname = field_name_from_field_name_id(fieldid);
+		if (linau_record_exists_field(record, fieldname))
+			free(nvlist_take_string(fields, fieldname));
+		fieldscount--;
+	}
+	va_end(ap);
+
+	cookie = NULL;
+	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
+	 	PJDLOG_ASSERT(type == NV_TYPE_STRING);
+		tok = generate_token_text_from_field(record, fieldname);
+		PJDLOG_VERIFY(tok != NULL);
+		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+	}
 }
 
 static void
@@ -1653,23 +1700,35 @@ write_text_token_from_record(int aurecordd, const struct linau_record *record)
 
 	tok = au_to_text(linau_record_get_text(record));
 	PJDLOG_VERIFY(tok != NULL);
-	PJDLOG_VERIFY(au_write(aurecordd, tok));
+	PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 }
 
 static token_t *
-generate_token_text_from_msg(const struct linau_record *record)
+generate_token_text_from_field(const struct linau_record *record,
+    const char *fieldname)
 {
 	const char *msg;
 	token_t *tok;
 
 	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(fieldname != NULL);
 
-	msg = linau_record_get_field(record, LINAU_FIELD_NAME_MSG_STR);
+	msg = linau_record_get_field(record, fieldname);
 
 	tok = au_to_text(msg);
 	PJDLOG_VERIFY(tok != NULL);
 
 	return (tok);
+}
+
+static token_t *
+generate_token_text_from_msg(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_text_from_field(record,
+	    LINAU_FIELD_NAME_MSG_STR));
 }
 
 static size_t
@@ -2580,18 +2639,12 @@ void
 linau_conv_to_au(int aurecordd, const struct linau_record *record,
     int typenum)
 {
-	token_t *tok;
-	size_t foundfieldscount;
-	size_t desiredfieldscount;
-	size_t totalfieldscount;
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
 
-	desiredfieldscount = 0;
-
 	switch (typenum) {
-	case LINAU_TYPE_UNDEFINED:
+	LINAU_TYPE_UNDEFINED:
 		/* FALLTHROUGH */
 	/* case LINAU_TYPE_GET: */
 	/* case LINAU_TYPE_SET: */
@@ -2661,7 +2714,6 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	case LINAU_TYPE_USER_CMD:
 		CONVERT_RECORD_TO_AU(aurecordd, record, LINAU_TYPE_USER_CMD);
 		break;
-
 	case LINAU_TYPE_USER_TTY:
 		/* FALLTHROUGH */
 	case LINAU_TYPE_CHUSER_ID:
@@ -2946,14 +2998,9 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	case LINAU_TYPE_VIRT_MACHINE_ID:
 		/* FALLTHROUGH */
 	default:
-		/*
-		 * XXX Should default: call PJDLOG_ABORT? If we cannot tell
-		 * what kind of a record we are dealing with it should be
-		 * marked as LINAU_TYPE_UNDEFINED.
-		 */
-		tok = au_to_text(linau_record_get_text(record));
-		PJDLOG_VERIFY(tok != NULL);
-		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-		break;
+		PJDLOG_ABORT("The type of the record is set neither to "
+		    "a type from the Linux Audit standard nor to an undefined "
+		    "type. If the type is not standard then "
+		    "LINAU_TYPE_UNDEFINED must be used.");
 	}
 }
