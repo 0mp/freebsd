@@ -1518,10 +1518,12 @@ try_get_pid_field(const struct linau_record *record, const char *fieldname)
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fieldname != NULL);
 
+	pjdlog_debug(4, "%s", __func__);
 
 	if (!linau_record_try_get_uint32_field(record, fieldname, &pid))
 		pid = -1;
 
+	pjdlog_debug(4, "End %s", __func__);
 
 	return (pid);
 }
@@ -1544,6 +1546,8 @@ generate_token_process32(const struct linau_record *record)
 	au_tid_t *tid;
 
 	PJDLOG_ASSERT(record != NULL);
+
+	pjdlog_debug(3, "%s", __func__);
 
 	/* Audit ID. */
 	pjdlog_debug(3, "auid");
@@ -1591,6 +1595,8 @@ generate_token_process32(const struct linau_record *record)
 
 	free(tid);
 
+	pjdlog_debug(3, "End %s", __func__);
+
 	return (tok);
 }
 
@@ -1600,8 +1606,8 @@ generate_tokens(int aurecordd, const struct linau_record *record,
     size_t tokenscount, ...)
 {
 	va_list ap;
-	token_t *tok;
 	token_t *(*fp)(const struct linau_record*);
+	token_t *tok;
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
@@ -1609,12 +1615,10 @@ generate_tokens(int aurecordd, const struct linau_record *record,
 	va_start(ap, tokenscount);
 
 	while (tokenscount > 0) {
-
 		fp = va_arg(ap, token_t*(*)(const struct linau_record*));
 		tok = (*fp)(record);
 		PJDLOG_VERIFY(tok != NULL);
-		PJDLOG_VERIFY(au_write(aurecordd, tok));
-
+		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 		tokenscount--;
 	}
 
@@ -1630,8 +1634,8 @@ generate_text_tokens(int aurecordd, const struct linau_record *record,
 {
 	(void)fieldscount;
 
-	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(record != NULL);
 
 	return;
 }
