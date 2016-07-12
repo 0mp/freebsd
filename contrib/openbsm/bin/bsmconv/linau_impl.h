@@ -4,7 +4,6 @@
 #include <sys/nv.h>
 #include <sys/queue.h>
 
-
 struct linau_event {
 	TAILQ_HEAD(, linau_record) 	le_records;
 };
@@ -18,11 +17,5 @@ struct linau_record {
 	char				*lr_text;
 	TAILQ_ENTRY(linau_record)	 lr_next;
 };
-
-struct linau_field {
-	char	*lf_name;
-	char	*lf_value;
-};
-
 
 #endif

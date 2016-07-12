@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/sbuf.h>
+#include <sys/queue.h>
 
 #include <ctype.h>
 #include <errno.h>
@@ -371,11 +372,12 @@ linau_record_parse_fields(const char *buf, size_t *fields_countp)
 		PJDLOG_ASSERT(field != NULL);
 
 		/* Append the field to the fields list. */
-		nvlist_move_string(fields, field->lf_name, field->lf_value);
+		nvlist_add_string(fields, linau_field_get_name(field),
+		    linau_field_get_value(field));
 
 		fields_count++;
 
-		linau_field_shallow_destroy(field);
+		linau_field_destroy(field);
 	}
 
 	pjdlog_debug(5, " . . . . -");

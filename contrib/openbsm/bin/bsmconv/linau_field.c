@@ -10,6 +10,11 @@
 static size_t find_string_value_end(const char *buf, size_t start,
     char stringtype);
 
+struct linau_field {
+	char	*lf_name;
+	char	*lf_value;
+};
+
 static size_t
 find_string_value_end(const char *buf, size_t start, char stringtype)
 {
@@ -59,6 +64,26 @@ linau_field_shallow_destroy(struct linau_field *field)
 {
 
 	free(field);
+}
+
+const char *
+linau_field_get_name(const struct linau_field *field)
+{
+
+	PJDLOG_ASSERT(field != NULL);
+	PJDLOG_ASSERT(field->lf_name != NULL);
+
+	return (field->lf_name);
+}
+
+const char *
+linau_field_get_value(const struct linau_field *field)
+{
+
+	PJDLOG_ASSERT(field != NULL);
+	PJDLOG_ASSERT(field->lf_value != NULL);
+
+	return (field->lf_value);
 }
 
 void
