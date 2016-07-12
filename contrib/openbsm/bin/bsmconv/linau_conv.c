@@ -849,11 +849,32 @@
 #define	LINAU_FIELD_NAME_VM_PID				229
 #define	LINAU_FIELD_NAME_WATCH				230
 
-/* static bool linau_conv_is_numeric(const char *field); */
+/*
+ * Helper functions.
+ */
+static pid_t try_get_pid_field(const struct linau_record *record,
+    const char *fieldname);
+/*
+ * XXX This function might belong to the token generating functions' section.
+ */
+static token_t *generate_token_text_from_field(
+    const struct linau_record *record, const char *fieldname);
+
+/*
+ * Functions which verifies the format and the type of fields.
+ */
+static int linau_conv_is_alphanumeric(const char *field);
+static int linau_conv_is_numeric(const char *field);
+
+/*
+ * Token generating functions.
+ */
+static token_t *generate_token_process32(const struct linau_record *record);
+static token_t *generate_token_text_from_msg(const struct linau_record *record);
 
 struct linau_conv_field {
-	int	 lcf_id;
-	int	*(*lcf_vadlidate)(const char *);
+	int	lcf_id;
+	int	(*lcf_vadlidate)(const char *);
 };
 
 struct linau_conv_token {
@@ -943,10 +964,10 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_AUDIT_FAILURE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_auid = { */
-/*         LINAU_FIELD_NAME_AUID, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_auid = {
+	LINAU_FIELD_NAME_AUID,
+	linau_conv_is_numeric
+};
 /* static struct linau_conv_field lcfield_banners = { */
 /*         LINAU_FIELD_NAME_BANNERS, */
 /*         NULL */
@@ -1071,10 +1092,10 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_DPORT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_egid = { */
-/*         LINAU_FIELD_NAME_EGID, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_egid = {
+	LINAU_FIELD_NAME_EGID,
+	linau_conv_is_numeric
+};
 /* static struct linau_conv_field lcfield_enforcing = { */
 /*         LINAU_FIELD_NAME_ENFORCING, */
 /*         NULL */
@@ -1083,10 +1104,10 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_ENTRIES, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_euid = { */
-/*         LINAU_FIELD_NAME_EUID, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_euid = {
+	LINAU_FIELD_NAME_EUID,
+	linau_conv_is_numeric
+};
 /* static struct linau_conv_field lcfield_exe = { */
 /*         LINAU_FIELD_NAME_EXE, */
 /*         NULL */
@@ -1295,10 +1316,10 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_MODEL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_msg = { */
-/*         LINAU_FIELD_NAME_MSG, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_msg = {
+	LINAU_FIELD_NAME_MSG,
+	linau_conv_is_alphanumeric
+};
 /* static struct linau_conv_field lcfield_nargs = { */
 /*         LINAU_FIELD_NAME_NARGS, */
 /*         NULL */
@@ -1575,10 +1596,10 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_PFS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_pid = { */
-/*         LINAU_FIELD_NAME_PID, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_pid = {
+	LINAU_FIELD_NAME_PID,
+	linau_conv_is_numeric
+};
 /* static struct linau_conv_field lcfield_ppid = { */
 /*         LINAU_FIELD_NAME_PPID, */
 /*         NULL */
@@ -1671,10 +1692,10 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_SERESULT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ses = { */
-/*         LINAU_FIELD_NAME_SES, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_ses = {
+	LINAU_FIELD_NAME_SES,
+	linau_conv_is_numeric
+};
 /* static struct linau_conv_field lcfield_seuser = { */
 /*         LINAU_FIELD_NAME_SEUSER, */
 /*         NULL */
@@ -1795,6 +1816,26 @@ struct linau_conv_record_type {
 /*         LINAU_FIELD_NAME_WATCH, */
 /*         NULL */
 /* }; */
+
+static struct linau_conv_token lctoken_process32 = {
+	generate_token_process32,
+	{
+		&lcfield_auid,
+		&lcfield_egid,
+		&lcfield_euid,
+		&lcfield_pid,
+		&lcfield_ses,
+		NULL
+	}
+};
+
+static struct linau_conv_token lctoken_text_from_msg = {
+	generate_token_text_from_msg,
+	{
+		&lcfield_msg,
+		NULL
+	}
+};
 
 static struct linau_conv_record_type lcrectype_undefined = {
 	LINAU_TYPE_UNDEFINED,
@@ -2004,7 +2045,15 @@ static struct linau_conv_record_type lcrectype_user_selinux_err = {
 static struct linau_conv_record_type lcrectype_user_cmd = {
 	LINAU_TYPE_USER_CMD,
 	LINAU_TYPE_USER_CMD_STR,
-	{ NULL }
+	/*
+	 * XXX How about a define to add & before every object and a NULL
+	 * at the end?
+	 */
+	{
+		&lctoken_process32,
+		&lctoken_text_from_msg,
+		NULL
+	}
 };
 static struct linau_conv_record_type lcrectype_user_tty = {
 	LINAU_TYPE_USER_TTY,
@@ -2722,19 +2771,157 @@ static struct linau_conv_record_type lcrectype_virt_machine_id = {
 	{ NULL }
 };
 
+static pid_t
+try_get_pid_field(const struct linau_record *record, const char *fieldname)
+{
+	pid_t pid;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(fieldname != NULL);
+
+	pjdlog_debug(4, "%s", __func__);
+
+	if (!linau_record_try_get_uint32_field(record, fieldname, &pid))
+		pid = -1;
+
+	pjdlog_debug(4, "End %s", __func__);
+
+	return (pid);
+}
+
+static token_t *
+generate_token_text_from_field(const struct linau_record *record,
+    const char *fieldname)
+{
+	const char *msg;
+	token_t *tok;
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(fieldname != NULL);
+
+	msg = linau_record_get_field(record, fieldname);
+
+	tok = au_to_text(msg);
+	PJDLOG_VERIFY(tok != NULL);
+
+	return (tok);
+}
+
+/*
+ * TODO Implement it.
+ *
+ * XXX This function should probably check if the value is in the form of a
+ * text in a string like 'pid=320 cwd="/usr"' or "pid=320 cwd='/usr'".  I am
+ * not sure though. The best idea is to ask about it on the LA mailing list.
+ */
+static int
+linau_conv_is_alphanumeric(const char *field)
+{
+
+	PJDLOG_ASSERT(field != NULL);
+
+	return (1);
+}
+
 /*
  * TODO: Not implemented yet.
  * XXX: This function might go to linau_field.c and be added to the interface in
  * linau.h.
  */
-/* static bool */
-/* linau_conv_is_numeric(const char *field) */
-/* { */
+static int
+linau_conv_is_numeric(const char *field)
+{
 
-/*         PJDLOG_ASSERT(field != NULL); */
+	PJDLOG_ASSERT(field != NULL);
 
-/*         return (true); */
-/* } */
+	return (1);
+}
+
+/*
+ * XXX Assume that all the fields have reasonable data, so there are no
+ * easter eggs like pid='hummus'.
+ */
+static token_t *
+generate_token_process32(const struct linau_record *record)
+{
+	token_t *tok;
+	au_id_t auid;
+	uid_t euid;
+	gid_t egid;
+	uid_t ruid;
+	gid_t rgid;
+	pid_t pid;
+	au_asid_t sid;
+	au_tid_t *tid;
+
+	PJDLOG_ASSERT(record != NULL);
+
+	pjdlog_debug(3, "%s", __func__);
+
+	/* Audit ID. */
+	pjdlog_debug(3, "auid");
+	auid = try_get_pid_field(record, LINAU_FIELD_NAME_AUID_STR);
+	/* Effective User ID. */
+	pjdlog_debug(3, "euid");
+	euid = try_get_pid_field(record, LINAU_FIELD_NAME_EUID_STR);
+	/* Effective Group ID. */
+	pjdlog_debug(3, "egid");
+	egid = try_get_pid_field(record, LINAU_FIELD_NAME_EGID_STR);
+	/*
+	 * Real User ID.
+	 * XXX Unavailable AFAIK.
+	 */
+	pjdlog_debug(3, "ruid");
+	ruid = -1;
+	/*
+	 * Real Group ID.
+	 * XXX Unavailable AFAIK.
+	 */
+	pjdlog_debug(3, "rgid");
+	rgid = -1;
+	/* Process ID. */
+	pjdlog_debug(3, "pid");
+	pid = try_get_pid_field(record, LINAU_FIELD_NAME_PID_STR);
+	/*
+	 * Session ID.
+	 * XXX Map to a field which represents login session id in the
+	 * Linux Audit format.
+	 */
+	sid = try_get_pid_field(record, LINAU_FIELD_NAME_SES_STR);
+	/*
+	 * Terminal Port ID.
+	 * XXX Unavailable AFAIK.
+	 */
+	sid = -1;
+	/*
+	 * Terminal Machine Address.
+	 * XXX Unavailable AFAIK.
+	 */
+	tid = calloc(1, sizeof(*tid));
+
+	tok = au_to_process32(auid, euid, egid, ruid, rgid, pid, sid, tid);
+	PJDLOG_VERIFY(tok != NULL);
+
+	free(tid);
+
+	pjdlog_debug(3, "End %s", __func__);
+
+	return (tok);
+}
+
+/*
+ * TODO At the moment the msg is printed together with its quotes / apostrophes.
+ * Wouldn't it be nice to trim them?
+ */
+static token_t *
+generate_token_text_from_msg(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_text_from_field(record,
+	    LINAU_FIELD_NAME_MSG_STR));
+}
 
 static void
 linau_conv_process_record(int aurecordd, const struct linau_record *record,
