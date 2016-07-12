@@ -10,25 +10,6 @@
 #include "linau.h"
 #include "pjdlog.h"
 
-static pid_t try_get_pid_field(const struct linau_record *record,
-    const char *fieldname);
-
-static token_t *generate_token_process32(const struct linau_record *record);
-static token_t *generate_token_text_from_field(
-    const struct linau_record *record, const char *fieldname);
-static token_t *generate_token_text_from_msg(const struct linau_record *record);
-
-static size_t count_desired_fields(const struct linau_record *record,
-    size_t desiredfieldscount, ...);
-static const char *field_name_from_field_name_id(int fieldnameid);
-
-static void write_tokens(int aurecordd, const struct linau_record *record,
-    size_t tokenscount, ...);
-static void write_text_tokens(int aurecordd,
-    const struct linau_record *record, size_t fieldscount, ...);
-static void write_text_token_from_record(int aurecordd,
-    const struct linau_record *record);
-
 #define LINAU_TYPE_UNDEFINED_STR		""
 /* #define	LINAU_TYPE_GET_STR			"GET" */
 /* #define	LINAU_TYPE_SET_STR			"SET" */
@@ -868,1388 +849,2628 @@ static void write_text_token_from_record(int aurecordd,
 #define	LINAU_FIELD_NAME_VM_PID				229
 #define	LINAU_FIELD_NAME_WATCH				230
 
-#define LINAU_TYPE_UNDEFINED_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-/* #define	LINAU_TYPE_GET_FIELDS				\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_SET_FIELDS				\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_LIST_FIELDS				\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_ADD_FIELDS				\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_DEL_FIELDS				\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-#define	LINAU_TYPE_USER_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_LOGIN_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-/* #define	LINAU_TYPE_SIGNAL_INFO_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_ADD_RULE_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_DEL_RULE_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_LIST_RULES_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_TRIM_FIELDS				\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_MAKE_EQUIV_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_TTY_GET_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_TTY_SET_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_SET_FEATURE_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-/* #define	LINAU_TYPE_GET_FEATURE_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-#define	LINAU_TYPE_USER_AUTH_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_ACCT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_MGMT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRED_ACQ_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRED_DISP_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_START_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_END_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_AVC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_CHAUTHTOK_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_ERR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRED_REFR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USYS_CONFIG_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_LOGIN_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_LOGOUT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ADD_USER_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DEL_USER_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ADD_GROUP_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DEL_GROUP_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAC_CHECK_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CHGRP_ID_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_TEST_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_TRUSTED_APP_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_SELINUX_ERR_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-/*
- * XXX Missing subj field. I don't know why but I do not see the
- * LINAU_FIELD_NAME_SUBJ field in the records of this type in the logs
- * generated on my own. This issue requires further investigation.
- *
- * Some links to example logs I gathered over the Internet are linked on the
- * project's wiki.
- */
-#define	LINAU_TYPE_USER_CMD_FIELDS			\
-    LINAU_FIELD_NAME_PID,				\
-    LINAU_FIELD_NAME_UID,				\
-    LINAU_FIELD_NAME_AUID,				\
-    LINAU_FIELD_NAME_SES,				\
-    LINAU_FIELD_NAME_MSG
-#define	LINAU_TYPE_USER_TTY_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CHUSER_ID_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_GRP_AUTH_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_CHECK_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ACCT_LOCK_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ACCT_UNLOCK_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SYSTEM_BOOT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SYSTEM_SHUTDOWN_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SYSTEM_RUNLEVEL_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SERVICE_START_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SERVICE_STOP_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_GRP_MGMT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_GRP_CHAUTHTOK_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_START_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_END_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_ABORT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_CONFIG_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-/* #define	LINAU_TYPE_DAEMON_RECONFIG_FIELDS		\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-#define	LINAU_TYPE_DAEMON_ROTATE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_RESUME_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_ACCEPT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_CLOSE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DAEMON_ERR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SYSCALL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-/* #define	LINAU_TYPE_FS_WATCH_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-#define	LINAU_TYPE_PATH_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_IPC_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SOCKETCALL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CONFIG_CHANGE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SOCKADDR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CWD_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-/* #define	LINAU_TYPE_FS_INODE_FIELDS			\ */
-/*     LINAU_FIELD_NAME_UNDEFINED */
-#define	LINAU_TYPE_EXECVE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_IPC_SET_PERM_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MQ_OPEN_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MQ_SENDRECV_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MQ_NOTIFY_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MQ_GETSETATTR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_KERNEL_OTHER_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_FD_PAIR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_OBJ_PID_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_TTY_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_EOE_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_BPRM_FCAPS_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CAPSET_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MMAP_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_NETFILTER_PKT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_NETFILTER_CFG_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SECCOMP_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_PROCTITLE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_FEATURE_CHANGE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_AVC_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_SELINUX_ERR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_AVC_PATH_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_POLICY_LOAD_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_STATUS_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_CONFIG_CHANGE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_UNLBL_ALLOW_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_CIPSOV4_ADD_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_CIPSOV4_DEL_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_MAP_ADD_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_MAP_DEL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_IPSEC_ADDSA_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_IPSEC_DELSA_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_IPSEC_ADDSPD_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_IPSEC_DELSPD_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_IPSEC_EVENT_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_UNLBL_STCADD_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_MAC_UNLBL_STCDEL_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_PROMISCUOUS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_ABEND_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_LINK_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_INTEGRITY_DATA_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_INTEGRITY_METADATA_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_INTEGRITY_STATUS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_INTEGRITY_HASH_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_INTEGRITY_PCR_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_INTEGRITY_RULE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_AA_FIELDS				\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_APPARMOR_AUDIT_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_APPARMOR_ALLOWED_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_APPARMOR_DENIED_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_APPARMOR_HINT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_APPARMOR_STATUS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_APPARMOR_ERROR_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_KERNEL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_LOGIN_FAILURES_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_LOGIN_TIME_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_LOGIN_SESSIONS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_LOGIN_ACCT_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_LOGIN_LOCATION_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_MAX_DAC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_MAX_MAC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_AMTU_FAIL_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_RBAC_FAIL_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL_FIELDS	\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_CRYPTO_FAIL_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_ACCESS_FS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_EXEC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_MK_EXEC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_ADD_ACCT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_DEL_ACCT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_MOD_ACCT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ANOM_ROOT_TRANS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_ANOMALY_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_ALERT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_KILL_PROC_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_TERM_ACCESS_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_ACCT_REMOTE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_ACCT_LOCK_TIMED_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED_FIELDS	\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_ACCT_LOCK_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_TERM_LOCK_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_SEBOOL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_EXEC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_SINGLE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_RESP_HALT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_ROLE_CHANGE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ROLE_ASSIGN_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ROLE_REMOVE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_LABEL_OVERRIDE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_LABEL_LEVEL_CHANGE_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_LABELED_EXPORT_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_UNLABELED_EXPORT_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DEV_ALLOC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_DEV_DEALLOC_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_FS_RELABEL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_MAC_POLICY_LOAD_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_ROLE_MODIFY_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_USER_MAC_CONFIG_CHANGE_FIELDS	\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_TEST_USER_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER_FIELDS	\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_LOGIN_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_LOGOUT_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_KEY_USER_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_FAILURE_USER_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_REPLAY_USER_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_SESSION_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_IKE_SA_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_CRYPTO_IPSEC_SA_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_VIRT_CONTROL_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_VIRT_RESOURCE_FIELDS			\
-    LINAU_FIELD_NAME_UNDEFINED
-#define	LINAU_TYPE_VIRT_MACHINE_ID_FIELDS		\
-    LINAU_FIELD_NAME_UNDEFINED
+/* static bool linau_conv_is_numeric(const char *field); */
 
-#define LINAU_TYPE_UNDEFINED_TOKENS			(void*)0
-/* #define	LINAU_TYPE_GET_TOKENS				(void*)0 */
-/* #define	LINAU_TYPE_SET_TOKENS				(void*)0 */
-/* #define	LINAU_TYPE_LIST_TOKENS				(void*)0 */
-/* #define	LINAU_TYPE_ADD_TOKENS				(void*)0 */
-/* #define	LINAU_TYPE_DEL_TOKENS				(void*)0 */
-#define	LINAU_TYPE_USER_TOKENS				(void*)0
-#define	LINAU_TYPE_LOGIN_TOKENS				(void*)0
-/* #define	LINAU_TYPE_SIGNAL_INFO_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_ADD_RULE_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_DEL_RULE_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_LIST_RULES_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_TRIM_TOKENS				(void*)0 */
-/* #define	LINAU_TYPE_MAKE_EQUIV_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_TTY_GET_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_TTY_SET_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_SET_FEATURE_TOKENS			(void*)0 */
-/* #define	LINAU_TYPE_GET_FEATURE_TOKENS			(void*)0 */
-#define	LINAU_TYPE_USER_AUTH_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_ACCT_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_MGMT_TOKENS			(void*)0
-#define	LINAU_TYPE_CRED_ACQ_TOKENS			(void*)0
-#define	LINAU_TYPE_CRED_DISP_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_START_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_END_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_AVC_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_CHAUTHTOK_TOKENS		(void*)0
-#define	LINAU_TYPE_USER_ERR_TOKENS			(void*)0
-#define	LINAU_TYPE_CRED_REFR_TOKENS			(void*)0
-#define	LINAU_TYPE_USYS_CONFIG_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_LOGIN_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_LOGOUT_TOKENS			(void*)0
-#define	LINAU_TYPE_ADD_USER_TOKENS			(void*)0
-#define	LINAU_TYPE_DEL_USER_TOKENS			(void*)0
-#define	LINAU_TYPE_ADD_GROUP_TOKENS			(void*)0
-#define	LINAU_TYPE_DEL_GROUP_TOKENS			(void*)0
-#define	LINAU_TYPE_DAC_CHECK_TOKENS			(void*)0
-#define	LINAU_TYPE_CHGRP_ID_TOKENS			(void*)0
-#define	LINAU_TYPE_TEST_TOKENS				(void*)0
-#define	LINAU_TYPE_TRUSTED_APP_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_SELINUX_ERR_TOKENS		(void*)0
-#define	LINAU_TYPE_USER_CMD_TOKENS			\
-    generate_token_process32,				\
-    generate_token_text_from_msg
-#define	LINAU_TYPE_USER_TTY_TOKENS			(void*)0
-#define	LINAU_TYPE_CHUSER_ID_TOKENS			(void*)0
-#define	LINAU_TYPE_GRP_AUTH_TOKENS			(void*)0
-#define	LINAU_TYPE_MAC_CHECK_TOKENS			(void*)0
-#define	LINAU_TYPE_ACCT_LOCK_TOKENS			(void*)0
-#define	LINAU_TYPE_ACCT_UNLOCK_TOKENS			(void*)0
-#define	LINAU_TYPE_SYSTEM_BOOT_TOKENS			(void*)0
-#define	LINAU_TYPE_SYSTEM_SHUTDOWN_TOKENS		(void*)0
-#define	LINAU_TYPE_SYSTEM_RUNLEVEL_TOKENS		(void*)0
-#define	LINAU_TYPE_SERVICE_START_TOKENS			(void*)0
-#define	LINAU_TYPE_SERVICE_STOP_TOKENS			(void*)0
-#define	LINAU_TYPE_GRP_MGMT_TOKENS			(void*)0
-#define	LINAU_TYPE_GRP_CHAUTHTOK_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_START_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_END_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_ABORT_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_CONFIG_TOKENS			(void*)0
-/* #define	LINAU_TYPE_DAEMON_RECONFIG_TOKENS		(void*)0 */
-#define	LINAU_TYPE_DAEMON_ROTATE_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_RESUME_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_ACCEPT_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_CLOSE_TOKENS			(void*)0
-#define	LINAU_TYPE_DAEMON_ERR_TOKENS			(void*)0
-#define	LINAU_TYPE_SYSCALL_TOKENS			(void*)0
-/* #define	LINAU_TYPE_FS_WATCH_TOKENS			(void*)0 */
-#define	LINAU_TYPE_PATH_TOKENS				(void*)0
-#define	LINAU_TYPE_IPC_TOKENS				(void*)0
-#define	LINAU_TYPE_SOCKETCALL_TOKENS			(void*)0
-#define	LINAU_TYPE_CONFIG_CHANGE_TOKENS			(void*)0
-#define	LINAU_TYPE_SOCKADDR_TOKENS			(void*)0
-#define	LINAU_TYPE_CWD_TOKENS				(void*)0
-/* #define	LINAU_TYPE_FS_INODE_TOKENS			(void*)0 */
-#define	LINAU_TYPE_EXECVE_TOKENS			(void*)0
-#define	LINAU_TYPE_IPC_SET_PERM_TOKENS			(void*)0
-#define	LINAU_TYPE_MQ_OPEN_TOKENS			(void*)0
-#define	LINAU_TYPE_MQ_SENDRECV_TOKENS			(void*)0
-#define	LINAU_TYPE_MQ_NOTIFY_TOKENS			(void*)0
-#define	LINAU_TYPE_MQ_GETSETATTR_TOKENS			(void*)0
-#define	LINAU_TYPE_KERNEL_OTHER_TOKENS			(void*)0
-#define	LINAU_TYPE_FD_PAIR_TOKENS			(void*)0
-#define	LINAU_TYPE_OBJ_PID_TOKENS			(void*)0
-#define	LINAU_TYPE_TTY_TOKENS				(void*)0
-#define	LINAU_TYPE_EOE_TOKENS				(void*)0
-#define	LINAU_TYPE_BPRM_FCAPS_TOKENS			(void*)0
-#define	LINAU_TYPE_CAPSET_TOKENS			(void*)0
-#define	LINAU_TYPE_MMAP_TOKENS				(void*)0
-#define	LINAU_TYPE_NETFILTER_PKT_TOKENS			(void*)0
-#define	LINAU_TYPE_NETFILTER_CFG_TOKENS			(void*)0
-#define	LINAU_TYPE_SECCOMP_TOKENS			(void*)0
-#define	LINAU_TYPE_PROCTITLE_TOKENS			(void*)0
-#define	LINAU_TYPE_FEATURE_CHANGE_TOKENS		(void*)0
-#define	LINAU_TYPE_AVC_TOKENS				(void*)0
-#define	LINAU_TYPE_SELINUX_ERR_TOKENS			(void*)0
-#define	LINAU_TYPE_AVC_PATH_TOKENS			(void*)0
-#define	LINAU_TYPE_MAC_POLICY_LOAD_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_STATUS_TOKENS			(void*)0
-#define	LINAU_TYPE_MAC_CONFIG_CHANGE_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_UNLBL_ALLOW_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_CIPSOV4_ADD_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_CIPSOV4_DEL_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_MAP_ADD_TOKENS			(void*)0
-#define	LINAU_TYPE_MAC_MAP_DEL_TOKENS			(void*)0
-#define	LINAU_TYPE_MAC_IPSEC_ADDSA_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_IPSEC_DELSA_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_IPSEC_ADDSPD_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_IPSEC_DELSPD_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_IPSEC_EVENT_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_UNLBL_STCADD_TOKENS		(void*)0
-#define	LINAU_TYPE_MAC_UNLBL_STCDEL_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_PROMISCUOUS_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_ABEND_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_LINK_TOKENS			(void*)0
-#define	LINAU_TYPE_INTEGRITY_DATA_TOKENS		(void*)0
-#define	LINAU_TYPE_INTEGRITY_METADATA_TOKENS		(void*)0
-#define	LINAU_TYPE_INTEGRITY_STATUS_TOKENS		(void*)0
-#define	LINAU_TYPE_INTEGRITY_HASH_TOKENS		(void*)0
-#define	LINAU_TYPE_INTEGRITY_PCR_TOKENS			(void*)0
-#define	LINAU_TYPE_INTEGRITY_RULE_TOKENS		(void*)0
-#define	LINAU_TYPE_AA_TOKENS				(void*)0
-#define	LINAU_TYPE_APPARMOR_AUDIT_TOKENS		(void*)0
-#define	LINAU_TYPE_APPARMOR_ALLOWED_TOKENS		(void*)0
-#define	LINAU_TYPE_APPARMOR_DENIED_TOKENS		(void*)0
-#define	LINAU_TYPE_APPARMOR_HINT_TOKENS			(void*)0
-#define	LINAU_TYPE_APPARMOR_STATUS_TOKENS		(void*)0
-#define	LINAU_TYPE_APPARMOR_ERROR_TOKENS		(void*)0
-#define	LINAU_TYPE_KERNEL_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_LOGIN_FAILURES_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_LOGIN_TIME_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_LOGIN_SESSIONS_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_LOGIN_ACCT_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_LOGIN_LOCATION_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_MAX_DAC_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_MAX_MAC_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_AMTU_FAIL_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_RBAC_FAIL_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL_TOKENS	(void*)0
-#define	LINAU_TYPE_ANOM_CRYPTO_FAIL_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_ACCESS_FS_TOKENS		(void*)0
-#define	LINAU_TYPE_ANOM_EXEC_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_MK_EXEC_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_ADD_ACCT_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_DEL_ACCT_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_MOD_ACCT_TOKENS			(void*)0
-#define	LINAU_TYPE_ANOM_ROOT_TRANS_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_ANOMALY_TOKENS			(void*)0
-#define	LINAU_TYPE_RESP_ALERT_TOKENS			(void*)0
-#define	LINAU_TYPE_RESP_KILL_PROC_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_TERM_ACCESS_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_ACCT_REMOTE_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_ACCT_LOCK_TIMED_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED_TOKENS	(void*)0
-#define	LINAU_TYPE_RESP_ACCT_LOCK_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_TERM_LOCK_TOKENS		(void*)0
-#define	LINAU_TYPE_RESP_SEBOOL_TOKENS			(void*)0
-#define	LINAU_TYPE_RESP_EXEC_TOKENS			(void*)0
-#define	LINAU_TYPE_RESP_SINGLE_TOKENS			(void*)0
-#define	LINAU_TYPE_RESP_HALT_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_ROLE_CHANGE_TOKENS		(void*)0
-#define	LINAU_TYPE_ROLE_ASSIGN_TOKENS			(void*)0
-#define	LINAU_TYPE_ROLE_REMOVE_TOKENS			(void*)0
-#define	LINAU_TYPE_LABEL_OVERRIDE_TOKENS		(void*)0
-#define	LINAU_TYPE_LABEL_LEVEL_CHANGE_TOKENS		(void*)0
-#define	LINAU_TYPE_USER_LABELED_EXPORT_TOKENS		(void*)0
-#define	LINAU_TYPE_USER_UNLABELED_EXPORT_TOKENS		(void*)0
-#define	LINAU_TYPE_DEV_ALLOC_TOKENS			(void*)0
-#define	LINAU_TYPE_DEV_DEALLOC_TOKENS			(void*)0
-#define	LINAU_TYPE_FS_RELABEL_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_MAC_POLICY_LOAD_TOKENS		(void*)0
-#define	LINAU_TYPE_ROLE_MODIFY_TOKENS			(void*)0
-#define	LINAU_TYPE_USER_MAC_CONFIG_CHANGE_TOKENS	(void*)0
-#define	LINAU_TYPE_CRYPTO_TEST_USER_TOKENS		(void*)0
-#define	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER_TOKENS	(void*)0
-#define	LINAU_TYPE_CRYPTO_LOGIN_TOKENS			(void*)0
-#define	LINAU_TYPE_CRYPTO_LOGOUT_TOKENS			(void*)0
-#define	LINAU_TYPE_CRYPTO_KEY_USER_TOKENS		(void*)0
-#define	LINAU_TYPE_CRYPTO_FAILURE_USER_TOKENS		(void*)0
-#define	LINAU_TYPE_CRYPTO_REPLAY_USER_TOKENS		(void*)0
-#define	LINAU_TYPE_CRYPTO_SESSION_TOKENS		(void*)0
-#define	LINAU_TYPE_CRYPTO_IKE_SA_TOKENS			(void*)0
-#define	LINAU_TYPE_CRYPTO_IPSEC_SA_TOKENS		(void*)0
-#define	LINAU_TYPE_VIRT_CONTROL_TOKENS			(void*)0
-#define	LINAU_TYPE_VIRT_RESOURCE_TOKENS			(void*)0
-#define	LINAU_TYPE_VIRT_MACHINE_ID_TOKENS		(void*)0
-
-/*
- * This macro converts a record to tokens and saves it to the given audit
- * record descriptor (see au_write(3)).
- *
- * Parameters:
- * record	The record to convert.
- * aurecordd	The audit record descriptor.  You can read more about
- *		this variable in au_open(3) (aurecordd is what au_open(3)
- *		returns).
- * linautype	The name of the number define which assosiated with the
- *		type of the record.  For example if record->lr_type
- *		is "USER_CMD" then linautype should be equal
- *		to LINAU_TYPE_USER_CMD.  In fact, what matters is the
- *		name of the defined variable itself since the function uses
- *		linautype to concatenate suffixes like _FIELDS to get
- *		access to the defines like LINAU_TYPE_USER_CMD_FIELDS.
- */
-#define	CONVERT_RECORD_TO_AU(aurecordd, record, linautype) do {		\
-	size_t foundfieldscount, desiredfieldscount, totalfieldscount;	\
-	foundfieldscount = count_desired_fields(record,			\
-	    prepend_num_args(int, linautype ## _FIELDS));		\
-									\
-	desiredfieldscount = get_num_args(int, linautype ## _FIELDS);	\
-									\
-	totalfieldscount = linau_record_get_fields_count(record);	\
-									\
-	/*								\
-	 * desiredfieldscount is always >= 1 because every type has	\
-	 * at least LINAU_FIELD_NAME_UNDEFINED listed			\
-	 * in their field list. A field list is for example		\
-	 * LINAU_TYPE_USER_CMD_FIELDS for LINAU_TYPE_USER_CMD.		\
-	 */								\
-	if (foundfieldscount == desiredfieldscount) {			\
-		write_tokens(aurecordd, record,				\
-		    prepend_num_args(void*, linautype ## _TOKENS));	\
-									\
-		if (desiredfieldscount < totalfieldscount) {		\
-			write_text_tokens(aurecordd, record,		\
-			    prepend_num_args(int,			\
-			    linautype ## _FIELDS));			\
-		}							\
-	} else {							\
-		write_text_token_from_record(aurecordd, record);	\
-	}								\
-} while (0)
-
-/*
- * prepend_num_args is a macro which takes a type and a variable argument
- * list of elements of that type.
- * As a result it returns the very same variable argument list with
- * an additional number prepended to the list.  This number indicates the total
- * count of elements in the variable argument list.
- *
- * Example 1 (int numbers):
- *
- *     prepend_num_args(int, 100, 4, 29, 616)
- *
- * evaluates to
- *
- *     4, 100, 4, 29, 616
- *
- * Example 2 (function pointers):
- *
- *	prepend_num_args(void*, f, g, h)
- *
- * evaluates to
- *
- *	3, f, g, h
- *
- * get_num_args is just a helper macro to get prepend_num_args to work.
- * It simply counts the number of elements in the list.
- *
- * Example:
- *
- *	get_num_args(int, 1, 55, 616, 616)
- *
- * evaluates to
- *
- *	4
- *
- * These macors don't work if the list is empty.
- */
-#define	get_num_args(type, ...) ((sizeof(type[]){__VA_ARGS__})/sizeof(type))
-#define	prepend_num_args(type, ...) \
-    get_num_args(type, __VA_ARGS__), __VA_ARGS__
+struct linau_conv_field {
+	int	 lcf_id;
+	int	*(*lcf_vadlidate)(const char *);
+};
 
 struct linau_conv_token {
-	token_t	*(*lct_genrate)(const struct linau_record *);
-	int	 lct_fields[];
+	token_t			*(*lct_genrate)(const struct linau_record *);
+	struct linau_conv_field	*lct_fields[];
 };
 
 struct linau_conv_record_type {
 	int			 lcrt_id;
-	char			*lcrt_str;
-	struct linau_conv_token	 lcrt_tokens[];
+	const char		*lcrt_str;
+	struct linau_conv_token	*lcrt_tokens[];
 };
 
-static pid_t
-try_get_pid_field(const struct linau_record *record, const char *fieldname)
+/*
+ * Fields definitions.
+ */
+/* static struct linau_conv_field lcfield_undefined = { */
+/*         LINAU_FIELD_NAME_UNDEFINED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_a0 = { */
+/*         LINAU_FIELD_NAME_A0, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_a1 = { */
+/*         LINAU_FIELD_NAME_A1, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_a2 = { */
+/*         LINAU_FIELD_NAME_A2, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_a3 = { */
+/*         LINAU_FIELD_NAME_A3, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_a_execve_syscall = { */
+/*         [> TODO This one needs special attention. <] */
+/*         LINAU_FIELD_NAME_A_EXECVE_SYSCALL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_acct = { */
+/*         LINAU_FIELD_NAME_ACCT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_acl = { */
+/*         LINAU_FIELD_NAME_ACL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_action = { */
+/*         LINAU_FIELD_NAME_ACTION, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_added = { */
+/*         LINAU_FIELD_NAME_ADDED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_addr = { */
+/*         LINAU_FIELD_NAME_ADDR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_apparmor = { */
+/*         LINAU_FIELD_NAME_APPARMOR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_arch = { */
+/*         LINAU_FIELD_NAME_ARCH, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_argc = { */
+/*         LINAU_FIELD_NAME_ARGC, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_audit_backlog_limit = { */
+/*         LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_audit_backlog_wait_time = { */
+/*         LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_audit_enabled = { */
+/*         LINAU_FIELD_NAME_AUDIT_ENABLED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_audit_failure = { */
+/*         LINAU_FIELD_NAME_AUDIT_FAILURE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_auid = { */
+/*         LINAU_FIELD_NAME_AUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_banners = { */
+/*         LINAU_FIELD_NAME_BANNERS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_bool = { */
+/*         LINAU_FIELD_NAME_BOOL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_bus = { */
+/*         LINAU_FIELD_NAME_BUS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_capability = { */
+/*         LINAU_FIELD_NAME_CAPABILITY, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_fe = { */
+/*         LINAU_FIELD_NAME_CAP_FE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_fi = { */
+/*         LINAU_FIELD_NAME_CAP_FI, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_fp = { */
+/*         LINAU_FIELD_NAME_CAP_FP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_fver = { */
+/*         LINAU_FIELD_NAME_CAP_FVER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_pe = { */
+/*         LINAU_FIELD_NAME_CAP_PE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_pi = { */
+/*         LINAU_FIELD_NAME_CAP_PI, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cap_pp = { */
+/*         LINAU_FIELD_NAME_CAP_PP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_category = { */
+/*         LINAU_FIELD_NAME_CATEGORY, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cgroup = { */
+/*         LINAU_FIELD_NAME_CGROUP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_changed = { */
+/*         LINAU_FIELD_NAME_CHANGED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cipher = { */
+/*         LINAU_FIELD_NAME_CIPHER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_class = { */
+/*         LINAU_FIELD_NAME_CLASS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cmd = { */
+/*         LINAU_FIELD_NAME_CMD, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_code = { */
+/*         LINAU_FIELD_NAME_CODE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_comm = { */
+/*         LINAU_FIELD_NAME_COMM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_compat = { */
+/*         LINAU_FIELD_NAME_COMPAT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_cwd = { */
+/*         LINAU_FIELD_NAME_CWD, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_daddr = { */
+/*         LINAU_FIELD_NAME_DADDR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_data = { */
+/*         LINAU_FIELD_NAME_DATA, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_default = { */
+/*         LINAU_FIELD_NAME_DEFAULT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_dev = { */
+/*         LINAU_FIELD_NAME_DEV, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_dev2 = { */
+/*         LINAU_FIELD_NAME_DEV2, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_device = { */
+/*         LINAU_FIELD_NAME_DEVICE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_dir = { */
+/*         LINAU_FIELD_NAME_DIR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_direction = { */
+/*         LINAU_FIELD_NAME_DIRECTION, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_dmac = { */
+/*         LINAU_FIELD_NAME_DMAC, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_dport = { */
+/*         LINAU_FIELD_NAME_DPORT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_egid = { */
+/*         LINAU_FIELD_NAME_EGID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_enforcing = { */
+/*         LINAU_FIELD_NAME_ENFORCING, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_entries = { */
+/*         LINAU_FIELD_NAME_ENTRIES, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_euid = { */
+/*         LINAU_FIELD_NAME_EUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_exe = { */
+/*         LINAU_FIELD_NAME_EXE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_exit = { */
+/*         LINAU_FIELD_NAME_EXIT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fam = { */
+/*         LINAU_FIELD_NAME_FAM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_family = { */
+/*         LINAU_FIELD_NAME_FAMILY, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fd = { */
+/*         LINAU_FIELD_NAME_FD, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_file = { */
+/*         LINAU_FIELD_NAME_FILE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_flags = { */
+/*         LINAU_FIELD_NAME_FLAGS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fe = { */
+/*         LINAU_FIELD_NAME_FE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_feature = { */
+/*         LINAU_FIELD_NAME_FEATURE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fi = { */
+/*         LINAU_FIELD_NAME_FI, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fp = { */
+/*         LINAU_FIELD_NAME_FP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fp2 = { */
+/*         LINAU_FIELD_NAME_FP2, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_format = { */
+/*         LINAU_FIELD_NAME_FORMAT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fsgid = { */
+/*         LINAU_FIELD_NAME_FSGID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fsuid = { */
+/*         LINAU_FIELD_NAME_FSUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_fver = { */
+/*         LINAU_FIELD_NAME_FVER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_gid = { */
+/*         LINAU_FIELD_NAME_GID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_grantors = { */
+/*         LINAU_FIELD_NAME_GRANTORS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_grp = { */
+/*         LINAU_FIELD_NAME_GRP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_hook = { */
+/*         LINAU_FIELD_NAME_HOOK, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_hostname = { */
+/*         LINAU_FIELD_NAME_HOSTNAME, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_icmp_type = { */
+/*         LINAU_FIELD_NAME_ICMP_TYPE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_id = { */
+/*         LINAU_FIELD_NAME_ID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_igid = { */
+/*         LINAU_FIELD_NAME_IGID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_img = { */
+/*         LINAU_FIELD_NAME_IMG, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_inif = { */
+/*         LINAU_FIELD_NAME_INIF, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ip = { */
+/*         LINAU_FIELD_NAME_IP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ipid = { */
+/*         LINAU_FIELD_NAME_IPID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ino = { */
+/*         LINAU_FIELD_NAME_INO, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_inode = { */
+/*         LINAU_FIELD_NAME_INODE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_inode_gid = { */
+/*         LINAU_FIELD_NAME_INODE_GID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_inode_uid = { */
+/*         LINAU_FIELD_NAME_INODE_UID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_invalid_context = { */
+/*         LINAU_FIELD_NAME_INVALID_CONTEXT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ipx = { */
+/*         LINAU_FIELD_NAME_IPX, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_item = { */
+/*         LINAU_FIELD_NAME_ITEM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_items = { */
+/*         LINAU_FIELD_NAME_ITEMS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_iuid = { */
+/*         LINAU_FIELD_NAME_IUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_kernel = { */
+/*         LINAU_FIELD_NAME_KERNEL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_key = { */
+/*         LINAU_FIELD_NAME_KEY, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_kind = { */
+/*         LINAU_FIELD_NAME_KIND, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ksize = { */
+/*         LINAU_FIELD_NAME_KSIZE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_laddr = { */
+/*         LINAU_FIELD_NAME_LADDR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_len = { */
+/*         LINAU_FIELD_NAME_LEN, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_lport = { */
+/*         LINAU_FIELD_NAME_LPORT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_list = { */
+/*         LINAU_FIELD_NAME_LIST, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_mac = { */
+/*         LINAU_FIELD_NAME_MAC, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_macproto = { */
+/*         LINAU_FIELD_NAME_MACPROTO, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_maj = { */
+/*         LINAU_FIELD_NAME_MAJ, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_major = { */
+/*         LINAU_FIELD_NAME_MAJOR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_minor = { */
+/*         LINAU_FIELD_NAME_MINOR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_mode = { */
+/*         LINAU_FIELD_NAME_MODE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_model = { */
+/*         LINAU_FIELD_NAME_MODEL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_msg = { */
+/*         LINAU_FIELD_NAME_MSG, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_nargs = { */
+/*         LINAU_FIELD_NAME_NARGS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_name = { */
+/*         LINAU_FIELD_NAME_NAME, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_nametype = { */
+/*         LINAU_FIELD_NAME_NAMETYPE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_net = { */
+/*         LINAU_FIELD_NAME_NET, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new = { */
+/*         LINAU_FIELD_NAME_NEW, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_chardev = { */
+/*         LINAU_FIELD_NAME_NEW_CHARDEV, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_disk = { */
+/*         LINAU_FIELD_NAME_NEW_DISK, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_enabled = { */
+/*         LINAU_FIELD_NAME_NEW_ENABLED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_fs = { */
+/*         LINAU_FIELD_NAME_NEW_FS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_gid = { */
+/*         LINAU_FIELD_NAME_NEW_GID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_level = { */
+/*         LINAU_FIELD_NAME_NEW_LEVEL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_lock = { */
+/*         LINAU_FIELD_NAME_NEW_LOCK, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_log_passwd = { */
+/*         LINAU_FIELD_NAME_NEW_LOG_PASSWD, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_mem = { */
+/*         LINAU_FIELD_NAME_NEW_MEM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_net = { */
+/*         LINAU_FIELD_NAME_NEW_NET, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_pe = { */
+/*         LINAU_FIELD_NAME_NEW_PE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_pi = { */
+/*         LINAU_FIELD_NAME_NEW_PI, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_pp = { */
+/*         LINAU_FIELD_NAME_NEW_PP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_range = { */
+/*         LINAU_FIELD_NAME_NEW_RANGE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_rng = { */
+/*         LINAU_FIELD_NAME_NEW_RNG, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_role = { */
+/*         LINAU_FIELD_NAME_NEW_ROLE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_seuser = { */
+/*         LINAU_FIELD_NAME_NEW_SEUSER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_new_vcpu = { */
+/*         LINAU_FIELD_NAME_NEW_VCPU, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_nlnk_fam = { */
+/*         LINAU_FIELD_NAME_NLNK_FAM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_nlnk_grp = { */
+/*         LINAU_FIELD_NAME_NLNK_GRP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_nlnk_pid = { */
+/*         LINAU_FIELD_NAME_NLNK_PID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_oauid = { */
+/*         LINAU_FIELD_NAME_OAUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_obj = { */
+/*         LINAU_FIELD_NAME_OBJ, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_obj_gid = { */
+/*         LINAU_FIELD_NAME_OBJ_GID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_obj_uid = { */
+/*         LINAU_FIELD_NAME_OBJ_UID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_oflag = { */
+/*         LINAU_FIELD_NAME_OFLAG, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ogid = { */
+/*         LINAU_FIELD_NAME_OGID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ocomm = { */
+/*         LINAU_FIELD_NAME_OCOMM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old = { */
+/*         LINAU_FIELD_NAME_OLD, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old2 = { */
+/*         LINAU_FIELD_NAME_OLD2, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_auid = { */
+/*         LINAU_FIELD_NAME_OLD_AUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_chardev = { */
+/*         LINAU_FIELD_NAME_OLD_CHARDEV, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_disk = { */
+/*         LINAU_FIELD_NAME_OLD_DISK, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_enabled = { */
+/*         LINAU_FIELD_NAME_OLD_ENABLED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_enforcing = { */
+/*         LINAU_FIELD_NAME_OLD_ENFORCING, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_fs = { */
+/*         LINAU_FIELD_NAME_OLD_FS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_level = { */
+/*         LINAU_FIELD_NAME_OLD_LEVEL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_lock = { */
+/*         LINAU_FIELD_NAME_OLD_LOCK, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_log_passwd = { */
+/*         LINAU_FIELD_NAME_OLD_LOG_PASSWD, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_mem = { */
+/*         LINAU_FIELD_NAME_OLD_MEM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_net = { */
+/*         LINAU_FIELD_NAME_OLD_NET, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_pe = { */
+/*         LINAU_FIELD_NAME_OLD_PE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_pi = { */
+/*         LINAU_FIELD_NAME_OLD_PI, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_pp = { */
+/*         LINAU_FIELD_NAME_OLD_PP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_prom = { */
+/*         LINAU_FIELD_NAME_OLD_PROM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_range = { */
+/*         LINAU_FIELD_NAME_OLD_RANGE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_rng = { */
+/*         LINAU_FIELD_NAME_OLD_RNG, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_role = { */
+/*         LINAU_FIELD_NAME_OLD_ROLE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_ses = { */
+/*         LINAU_FIELD_NAME_OLD_SES, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_seuser = { */
+/*         LINAU_FIELD_NAME_OLD_SEUSER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_val = { */
+/*         LINAU_FIELD_NAME_OLD_VAL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_old_vcpu = { */
+/*         LINAU_FIELD_NAME_OLD_VCPU, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_op = { */
+/*         LINAU_FIELD_NAME_OP, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_opid = { */
+/*         LINAU_FIELD_NAME_OPID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_oses = { */
+/*         LINAU_FIELD_NAME_OSES, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ouid = { */
+/*         LINAU_FIELD_NAME_OUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_outif = { */
+/*         LINAU_FIELD_NAME_OUTIF, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_parent = { */
+/*         LINAU_FIELD_NAME_PARENT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_path = { */
+/*         LINAU_FIELD_NAME_PATH, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_per = { */
+/*         LINAU_FIELD_NAME_PER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_perm = { */
+/*         LINAU_FIELD_NAME_PERM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_perm_mask = { */
+/*         LINAU_FIELD_NAME_PERM_MASK, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_permissive = { */
+/*         LINAU_FIELD_NAME_PERMISSIVE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_pfs = { */
+/*         LINAU_FIELD_NAME_PFS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_pid = { */
+/*         LINAU_FIELD_NAME_PID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ppid = { */
+/*         LINAU_FIELD_NAME_PPID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_printer = { */
+/*         LINAU_FIELD_NAME_PRINTER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_prom = { */
+/*         LINAU_FIELD_NAME_PROM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_proctitle = { */
+/*         LINAU_FIELD_NAME_PROCTITLE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_proto = { */
+/*         LINAU_FIELD_NAME_PROTO, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_qbytes = { */
+/*         LINAU_FIELD_NAME_QBYTES, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_range = { */
+/*         LINAU_FIELD_NAME_RANGE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_rdev = { */
+/*         LINAU_FIELD_NAME_RDEV, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_reason = { */
+/*         LINAU_FIELD_NAME_REASON, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_removed = { */
+/*         LINAU_FIELD_NAME_REMOVED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_res = { */
+/*         LINAU_FIELD_NAME_RES, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_resrc = { */
+/*         LINAU_FIELD_NAME_RESRC, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_result = { */
+/*         LINAU_FIELD_NAME_RESULT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_role = { */
+/*         LINAU_FIELD_NAME_ROLE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_rport = { */
+/*         LINAU_FIELD_NAME_RPORT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_saddr = { */
+/*         LINAU_FIELD_NAME_SADDR, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_sauid = { */
+/*         LINAU_FIELD_NAME_SAUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_scontext = { */
+/*         LINAU_FIELD_NAME_SCONTEXT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_selected = { */
+/*         LINAU_FIELD_NAME_SELECTED, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_seperm = { */
+/*         LINAU_FIELD_NAME_SEPERM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_seqno = { */
+/*         LINAU_FIELD_NAME_SEQNO, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_seperms = { */
+/*         LINAU_FIELD_NAME_SEPERMS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_seresult = { */
+/*         LINAU_FIELD_NAME_SERESULT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ses = { */
+/*         LINAU_FIELD_NAME_SES, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_seuser = { */
+/*         LINAU_FIELD_NAME_SEUSER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_sgid = { */
+/*         LINAU_FIELD_NAME_SGID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_sig = { */
+/*         LINAU_FIELD_NAME_SIG, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_sigev_signo = { */
+/*         LINAU_FIELD_NAME_SIGEV_SIGNO, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_smac = { */
+/*         LINAU_FIELD_NAME_SMAC, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_spid = { */
+/*         LINAU_FIELD_NAME_SPID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_sport = { */
+/*         LINAU_FIELD_NAME_SPORT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_state = { */
+/*         LINAU_FIELD_NAME_STATE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_subj = { */
+/*         LINAU_FIELD_NAME_SUBJ, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_success = { */
+/*         LINAU_FIELD_NAME_SUCCESS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_suid = { */
+/*         LINAU_FIELD_NAME_SUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_syscall = { */
+/*         LINAU_FIELD_NAME_SYSCALL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_table = { */
+/*         LINAU_FIELD_NAME_TABLE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_tclass = { */
+/*         LINAU_FIELD_NAME_TCLASS, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_tcontext = { */
+/*         LINAU_FIELD_NAME_TCONTEXT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_terminal = { */
+/*         LINAU_FIELD_NAME_TERMINAL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_tty = { */
+/*         LINAU_FIELD_NAME_TTY, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_type = { */
+/*         LINAU_FIELD_NAME_TYPE, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_uid = { */
+/*         LINAU_FIELD_NAME_UID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_unit = { */
+/*         LINAU_FIELD_NAME_UNIT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_uri = { */
+/*         LINAU_FIELD_NAME_URI, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_user = { */
+/*         LINAU_FIELD_NAME_USER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_uuid = { */
+/*         LINAU_FIELD_NAME_UUID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_val = { */
+/*         LINAU_FIELD_NAME_VAL, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_ver = { */
+/*         LINAU_FIELD_NAME_VER, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_virt = { */
+/*         LINAU_FIELD_NAME_VIRT, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_vm = { */
+/*         LINAU_FIELD_NAME_VM, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_vm_ctx = { */
+/*         LINAU_FIELD_NAME_VM_CTX, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_vm_pid = { */
+/*         LINAU_FIELD_NAME_VM_PID, */
+/*         NULL */
+/* }; */
+/* static struct linau_conv_field lcfield_watch = { */
+/*         LINAU_FIELD_NAME_WATCH, */
+/*         NULL */
+/* }; */
+
+static struct linau_conv_record_type lcrectype_undefined = {
+	LINAU_TYPE_UNDEFINED,
+	LINAU_TYPE_UNDEFINED_STR,
+	{ NULL }
+};
+/* static struct linau_conv_record_type lcrectype_get = { */
+/*         LINAU_TYPE_GET, */
+/*         LINAU_TYPE_GET_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_set = { */
+/*         LINAU_TYPE_SET, */
+/*         LINAU_TYPE_SET_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_list = { */
+/*         LINAU_TYPE_LIST, */
+/*         LINAU_TYPE_LIST_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_add = { */
+/*         LINAU_TYPE_ADD, */
+/*         LINAU_TYPE_ADD_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_del = { */
+/*         LINAU_TYPE_DEL, */
+/*         LINAU_TYPE_DEL_STR, */
+/*         { NULL } */
+/* }; */
+static struct linau_conv_record_type lcrectype_user = {
+	LINAU_TYPE_USER,
+	LINAU_TYPE_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_login = {
+	LINAU_TYPE_LOGIN,
+	LINAU_TYPE_LOGIN_STR,
+	{ NULL }
+};
+/* static struct linau_conv_record_type lcrectype_signal_info = { */
+/*         LINAU_TYPE_SIGNAL_INFO, */
+/*         LINAU_TYPE_SIGNAL_INFO_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_add_rule = { */
+/*         LINAU_TYPE_ADD_RULE, */
+/*         LINAU_TYPE_ADD_RULE_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_del_rule = { */
+/*         LINAU_TYPE_DEL_RULE, */
+/*         LINAU_TYPE_DEL_RULE_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_list_rules = { */
+/*         LINAU_TYPE_LIST_RULES, */
+/*         LINAU_TYPE_LIST_RULES_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_trim = { */
+/*         LINAU_TYPE_TRIM, */
+/*         LINAU_TYPE_TRIM_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_make_equiv = { */
+/*         LINAU_TYPE_MAKE_EQUIV, */
+/*         LINAU_TYPE_MAKE_EQUIV_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_tty_get = { */
+/*         LINAU_TYPE_TTY_GET, */
+/*         LINAU_TYPE_TTY_GET_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_tty_set = { */
+/*         LINAU_TYPE_TTY_SET, */
+/*         LINAU_TYPE_TTY_SET_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_set_feature = { */
+/*         LINAU_TYPE_SET_FEATURE, */
+/*         LINAU_TYPE_SET_FEATURE_STR, */
+/*         { NULL } */
+/* }; */
+/* static struct linau_conv_record_type lcrectype_get_feature = { */
+/*         LINAU_TYPE_GET_FEATURE, */
+/*         LINAU_TYPE_GET_FEATURE_STR, */
+/*         { NULL } */
+/* }; */
+static struct linau_conv_record_type lcrectype_user_auth = {
+	LINAU_TYPE_USER_AUTH,
+	LINAU_TYPE_USER_AUTH_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_acct = {
+	LINAU_TYPE_USER_ACCT,
+	LINAU_TYPE_USER_ACCT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_mgmt = {
+	LINAU_TYPE_USER_MGMT,
+	LINAU_TYPE_USER_MGMT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_cred_acq = {
+	LINAU_TYPE_CRED_ACQ,
+	LINAU_TYPE_CRED_ACQ_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_cred_disp = {
+	LINAU_TYPE_CRED_DISP,
+	LINAU_TYPE_CRED_DISP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_start = {
+	LINAU_TYPE_USER_START,
+	LINAU_TYPE_USER_START_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_end = {
+	LINAU_TYPE_USER_END,
+	LINAU_TYPE_USER_END_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_avc = {
+	LINAU_TYPE_USER_AVC,
+	LINAU_TYPE_USER_AVC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_chauthtok = {
+	LINAU_TYPE_USER_CHAUTHTOK,
+	LINAU_TYPE_USER_CHAUTHTOK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_err = {
+	LINAU_TYPE_USER_ERR,
+	LINAU_TYPE_USER_ERR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_cred_refr = {
+	LINAU_TYPE_CRED_REFR,
+	LINAU_TYPE_CRED_REFR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_usys_config = {
+	LINAU_TYPE_USYS_CONFIG,
+	LINAU_TYPE_USYS_CONFIG_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_login = {
+	LINAU_TYPE_USER_LOGIN,
+	LINAU_TYPE_USER_LOGIN_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_logout = {
+	LINAU_TYPE_USER_LOGOUT,
+	LINAU_TYPE_USER_LOGOUT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_add_user = {
+	LINAU_TYPE_ADD_USER,
+	LINAU_TYPE_ADD_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_del_user = {
+	LINAU_TYPE_DEL_USER,
+	LINAU_TYPE_DEL_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_add_group = {
+	LINAU_TYPE_ADD_GROUP,
+	LINAU_TYPE_ADD_GROUP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_del_group = {
+	LINAU_TYPE_DEL_GROUP,
+	LINAU_TYPE_DEL_GROUP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_dac_check = {
+	LINAU_TYPE_DAC_CHECK,
+	LINAU_TYPE_DAC_CHECK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_chgrp_id = {
+	LINAU_TYPE_CHGRP_ID,
+	LINAU_TYPE_CHGRP_ID_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_test = {
+	LINAU_TYPE_TEST,
+	LINAU_TYPE_TEST_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_trusted_app = {
+	LINAU_TYPE_TRUSTED_APP,
+	LINAU_TYPE_TRUSTED_APP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_selinux_err = {
+	LINAU_TYPE_USER_SELINUX_ERR,
+	LINAU_TYPE_USER_SELINUX_ERR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_cmd = {
+	LINAU_TYPE_USER_CMD,
+	LINAU_TYPE_USER_CMD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_tty = {
+	LINAU_TYPE_USER_TTY,
+	LINAU_TYPE_USER_TTY_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_chuser_id = {
+	LINAU_TYPE_CHUSER_ID,
+	LINAU_TYPE_CHUSER_ID_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_grp_auth = {
+	LINAU_TYPE_GRP_AUTH,
+	LINAU_TYPE_GRP_AUTH_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_check = {
+	LINAU_TYPE_MAC_CHECK,
+	LINAU_TYPE_MAC_CHECK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_acct_lock = {
+	LINAU_TYPE_ACCT_LOCK,
+	LINAU_TYPE_ACCT_LOCK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_acct_unlock = {
+	LINAU_TYPE_ACCT_UNLOCK,
+	LINAU_TYPE_ACCT_UNLOCK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_system_boot = {
+	LINAU_TYPE_SYSTEM_BOOT,
+	LINAU_TYPE_SYSTEM_BOOT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_system_shutdown = {
+	LINAU_TYPE_SYSTEM_SHUTDOWN,
+	LINAU_TYPE_SYSTEM_SHUTDOWN_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_system_runlevel = {
+	LINAU_TYPE_SYSTEM_RUNLEVEL,
+	LINAU_TYPE_SYSTEM_RUNLEVEL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_service_start = {
+	LINAU_TYPE_SERVICE_START,
+	LINAU_TYPE_SERVICE_START_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_service_stop = {
+	LINAU_TYPE_SERVICE_STOP,
+	LINAU_TYPE_SERVICE_STOP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_grp_mgmt = {
+	LINAU_TYPE_GRP_MGMT,
+	LINAU_TYPE_GRP_MGMT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_grp_chauthtok = {
+	LINAU_TYPE_GRP_CHAUTHTOK,
+	LINAU_TYPE_GRP_CHAUTHTOK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_start = {
+	LINAU_TYPE_DAEMON_START,
+	LINAU_TYPE_DAEMON_START_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_end = {
+	LINAU_TYPE_DAEMON_END,
+	LINAU_TYPE_DAEMON_END_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_abort = {
+	LINAU_TYPE_DAEMON_ABORT,
+	LINAU_TYPE_DAEMON_ABORT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_config = {
+	LINAU_TYPE_DAEMON_CONFIG,
+	LINAU_TYPE_DAEMON_CONFIG_STR,
+	{ NULL }
+};
+/* static struct linau_conv_record_type lcrectype_daemon_reconfig = { */
+/*         LINAU_TYPE_DAEMON_RECONFIG, */
+/*         LINAU_TYPE_DAEMON_RECONFIG_STR, */
+/*         { NULL } */
+/* }; */
+static struct linau_conv_record_type lcrectype_daemon_rotate = {
+	LINAU_TYPE_DAEMON_ROTATE,
+	LINAU_TYPE_DAEMON_ROTATE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_resume = {
+	LINAU_TYPE_DAEMON_RESUME,
+	LINAU_TYPE_DAEMON_RESUME_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_accept = {
+	LINAU_TYPE_DAEMON_ACCEPT,
+	LINAU_TYPE_DAEMON_ACCEPT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_close = {
+	LINAU_TYPE_DAEMON_CLOSE,
+	LINAU_TYPE_DAEMON_CLOSE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_daemon_err = {
+	LINAU_TYPE_DAEMON_ERR,
+	LINAU_TYPE_DAEMON_ERR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_syscall = {
+	LINAU_TYPE_SYSCALL,
+	LINAU_TYPE_SYSCALL_STR,
+	{ NULL }
+};
+/* static struct linau_conv_record_type lcrectype_fs_watch = { */
+/*         LINAU_TYPE_FS_WATCH, */
+/*         LINAU_TYPE_FS_WATCH_STR, */
+/*         { NULL } */
+/* }; */
+static struct linau_conv_record_type lcrectype_path = {
+	LINAU_TYPE_PATH,
+	LINAU_TYPE_PATH_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_ipc = {
+	LINAU_TYPE_IPC,
+	LINAU_TYPE_IPC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_socketcall = {
+	LINAU_TYPE_SOCKETCALL,
+	LINAU_TYPE_SOCKETCALL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_config_change = {
+	LINAU_TYPE_CONFIG_CHANGE,
+	LINAU_TYPE_CONFIG_CHANGE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_sockaddr = {
+	LINAU_TYPE_SOCKADDR,
+	LINAU_TYPE_SOCKADDR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_cwd = {
+	LINAU_TYPE_CWD,
+	LINAU_TYPE_CWD_STR,
+	{ NULL }
+};
+/* static struct linau_conv_record_type lcrectype_fs_inode = { */
+/*         LINAU_TYPE_FS_INODE, */
+/*         LINAU_TYPE_FS_INODE_STR, */
+/*         { NULL } */
+/* }; */
+static struct linau_conv_record_type lcrectype_execve = {
+	LINAU_TYPE_EXECVE,
+	LINAU_TYPE_EXECVE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_ipc_set_perm = {
+	LINAU_TYPE_IPC_SET_PERM,
+	LINAU_TYPE_IPC_SET_PERM_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mq_open = {
+	LINAU_TYPE_MQ_OPEN,
+	LINAU_TYPE_MQ_OPEN_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mq_sendrecv = {
+	LINAU_TYPE_MQ_SENDRECV,
+	LINAU_TYPE_MQ_SENDRECV_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mq_notify = {
+	LINAU_TYPE_MQ_NOTIFY,
+	LINAU_TYPE_MQ_NOTIFY_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mq_getsetattr = {
+	LINAU_TYPE_MQ_GETSETATTR,
+	LINAU_TYPE_MQ_GETSETATTR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_kernel_other = {
+	LINAU_TYPE_KERNEL_OTHER,
+	LINAU_TYPE_KERNEL_OTHER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_fd_pair = {
+	LINAU_TYPE_FD_PAIR,
+	LINAU_TYPE_FD_PAIR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_obj_pid = {
+	LINAU_TYPE_OBJ_PID,
+	LINAU_TYPE_OBJ_PID_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_tty = {
+	LINAU_TYPE_TTY,
+	LINAU_TYPE_TTY_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_eoe = {
+	LINAU_TYPE_EOE,
+	LINAU_TYPE_EOE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_bprm_fcaps = {
+	LINAU_TYPE_BPRM_FCAPS,
+	LINAU_TYPE_BPRM_FCAPS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_capset = {
+	LINAU_TYPE_CAPSET,
+	LINAU_TYPE_CAPSET_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mmap = {
+	LINAU_TYPE_MMAP,
+	LINAU_TYPE_MMAP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_netfilter_pkt = {
+	LINAU_TYPE_NETFILTER_PKT,
+	LINAU_TYPE_NETFILTER_PKT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_netfilter_cfg = {
+	LINAU_TYPE_NETFILTER_CFG,
+	LINAU_TYPE_NETFILTER_CFG_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_seccomp = {
+	LINAU_TYPE_SECCOMP,
+	LINAU_TYPE_SECCOMP_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_proctitle = {
+	LINAU_TYPE_PROCTITLE,
+	LINAU_TYPE_PROCTITLE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_feature_change = {
+	LINAU_TYPE_FEATURE_CHANGE,
+	LINAU_TYPE_FEATURE_CHANGE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_avc = {
+	LINAU_TYPE_AVC,
+	LINAU_TYPE_AVC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_selinux_err = {
+	LINAU_TYPE_SELINUX_ERR,
+	LINAU_TYPE_SELINUX_ERR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_avc_path = {
+	LINAU_TYPE_AVC_PATH,
+	LINAU_TYPE_AVC_PATH_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_policy_load = {
+	LINAU_TYPE_MAC_POLICY_LOAD,
+	LINAU_TYPE_MAC_POLICY_LOAD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_status = {
+	LINAU_TYPE_MAC_STATUS,
+	LINAU_TYPE_MAC_STATUS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_config_change = {
+	LINAU_TYPE_MAC_CONFIG_CHANGE,
+	LINAU_TYPE_MAC_CONFIG_CHANGE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_unlbl_allow = {
+	LINAU_TYPE_MAC_UNLBL_ALLOW,
+	LINAU_TYPE_MAC_UNLBL_ALLOW_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_cipsov4_add = {
+	LINAU_TYPE_MAC_CIPSOV4_ADD,
+	LINAU_TYPE_MAC_CIPSOV4_ADD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_cipsov4_del = {
+	LINAU_TYPE_MAC_CIPSOV4_DEL,
+	LINAU_TYPE_MAC_CIPSOV4_DEL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_map_add = {
+	LINAU_TYPE_MAC_MAP_ADD,
+	LINAU_TYPE_MAC_MAP_ADD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_map_del = {
+	LINAU_TYPE_MAC_MAP_DEL,
+	LINAU_TYPE_MAC_MAP_DEL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_ipsec_addsa = {
+	LINAU_TYPE_MAC_IPSEC_ADDSA,
+	LINAU_TYPE_MAC_IPSEC_ADDSA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_ipsec_delsa = {
+	LINAU_TYPE_MAC_IPSEC_DELSA,
+	LINAU_TYPE_MAC_IPSEC_DELSA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_ipsec_addspd = {
+	LINAU_TYPE_MAC_IPSEC_ADDSPD,
+	LINAU_TYPE_MAC_IPSEC_ADDSPD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_ipsec_delspd = {
+	LINAU_TYPE_MAC_IPSEC_DELSPD,
+	LINAU_TYPE_MAC_IPSEC_DELSPD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_ipsec_event = {
+	LINAU_TYPE_MAC_IPSEC_EVENT,
+	LINAU_TYPE_MAC_IPSEC_EVENT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_unlbl_stcadd = {
+	LINAU_TYPE_MAC_UNLBL_STCADD,
+	LINAU_TYPE_MAC_UNLBL_STCADD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_mac_unlbl_stcdel = {
+	LINAU_TYPE_MAC_UNLBL_STCDEL,
+	LINAU_TYPE_MAC_UNLBL_STCDEL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_promiscuous = {
+	LINAU_TYPE_ANOM_PROMISCUOUS,
+	LINAU_TYPE_ANOM_PROMISCUOUS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_abend = {
+	LINAU_TYPE_ANOM_ABEND,
+	LINAU_TYPE_ANOM_ABEND_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_link = {
+	LINAU_TYPE_ANOM_LINK,
+	LINAU_TYPE_ANOM_LINK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_integrity_data = {
+	LINAU_TYPE_INTEGRITY_DATA,
+	LINAU_TYPE_INTEGRITY_DATA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_integrity_metadata = {
+	LINAU_TYPE_INTEGRITY_METADATA,
+	LINAU_TYPE_INTEGRITY_METADATA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_integrity_status = {
+	LINAU_TYPE_INTEGRITY_STATUS,
+	LINAU_TYPE_INTEGRITY_STATUS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_integrity_hash = {
+	LINAU_TYPE_INTEGRITY_HASH,
+	LINAU_TYPE_INTEGRITY_HASH_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_integrity_pcr = {
+	LINAU_TYPE_INTEGRITY_PCR,
+	LINAU_TYPE_INTEGRITY_PCR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_integrity_rule = {
+	LINAU_TYPE_INTEGRITY_RULE,
+	LINAU_TYPE_INTEGRITY_RULE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_aa = {
+	LINAU_TYPE_AA,
+	LINAU_TYPE_AA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_apparmor_audit = {
+	LINAU_TYPE_APPARMOR_AUDIT,
+	LINAU_TYPE_APPARMOR_AUDIT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_apparmor_allowed = {
+	LINAU_TYPE_APPARMOR_ALLOWED,
+	LINAU_TYPE_APPARMOR_ALLOWED_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_apparmor_denied = {
+	LINAU_TYPE_APPARMOR_DENIED,
+	LINAU_TYPE_APPARMOR_DENIED_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_apparmor_hint = {
+	LINAU_TYPE_APPARMOR_HINT,
+	LINAU_TYPE_APPARMOR_HINT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_apparmor_status = {
+	LINAU_TYPE_APPARMOR_STATUS,
+	LINAU_TYPE_APPARMOR_STATUS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_apparmor_error = {
+	LINAU_TYPE_APPARMOR_ERROR,
+	LINAU_TYPE_APPARMOR_ERROR_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_kernel = {
+	LINAU_TYPE_KERNEL,
+	LINAU_TYPE_KERNEL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_login_failures = {
+	LINAU_TYPE_ANOM_LOGIN_FAILURES,
+	LINAU_TYPE_ANOM_LOGIN_FAILURES_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_login_time = {
+	LINAU_TYPE_ANOM_LOGIN_TIME,
+	LINAU_TYPE_ANOM_LOGIN_TIME_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_login_sessions = {
+	LINAU_TYPE_ANOM_LOGIN_SESSIONS,
+	LINAU_TYPE_ANOM_LOGIN_SESSIONS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_login_acct = {
+	LINAU_TYPE_ANOM_LOGIN_ACCT,
+	LINAU_TYPE_ANOM_LOGIN_ACCT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_login_location = {
+	LINAU_TYPE_ANOM_LOGIN_LOCATION,
+	LINAU_TYPE_ANOM_LOGIN_LOCATION_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_max_dac = {
+	LINAU_TYPE_ANOM_MAX_DAC,
+	LINAU_TYPE_ANOM_MAX_DAC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_max_mac = {
+	LINAU_TYPE_ANOM_MAX_MAC,
+	LINAU_TYPE_ANOM_MAX_MAC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_amtu_fail = {
+	LINAU_TYPE_ANOM_AMTU_FAIL,
+	LINAU_TYPE_ANOM_AMTU_FAIL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_rbac_fail = {
+	LINAU_TYPE_ANOM_RBAC_FAIL,
+	LINAU_TYPE_ANOM_RBAC_FAIL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_rbac_integrity_fail = {
+	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL,
+	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_crypto_fail = {
+	LINAU_TYPE_ANOM_CRYPTO_FAIL,
+	LINAU_TYPE_ANOM_CRYPTO_FAIL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_access_fs = {
+	LINAU_TYPE_ANOM_ACCESS_FS,
+	LINAU_TYPE_ANOM_ACCESS_FS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_exec = {
+	LINAU_TYPE_ANOM_EXEC,
+	LINAU_TYPE_ANOM_EXEC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_mk_exec = {
+	LINAU_TYPE_ANOM_MK_EXEC,
+	LINAU_TYPE_ANOM_MK_EXEC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_add_acct = {
+	LINAU_TYPE_ANOM_ADD_ACCT,
+	LINAU_TYPE_ANOM_ADD_ACCT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_del_acct = {
+	LINAU_TYPE_ANOM_DEL_ACCT,
+	LINAU_TYPE_ANOM_DEL_ACCT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_mod_acct = {
+	LINAU_TYPE_ANOM_MOD_ACCT,
+	LINAU_TYPE_ANOM_MOD_ACCT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_anom_root_trans = {
+	LINAU_TYPE_ANOM_ROOT_TRANS,
+	LINAU_TYPE_ANOM_ROOT_TRANS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_anomaly = {
+	LINAU_TYPE_RESP_ANOMALY,
+	LINAU_TYPE_RESP_ANOMALY_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_alert = {
+	LINAU_TYPE_RESP_ALERT,
+	LINAU_TYPE_RESP_ALERT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_kill_proc = {
+	LINAU_TYPE_RESP_KILL_PROC,
+	LINAU_TYPE_RESP_KILL_PROC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_term_access = {
+	LINAU_TYPE_RESP_TERM_ACCESS,
+	LINAU_TYPE_RESP_TERM_ACCESS_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_acct_remote = {
+	LINAU_TYPE_RESP_ACCT_REMOTE,
+	LINAU_TYPE_RESP_ACCT_REMOTE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_acct_lock_timed = {
+	LINAU_TYPE_RESP_ACCT_LOCK_TIMED,
+	LINAU_TYPE_RESP_ACCT_LOCK_TIMED_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_acct_unlock_timed = {
+	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED,
+	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_acct_lock = {
+	LINAU_TYPE_RESP_ACCT_LOCK,
+	LINAU_TYPE_RESP_ACCT_LOCK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_term_lock = {
+	LINAU_TYPE_RESP_TERM_LOCK,
+	LINAU_TYPE_RESP_TERM_LOCK_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_sebool = {
+	LINAU_TYPE_RESP_SEBOOL,
+	LINAU_TYPE_RESP_SEBOOL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_exec = {
+	LINAU_TYPE_RESP_EXEC,
+	LINAU_TYPE_RESP_EXEC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_single = {
+	LINAU_TYPE_RESP_SINGLE,
+	LINAU_TYPE_RESP_SINGLE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_resp_halt = {
+	LINAU_TYPE_RESP_HALT,
+	LINAU_TYPE_RESP_HALT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_role_change = {
+	LINAU_TYPE_USER_ROLE_CHANGE,
+	LINAU_TYPE_USER_ROLE_CHANGE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_role_assign = {
+	LINAU_TYPE_ROLE_ASSIGN,
+	LINAU_TYPE_ROLE_ASSIGN_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_role_remove = {
+	LINAU_TYPE_ROLE_REMOVE,
+	LINAU_TYPE_ROLE_REMOVE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_label_override = {
+	LINAU_TYPE_LABEL_OVERRIDE,
+	LINAU_TYPE_LABEL_OVERRIDE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_label_level_change = {
+	LINAU_TYPE_LABEL_LEVEL_CHANGE,
+	LINAU_TYPE_LABEL_LEVEL_CHANGE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_labeled_export = {
+	LINAU_TYPE_USER_LABELED_EXPORT,
+	LINAU_TYPE_USER_LABELED_EXPORT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_unlabeled_export = {
+	LINAU_TYPE_USER_UNLABELED_EXPORT,
+	LINAU_TYPE_USER_UNLABELED_EXPORT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_dev_alloc = {
+	LINAU_TYPE_DEV_ALLOC,
+	LINAU_TYPE_DEV_ALLOC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_dev_dealloc = {
+	LINAU_TYPE_DEV_DEALLOC,
+	LINAU_TYPE_DEV_DEALLOC_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_fs_relabel = {
+	LINAU_TYPE_FS_RELABEL,
+	LINAU_TYPE_FS_RELABEL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_mac_policy_load = {
+	LINAU_TYPE_USER_MAC_POLICY_LOAD,
+	LINAU_TYPE_USER_MAC_POLICY_LOAD_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_role_modify = {
+	LINAU_TYPE_ROLE_MODIFY,
+	LINAU_TYPE_ROLE_MODIFY_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_user_mac_config_change = {
+	LINAU_TYPE_USER_MAC_CONFIG_CHANGE,
+	LINAU_TYPE_USER_MAC_CONFIG_CHANGE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_test_user = {
+	LINAU_TYPE_CRYPTO_TEST_USER,
+	LINAU_TYPE_CRYPTO_TEST_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_param_change_user = {
+	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER,
+	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_login = {
+	LINAU_TYPE_CRYPTO_LOGIN,
+	LINAU_TYPE_CRYPTO_LOGIN_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_logout = {
+	LINAU_TYPE_CRYPTO_LOGOUT,
+	LINAU_TYPE_CRYPTO_LOGOUT_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_key_user = {
+	LINAU_TYPE_CRYPTO_KEY_USER,
+	LINAU_TYPE_CRYPTO_KEY_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_failure_user = {
+	LINAU_TYPE_CRYPTO_FAILURE_USER,
+	LINAU_TYPE_CRYPTO_FAILURE_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_replay_user = {
+	LINAU_TYPE_CRYPTO_REPLAY_USER,
+	LINAU_TYPE_CRYPTO_REPLAY_USER_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_session = {
+	LINAU_TYPE_CRYPTO_SESSION,
+	LINAU_TYPE_CRYPTO_SESSION_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_ike_sa = {
+	LINAU_TYPE_CRYPTO_IKE_SA,
+	LINAU_TYPE_CRYPTO_IKE_SA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_crypto_ipsec_sa = {
+	LINAU_TYPE_CRYPTO_IPSEC_SA,
+	LINAU_TYPE_CRYPTO_IPSEC_SA_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_virt_control = {
+	LINAU_TYPE_VIRT_CONTROL,
+	LINAU_TYPE_VIRT_CONTROL_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_virt_resource = {
+	LINAU_TYPE_VIRT_RESOURCE,
+	LINAU_TYPE_VIRT_RESOURCE_STR,
+	{ NULL }
+};
+static struct linau_conv_record_type lcrectype_virt_machine_id = {
+	LINAU_TYPE_VIRT_MACHINE_ID,
+	LINAU_TYPE_VIRT_MACHINE_ID_STR,
+	{ NULL }
+};
+
+/*
+ * TODO: Not implemented yet.
+ * XXX: This function might go to linau_field.c and be added to the interface in
+ * linau.h.
+ */
+/* static bool */
+/* linau_conv_is_numeric(const char *field) */
+/* { */
+
+/*         PJDLOG_ASSERT(field != NULL); */
+
+/*         return (true); */
+/* } */
+
+static void
+linau_conv_process_record(int aurecordd, const struct linau_record *record,
+    const struct linau_conv_record_type *lcrectype)
 {
-	pid_t pid;
+	struct linau_conv_token *lctoken;
+	token_t *tok;
+	size_t ti;
 
+	PJDLOG_ASSERT(aurecordd >= 0);
 	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(fieldname != NULL);
+	PJDLOG_ASSERT(lcrectype != NULL);
+	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
 
-	pjdlog_debug(4, "%s", __func__);
-
-	if (!linau_record_try_get_uint32_field(record, fieldname, &pid))
-		pid = -1;
-
-	pjdlog_debug(4, "End %s", __func__);
-
-	return (pid);
+	for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++) {
+		lctoken = lcrectype->lcrt_tokens[ti];
+		/* XXX Assume that there is always a way to generate a token. */
+		PJDLOG_ASSERT(lctoken->lct_genrate != NULL);
+		tok = lctoken->lct_genrate(record);
+		PJDLOG_VERIFY(tok != NULL);
+		/*
+		 * XXX Implementing the easiest version of conversion.  It just
+		 * adds anything it can to the aurecordd.
+		 */
+		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+	}
 }
 
 /*
- * XXX Assume that all the fields have reasonable data, so there are no
- * easter eggs like pid='hummus'.
+ * It does make sense to require passing typenum here.  It allows the
+ * interpretation based on typenum which is more flexible than an
+ * interpretation based on a record type.  This is because the user might
+ * want to interpret the record in a non-standard way.  They can achieve
+ * it by modifying the library and passing a custom typenum.
  */
-static token_t *
-generate_token_process32(const struct linau_record *record)
+void
+linau_conv_to_au(int aurecordd, const struct linau_record *record,
+    int typenum)
 {
-	token_t *tok;
-	au_id_t auid;
-	uid_t euid;
-	gid_t egid;
-	uid_t ruid;
-	gid_t rgid;
-	pid_t pid;
-	au_asid_t sid;
-	au_tid_t *tid;
-
-	PJDLOG_ASSERT(record != NULL);
-
-	pjdlog_debug(3, "%s", __func__);
-
-	/* Audit ID. */
-	pjdlog_debug(3, "auid");
-	auid = try_get_pid_field(record, LINAU_FIELD_NAME_AUID_STR);
-	/* Effective User ID. */
-	pjdlog_debug(3, "euid");
-	euid = try_get_pid_field(record, LINAU_FIELD_NAME_EUID_STR);
-	/* Effective Group ID. */
-	pjdlog_debug(3, "egid");
-	egid = try_get_pid_field(record, LINAU_FIELD_NAME_EGID_STR);
-	/*
-	 * Real User ID.
-	 * XXX Unavailable AFAIK.
-	 */
-	pjdlog_debug(3, "ruid");
-	ruid = -1;
-	/*
-	 * Real Group ID.
-	 * XXX Unavailable AFAIK.
-	 */
-	pjdlog_debug(3, "rgid");
-	rgid = -1;
-	/* Process ID. */
-	pjdlog_debug(3, "pid");
-	pid = try_get_pid_field(record, LINAU_FIELD_NAME_PID_STR);
-	/*
-	 * Session ID.
-	 * XXX Map to a field which represents login session id in the
-	 * Linux Audit format.
-	 */
-	sid = try_get_pid_field(record, LINAU_FIELD_NAME_SES_STR);
-	/*
-	 * Terminal Port ID.
-	 * XXX Unavailable AFAIK.
-	 */
-	sid = -1;
-	/*
-	 * Terminal Machine Address.
-	 * XXX Unavailable AFAIK.
-	 */
-	tid = calloc(1, sizeof(*tid));
-
-	tok = au_to_process32(auid, euid, egid, ruid, rgid, pid, sid, tid);
-	PJDLOG_VERIFY(tok != NULL);
-
-	free(tid);
-
-	pjdlog_debug(3, "End %s", __func__);
-
-	return (tok);
-}
-
-static void
-write_tokens(int aurecordd, const struct linau_record *record,
-    size_t tokenscount, ...)
-{
-	va_list ap;
-	token_t *(*fp)(const struct linau_record*);
-	token_t *tok;
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
 
-	va_start(ap, tokenscount);
-
-	while (tokenscount > 0) {
-		fp = va_arg(ap, typeof(fp));
-		tok = (*fp)(record);
-		PJDLOG_VERIFY(tok != NULL);
-		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-		tokenscount--;
-	}
-
-	va_end(ap);
-
-	return;
-}
-
-/*
- * Generate a text token for every field in a record which is not in the list
- * of fields passed as an argument to this function.
- *
- * Parameters:
- * aurecordd	The record descriptor. See au_write(3).
- * record	The record which fields are to be converted to text tokens.
- * fieldscount	The number of fields' ids in the variadic list.
- * ...		The list of fields' ids. For example: LINAU_FIELD_NAME_SES,
- *		LINAU_FIELD_NAME_MSG, LINAU_FIELD_NAME_AUID.
- */
-static void
-write_text_tokens(int aurecordd, const struct linau_record *record,
-    size_t fieldscount, ...)
-{
-	va_list ap;
-	void *cookie;
-	const char *fieldname;
-	nvlist_t *fields;
-	const char *name;
-	token_t *tok;
-	int fieldid;
-	int type;
-
-	PJDLOG_ASSERT(aurecordd >= 0);
-	PJDLOG_ASSERT(record != NULL);
-
-	fields = linau_record_clone_fields(record);
-
-	va_start(ap, fieldscount);
-	/* Remove the fields from the copy of fields which occure in ap. */
-	while (fieldscount > 0) {
-		fieldid = va_arg(ap, int);
-		fieldname = field_name_from_field_name_id(fieldid);
-		if (linau_record_exists_field(record, fieldname))
-			free(nvlist_take_string(fields, fieldname));
-		fieldscount--;
-	}
-	va_end(ap);
-
-	cookie = NULL;
-	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
-	 	PJDLOG_ASSERT(type == NV_TYPE_STRING);
-		tok = generate_token_text_from_field(record, fieldname);
-		PJDLOG_VERIFY(tok != NULL);
-		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-	}
-}
-
-static void
-write_text_token_from_record(int aurecordd, const struct linau_record *record)
-{
-	token_t *tok;
-
-	PJDLOG_ASSERT(aurecordd >= 0);
-	PJDLOG_ASSERT(record != NULL);
-
-	tok = au_to_text(linau_record_get_text(record));
-	PJDLOG_VERIFY(tok != NULL);
-	PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
-}
-
-static token_t *
-generate_token_text_from_field(const struct linau_record *record,
-    const char *fieldname)
-{
-	const char *msg;
-	token_t *tok;
-
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(fieldname != NULL);
-
-	msg = linau_record_get_field(record, fieldname);
-
-	tok = au_to_text(msg);
-	PJDLOG_VERIFY(tok != NULL);
-
-	return (tok);
-}
-
-static token_t *
-generate_token_text_from_msg(const struct linau_record *record)
-{
-
-	PJDLOG_ASSERT(record != NULL);
-
-	return (generate_token_text_from_field(record,
-	    LINAU_FIELD_NAME_MSG_STR));
-}
-
-static size_t
-count_desired_fields(const struct linau_record *record,
-    size_t desiredfieldscount, ...)
-{
-	va_list ap;
-	const char *fieldname;
-	size_t foundfieldscount;
-	size_t ii;
-	size_t fieldnameid;
-
-	PJDLOG_ASSERT(record != NULL);
-	/*
-	 * desiredfieldscount is always > 0 since there is
-	 * LINAU_FIELD_NAME_UNDEFINED in every LINAU_TYPE_XXX_FIELDS list.
-	 */
-	PJDLOG_ASSERT(desiredfieldscount > 0);
-
-	va_start(ap, desiredfieldscount);
-
-	foundfieldscount = 0;
-	for (ii = 0; ii < desiredfieldscount; ii++) {
-		fieldnameid = va_arg(ap, size_t);
-		fieldname = field_name_from_field_name_id(fieldnameid);
-		/* Skip undefined fields. */
-		if (fieldnameid == LINAU_FIELD_NAME_UNDEFINED)
-			continue;
-		else if (linau_record_exists_field(record, fieldname))
-			foundfieldscount++;
-	}
-
-	va_end(ap);
-
-	return (foundfieldscount);
-}
-
-static const char *
-field_name_from_field_name_id(int fieldnameid)
-{
-
-	switch(fieldnameid) {
-	case LINAU_FIELD_NAME_UNDEFINED:
-		return (LINAU_FIELD_NAME_UNDEFINED_STR);
-	case LINAU_FIELD_NAME_A0:
-		return (LINAU_FIELD_NAME_A0_STR);
-	case LINAU_FIELD_NAME_A1:
-		return (LINAU_FIELD_NAME_A1_STR);
-	case LINAU_FIELD_NAME_A2:
-		return (LINAU_FIELD_NAME_A2_STR);
-	case LINAU_FIELD_NAME_A3:
-		return (LINAU_FIELD_NAME_A3_STR);
-	case LINAU_FIELD_NAME_A_EXECVE_SYSCALL:
-		/* XXX This case should be taken care of separately. */
-		PJDLOG_ABORT("LINAU_FIELD_NAME_A_EXECVE_SYSCALL is not "
-		    "implemented yet");
-	case LINAU_FIELD_NAME_ACCT:
-		return (LINAU_FIELD_NAME_ACCT_STR);
-	case LINAU_FIELD_NAME_ACL:
-		return (LINAU_FIELD_NAME_ACL_STR);
-	case LINAU_FIELD_NAME_ACTION:
-		return (LINAU_FIELD_NAME_ACTION_STR);
-	case LINAU_FIELD_NAME_ADDED:
-		return (LINAU_FIELD_NAME_ADDED_STR);
-	case LINAU_FIELD_NAME_ADDR:
-		return (LINAU_FIELD_NAME_ADDR_STR);
-	case LINAU_FIELD_NAME_APPARMOR:
-		return (LINAU_FIELD_NAME_APPARMOR_STR);
-	case LINAU_FIELD_NAME_ARCH:
-		return (LINAU_FIELD_NAME_ARCH_STR);
-	case LINAU_FIELD_NAME_ARGC:
-		return (LINAU_FIELD_NAME_ARGC_STR);
-	case LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT:
-		return (LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT_STR);
-	case LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME:
-		return (LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME_STR);
-	case LINAU_FIELD_NAME_AUDIT_ENABLED:
-		return (LINAU_FIELD_NAME_AUDIT_ENABLED_STR);
-	case LINAU_FIELD_NAME_AUDIT_FAILURE:
-		return (LINAU_FIELD_NAME_AUDIT_FAILURE_STR);
-	case LINAU_FIELD_NAME_AUID:
-		return (LINAU_FIELD_NAME_AUID_STR);
-	case LINAU_FIELD_NAME_BANNERS:
-		return (LINAU_FIELD_NAME_BANNERS_STR);
-	case LINAU_FIELD_NAME_BOOL:
-		return (LINAU_FIELD_NAME_BOOL_STR);
-	case LINAU_FIELD_NAME_BUS:
-		return (LINAU_FIELD_NAME_BUS_STR);
-	case LINAU_FIELD_NAME_CAPABILITY:
-		return (LINAU_FIELD_NAME_CAPABILITY_STR);
-	case LINAU_FIELD_NAME_CAP_FE:
-		return (LINAU_FIELD_NAME_CAP_FE_STR);
-	case LINAU_FIELD_NAME_CAP_FI:
-		return (LINAU_FIELD_NAME_CAP_FI_STR);
-	case LINAU_FIELD_NAME_CAP_FP:
-		return (LINAU_FIELD_NAME_CAP_FP_STR);
-	case LINAU_FIELD_NAME_CAP_FVER:
-		return (LINAU_FIELD_NAME_CAP_FVER_STR);
-	case LINAU_FIELD_NAME_CAP_PE:
-		return (LINAU_FIELD_NAME_CAP_PE_STR);
-	case LINAU_FIELD_NAME_CAP_PI:
-		return (LINAU_FIELD_NAME_CAP_PI_STR);
-	case LINAU_FIELD_NAME_CAP_PP:
-		return (LINAU_FIELD_NAME_CAP_PP_STR);
-	case LINAU_FIELD_NAME_CATEGORY:
-		return (LINAU_FIELD_NAME_CATEGORY_STR);
-	case LINAU_FIELD_NAME_CGROUP:
-		return (LINAU_FIELD_NAME_CGROUP_STR);
-	case LINAU_FIELD_NAME_CHANGED:
-		return (LINAU_FIELD_NAME_CHANGED_STR);
-	case LINAU_FIELD_NAME_CIPHER:
-		return (LINAU_FIELD_NAME_CIPHER_STR);
-	case LINAU_FIELD_NAME_CLASS:
-		return (LINAU_FIELD_NAME_CLASS_STR);
-	case LINAU_FIELD_NAME_CMD:
-		return (LINAU_FIELD_NAME_CMD_STR);
-	case LINAU_FIELD_NAME_CODE:
-		return (LINAU_FIELD_NAME_CODE_STR);
-	case LINAU_FIELD_NAME_COMM:
-		return (LINAU_FIELD_NAME_COMM_STR);
-	case LINAU_FIELD_NAME_COMPAT:
-		return (LINAU_FIELD_NAME_COMPAT_STR);
-	case LINAU_FIELD_NAME_CWD:
-		return (LINAU_FIELD_NAME_CWD_STR);
-	case LINAU_FIELD_NAME_DADDR:
-		return (LINAU_FIELD_NAME_DADDR_STR);
-	case LINAU_FIELD_NAME_DATA:
-		return (LINAU_FIELD_NAME_DATA_STR);
-	case LINAU_FIELD_NAME_DEFAULT:
-		return (LINAU_FIELD_NAME_DEFAULT_STR);
-	case LINAU_FIELD_NAME_DEV:
-		return (LINAU_FIELD_NAME_DEV_STR);
-	/* case LINAU_FIELD_NAME2_DEV: */
-	/*         return (LINAU_FIELD_NAME2_DEV_STR); */
-	case LINAU_FIELD_NAME_DEVICE:
-		return (LINAU_FIELD_NAME_DEVICE_STR);
-	case LINAU_FIELD_NAME_DIR:
-		return (LINAU_FIELD_NAME_DIR_STR);
-	case LINAU_FIELD_NAME_DIRECTION:
-		return (LINAU_FIELD_NAME_DIRECTION_STR);
-	case LINAU_FIELD_NAME_DMAC:
-		return (LINAU_FIELD_NAME_DMAC_STR);
-	case LINAU_FIELD_NAME_DPORT:
-		return (LINAU_FIELD_NAME_DPORT_STR);
-	case LINAU_FIELD_NAME_EGID:
-		return (LINAU_FIELD_NAME_EGID_STR);
-	case LINAU_FIELD_NAME_ENFORCING:
-		return (LINAU_FIELD_NAME_ENFORCING_STR);
-	case LINAU_FIELD_NAME_ENTRIES:
-		return (LINAU_FIELD_NAME_ENTRIES_STR);
-	case LINAU_FIELD_NAME_EUID:
-		return (LINAU_FIELD_NAME_EUID_STR);
-	case LINAU_FIELD_NAME_EXE:
-		return (LINAU_FIELD_NAME_EXE_STR);
-	case LINAU_FIELD_NAME_EXIT:
-		return (LINAU_FIELD_NAME_EXIT_STR);
-	case LINAU_FIELD_NAME_FAM:
-		return (LINAU_FIELD_NAME_FAM_STR);
-	case LINAU_FIELD_NAME_FAMILY:
-		return (LINAU_FIELD_NAME_FAMILY_STR);
-	case LINAU_FIELD_NAME_FD:
-		return (LINAU_FIELD_NAME_FD_STR);
-	case LINAU_FIELD_NAME_FILE:
-		return (LINAU_FIELD_NAME_FILE_STR);
-	case LINAU_FIELD_NAME_FLAGS:
-		return (LINAU_FIELD_NAME_FLAGS_STR);
-	case LINAU_FIELD_NAME_FE:
-		return (LINAU_FIELD_NAME_FE_STR);
-	case LINAU_FIELD_NAME_FEATURE:
-		return (LINAU_FIELD_NAME_FEATURE_STR);
-	case LINAU_FIELD_NAME_FI:
-		return (LINAU_FIELD_NAME_FI_STR);
-	case LINAU_FIELD_NAME_FP:
-		return (LINAU_FIELD_NAME_FP_STR);
-	/* case LINAU_FIELD_NAME_FP2: */
-	/*         return (LINAU_FIELD_NAME_FP2_STR); */
-	case LINAU_FIELD_NAME_FORMAT:
-		return (LINAU_FIELD_NAME_FORMAT_STR);
-	case LINAU_FIELD_NAME_FSGID:
-		return (LINAU_FIELD_NAME_FSGID_STR);
-	case LINAU_FIELD_NAME_FSUID:
-		return (LINAU_FIELD_NAME_FSUID_STR);
-	case LINAU_FIELD_NAME_FVER:
-		return (LINAU_FIELD_NAME_FVER_STR);
-	case LINAU_FIELD_NAME_GID:
-		return (LINAU_FIELD_NAME_GID_STR);
-	case LINAU_FIELD_NAME_GRANTORS:
-		return (LINAU_FIELD_NAME_GRANTORS_STR);
-	case LINAU_FIELD_NAME_GRP:
-		return (LINAU_FIELD_NAME_GRP_STR);
-	case LINAU_FIELD_NAME_HOOK:
-		return (LINAU_FIELD_NAME_HOOK_STR);
-	case LINAU_FIELD_NAME_HOSTNAME:
-		return (LINAU_FIELD_NAME_HOSTNAME_STR);
-	case LINAU_FIELD_NAME_ICMP_TYPE:
-		return (LINAU_FIELD_NAME_ICMP_TYPE_STR);
-	case LINAU_FIELD_NAME_ID:
-		return (LINAU_FIELD_NAME_ID_STR);
-	case LINAU_FIELD_NAME_IGID:
-		return (LINAU_FIELD_NAME_IGID_STR);
-	case LINAU_FIELD_NAME_IMG:
-		return (LINAU_FIELD_NAME_IMG_STR);
-	case LINAU_FIELD_NAME_INIF:
-		return (LINAU_FIELD_NAME_INIF_STR);
-	case LINAU_FIELD_NAME_IP:
-		return (LINAU_FIELD_NAME_IP_STR);
-	case LINAU_FIELD_NAME_IPID:
-		return (LINAU_FIELD_NAME_IPID_STR);
-	case LINAU_FIELD_NAME_INO:
-		return (LINAU_FIELD_NAME_INO_STR);
-	case LINAU_FIELD_NAME_INODE:
-		return (LINAU_FIELD_NAME_INODE_STR);
-	case LINAU_FIELD_NAME_INODE_GID:
-		return (LINAU_FIELD_NAME_INODE_GID_STR);
-	case LINAU_FIELD_NAME_INODE_UID:
-		return (LINAU_FIELD_NAME_INODE_UID_STR);
-	case LINAU_FIELD_NAME_INVALID_CONTEXT:
-		return (LINAU_FIELD_NAME_INVALID_CONTEXT_STR);
-	case LINAU_FIELD_NAME_IPX:
-		return (LINAU_FIELD_NAME_IPX_STR);
-	case LINAU_FIELD_NAME_ITEM:
-		return (LINAU_FIELD_NAME_ITEM_STR);
-	case LINAU_FIELD_NAME_ITEMS:
-		return (LINAU_FIELD_NAME_ITEMS_STR);
-	case LINAU_FIELD_NAME_IUID:
-		return (LINAU_FIELD_NAME_IUID_STR);
-	case LINAU_FIELD_NAME_KERNEL:
-		return (LINAU_FIELD_NAME_KERNEL_STR);
-	case LINAU_FIELD_NAME_KEY:
-		return (LINAU_FIELD_NAME_KEY_STR);
-	case LINAU_FIELD_NAME_KIND:
-		return (LINAU_FIELD_NAME_KIND_STR);
-	case LINAU_FIELD_NAME_KSIZE:
-		return (LINAU_FIELD_NAME_KSIZE_STR);
-	case LINAU_FIELD_NAME_LADDR:
-		return (LINAU_FIELD_NAME_LADDR_STR);
-	case LINAU_FIELD_NAME_LEN:
-		return (LINAU_FIELD_NAME_LEN_STR);
-	case LINAU_FIELD_NAME_LPORT:
-		return (LINAU_FIELD_NAME_LPORT_STR);
-	case LINAU_FIELD_NAME_LIST:
-		return (LINAU_FIELD_NAME_LIST_STR);
-	case LINAU_FIELD_NAME_MAC:
-		return (LINAU_FIELD_NAME_MAC_STR);
-	case LINAU_FIELD_NAME_MACPROTO:
-		return (LINAU_FIELD_NAME_MACPROTO_STR);
-	case LINAU_FIELD_NAME_MAJ:
-		return (LINAU_FIELD_NAME_MAJ_STR);
-	case LINAU_FIELD_NAME_MAJOR:
-		return (LINAU_FIELD_NAME_MAJOR_STR);
-	case LINAU_FIELD_NAME_MINOR:
-		return (LINAU_FIELD_NAME_MINOR_STR);
-	case LINAU_FIELD_NAME_MODE:
-		return (LINAU_FIELD_NAME_MODE_STR);
-	case LINAU_FIELD_NAME_MODEL:
-		return (LINAU_FIELD_NAME_MODEL_STR);
-	case LINAU_FIELD_NAME_MSG:
-		return (LINAU_FIELD_NAME_MSG_STR);
-	case LINAU_FIELD_NAME_NARGS:
-		return (LINAU_FIELD_NAME_NARGS_STR);
-	case LINAU_FIELD_NAME_NAME:
-		return (LINAU_FIELD_NAME_NAME_STR);
-	case LINAU_FIELD_NAME_NAMETYPE:
-		return (LINAU_FIELD_NAME_NAMETYPE_STR);
-	case LINAU_FIELD_NAME_NET:
-		return (LINAU_FIELD_NAME_NET_STR);
-	case LINAU_FIELD_NAME_NEW:
-		return (LINAU_FIELD_NAME_NEW_STR);
-	case LINAU_FIELD_NAME_NEW_CHARDEV:
-		return (LINAU_FIELD_NAME_NEW_CHARDEV_STR);
-	case LINAU_FIELD_NAME_NEW_DISK:
-		return (LINAU_FIELD_NAME_NEW_DISK_STR);
-	case LINAU_FIELD_NAME_NEW_ENABLED:
-		return (LINAU_FIELD_NAME_NEW_ENABLED_STR);
-	case LINAU_FIELD_NAME_NEW_FS:
-		return (LINAU_FIELD_NAME_NEW_FS_STR);
-	case LINAU_FIELD_NAME_NEW_GID:
-		return (LINAU_FIELD_NAME_NEW_GID_STR);
-	case LINAU_FIELD_NAME_NEW_LEVEL:
-		return (LINAU_FIELD_NAME_NEW_LEVEL_STR);
-	case LINAU_FIELD_NAME_NEW_LOCK:
-		return (LINAU_FIELD_NAME_NEW_LOCK_STR);
-	case LINAU_FIELD_NAME_NEW_LOG_PASSWD:
-		return (LINAU_FIELD_NAME_NEW_LOG_PASSWD_STR);
-	case LINAU_FIELD_NAME_NEW_MEM:
-		return (LINAU_FIELD_NAME_NEW_MEM_STR);
-	case LINAU_FIELD_NAME_NEW_NET:
-		return (LINAU_FIELD_NAME_NEW_NET_STR);
-	case LINAU_FIELD_NAME_NEW_PE:
-		return (LINAU_FIELD_NAME_NEW_PE_STR);
-	case LINAU_FIELD_NAME_NEW_PI:
-		return (LINAU_FIELD_NAME_NEW_PI_STR);
-	case LINAU_FIELD_NAME_NEW_PP:
-		return (LINAU_FIELD_NAME_NEW_PP_STR);
-	case LINAU_FIELD_NAME_NEW_RANGE:
-		return (LINAU_FIELD_NAME_NEW_RANGE_STR);
-	case LINAU_FIELD_NAME_NEW_RNG:
-		return (LINAU_FIELD_NAME_NEW_RNG_STR);
-	case LINAU_FIELD_NAME_NEW_ROLE:
-		return (LINAU_FIELD_NAME_NEW_ROLE_STR);
-	case LINAU_FIELD_NAME_NEW_SEUSER:
-		return (LINAU_FIELD_NAME_NEW_SEUSER_STR);
-	case LINAU_FIELD_NAME_NEW_VCPU:
-		return (LINAU_FIELD_NAME_NEW_VCPU_STR);
-	case LINAU_FIELD_NAME_NLNK_FAM:
-		return (LINAU_FIELD_NAME_NLNK_FAM_STR);
-	case LINAU_FIELD_NAME_NLNK_GRP:
-		return (LINAU_FIELD_NAME_NLNK_GRP_STR);
-	case LINAU_FIELD_NAME_NLNK_PID:
-		return (LINAU_FIELD_NAME_NLNK_PID_STR);
-	case LINAU_FIELD_NAME_OAUID:
-		return (LINAU_FIELD_NAME_OAUID_STR);
-	case LINAU_FIELD_NAME_OBJ:
-		return (LINAU_FIELD_NAME_OBJ_STR);
-	case LINAU_FIELD_NAME_OBJ_GID:
-		return (LINAU_FIELD_NAME_OBJ_GID_STR);
-	case LINAU_FIELD_NAME_OBJ_UID:
-		return (LINAU_FIELD_NAME_OBJ_UID_STR);
-	case LINAU_FIELD_NAME_OFLAG:
-		return (LINAU_FIELD_NAME_OFLAG_STR);
-	case LINAU_FIELD_NAME_OGID:
-		return (LINAU_FIELD_NAME_OGID_STR);
-	case LINAU_FIELD_NAME_OCOMM:
-		return (LINAU_FIELD_NAME_OCOMM_STR);
-	case LINAU_FIELD_NAME_OLD:
-		return (LINAU_FIELD_NAME_OLD_STR);
-	/* case LINAU_FIELD_NAME2_OLD: */
-	/*         return (LINAU_FIELD_NAME2_OLD_STR); */
-	case LINAU_FIELD_NAME_OLD_AUID:
-		return (LINAU_FIELD_NAME_OLD_AUID_STR);
-	case LINAU_FIELD_NAME_OLD_CHARDEV:
-		return (LINAU_FIELD_NAME_OLD_CHARDEV_STR);
-	case LINAU_FIELD_NAME_OLD_DISK:
-		return (LINAU_FIELD_NAME_OLD_DISK_STR);
-	case LINAU_FIELD_NAME_OLD_ENABLED:
-		return (LINAU_FIELD_NAME_OLD_ENABLED_STR);
-	case LINAU_FIELD_NAME_OLD_ENFORCING:
-		return (LINAU_FIELD_NAME_OLD_ENFORCING_STR);
-	case LINAU_FIELD_NAME_OLD_FS:
-		return (LINAU_FIELD_NAME_OLD_FS_STR);
-	case LINAU_FIELD_NAME_OLD_LEVEL:
-		return (LINAU_FIELD_NAME_OLD_LEVEL_STR);
-	case LINAU_FIELD_NAME_OLD_LOCK:
-		return (LINAU_FIELD_NAME_OLD_LOCK_STR);
-	case LINAU_FIELD_NAME_OLD_LOG_PASSWD:
-		return (LINAU_FIELD_NAME_OLD_LOG_PASSWD_STR);
-	case LINAU_FIELD_NAME_OLD_MEM:
-		return (LINAU_FIELD_NAME_OLD_MEM_STR);
-	case LINAU_FIELD_NAME_OLD_NET:
-		return (LINAU_FIELD_NAME_OLD_NET_STR);
-	case LINAU_FIELD_NAME_OLD_PE:
-		return (LINAU_FIELD_NAME_OLD_PE_STR);
-	case LINAU_FIELD_NAME_OLD_PI:
-		return (LINAU_FIELD_NAME_OLD_PI_STR);
-	case LINAU_FIELD_NAME_OLD_PP:
-		return (LINAU_FIELD_NAME_OLD_PP_STR);
-	case LINAU_FIELD_NAME_OLD_PROM:
-		return (LINAU_FIELD_NAME_OLD_PROM_STR);
-	case LINAU_FIELD_NAME_OLD_RANGE:
-		return (LINAU_FIELD_NAME_OLD_RANGE_STR);
-	case LINAU_FIELD_NAME_OLD_RNG:
-		return (LINAU_FIELD_NAME_OLD_RNG_STR);
-	case LINAU_FIELD_NAME_OLD_ROLE:
-		return (LINAU_FIELD_NAME_OLD_ROLE_STR);
-	case LINAU_FIELD_NAME_OLD_SES:
-		return (LINAU_FIELD_NAME_OLD_SES_STR);
-	case LINAU_FIELD_NAME_OLD_SEUSER:
-		return (LINAU_FIELD_NAME_OLD_SEUSER_STR);
-	case LINAU_FIELD_NAME_OLD_VAL:
-		return (LINAU_FIELD_NAME_OLD_VAL_STR);
-	case LINAU_FIELD_NAME_OLD_VCPU:
-		return (LINAU_FIELD_NAME_OLD_VCPU_STR);
-	case LINAU_FIELD_NAME_OP:
-		return (LINAU_FIELD_NAME_OP_STR);
-	case LINAU_FIELD_NAME_OPID:
-		return (LINAU_FIELD_NAME_OPID_STR);
-	case LINAU_FIELD_NAME_OSES:
-		return (LINAU_FIELD_NAME_OSES_STR);
-	case LINAU_FIELD_NAME_OUID:
-		return (LINAU_FIELD_NAME_OUID_STR);
-	case LINAU_FIELD_NAME_OUTIF:
-		return (LINAU_FIELD_NAME_OUTIF_STR);
-	case LINAU_FIELD_NAME_PARENT:
-		return (LINAU_FIELD_NAME_PARENT_STR);
-	case LINAU_FIELD_NAME_PATH:
-		return (LINAU_FIELD_NAME_PATH_STR);
-	case LINAU_FIELD_NAME_PER:
-		return (LINAU_FIELD_NAME_PER_STR);
-	case LINAU_FIELD_NAME_PERM:
-		return (LINAU_FIELD_NAME_PERM_STR);
-	case LINAU_FIELD_NAME_PERM_MASK:
-		return (LINAU_FIELD_NAME_PERM_MASK_STR);
-	case LINAU_FIELD_NAME_PERMISSIVE:
-		return (LINAU_FIELD_NAME_PERMISSIVE_STR);
-	case LINAU_FIELD_NAME_PFS:
-		return (LINAU_FIELD_NAME_PFS_STR);
-	case LINAU_FIELD_NAME_PID:
-		return (LINAU_FIELD_NAME_PID_STR);
-	case LINAU_FIELD_NAME_PPID:
-		return (LINAU_FIELD_NAME_PPID_STR);
-	case LINAU_FIELD_NAME_PRINTER:
-		return (LINAU_FIELD_NAME_PRINTER_STR);
-	case LINAU_FIELD_NAME_PROM:
-		return (LINAU_FIELD_NAME_PROM_STR);
-	case LINAU_FIELD_NAME_PROCTITLE:
-		return (LINAU_FIELD_NAME_PROCTITLE_STR);
-	case LINAU_FIELD_NAME_PROTO:
-		return (LINAU_FIELD_NAME_PROTO_STR);
-	case LINAU_FIELD_NAME_QBYTES:
-		return (LINAU_FIELD_NAME_QBYTES_STR);
-	case LINAU_FIELD_NAME_RANGE:
-		return (LINAU_FIELD_NAME_RANGE_STR);
-	case LINAU_FIELD_NAME_RDEV:
-		return (LINAU_FIELD_NAME_RDEV_STR);
-	case LINAU_FIELD_NAME_REASON:
-		return (LINAU_FIELD_NAME_REASON_STR);
-	case LINAU_FIELD_NAME_REMOVED:
-		return (LINAU_FIELD_NAME_REMOVED_STR);
-	case LINAU_FIELD_NAME_RES:
-		return (LINAU_FIELD_NAME_RES_STR);
-	case LINAU_FIELD_NAME_RESRC:
-		return (LINAU_FIELD_NAME_RESRC_STR);
-	case LINAU_FIELD_NAME_RESULT:
-		return (LINAU_FIELD_NAME_RESULT_STR);
-	case LINAU_FIELD_NAME_ROLE:
-		return (LINAU_FIELD_NAME_ROLE_STR);
-	case LINAU_FIELD_NAME_RPORT:
-		return (LINAU_FIELD_NAME_RPORT_STR);
-	case LINAU_FIELD_NAME_SADDR:
-		return (LINAU_FIELD_NAME_SADDR_STR);
-	case LINAU_FIELD_NAME_SAUID:
-		return (LINAU_FIELD_NAME_SAUID_STR);
-	case LINAU_FIELD_NAME_SCONTEXT:
-		return (LINAU_FIELD_NAME_SCONTEXT_STR);
-	case LINAU_FIELD_NAME_SELECTED:
-		return (LINAU_FIELD_NAME_SELECTED_STR);
-	case LINAU_FIELD_NAME_SEPERM:
-		return (LINAU_FIELD_NAME_SEPERM_STR);
-	case LINAU_FIELD_NAME_SEQNO:
-		return (LINAU_FIELD_NAME_SEQNO_STR);
-	case LINAU_FIELD_NAME_SEPERMS:
-		return (LINAU_FIELD_NAME_SEPERMS_STR);
-	case LINAU_FIELD_NAME_SERESULT:
-		return (LINAU_FIELD_NAME_SERESULT_STR);
-	case LINAU_FIELD_NAME_SES:
-		return (LINAU_FIELD_NAME_SES_STR);
-	case LINAU_FIELD_NAME_SEUSER:
-		return (LINAU_FIELD_NAME_SEUSER_STR);
-	case LINAU_FIELD_NAME_SGID:
-		return (LINAU_FIELD_NAME_SGID_STR);
-	case LINAU_FIELD_NAME_SIG:
-		return (LINAU_FIELD_NAME_SIG_STR);
-	case LINAU_FIELD_NAME_SIGEV_SIGNO:
-		return (LINAU_FIELD_NAME_SIGEV_SIGNO_STR);
-	case LINAU_FIELD_NAME_SMAC:
-		return (LINAU_FIELD_NAME_SMAC_STR);
-	case LINAU_FIELD_NAME_SPID:
-		return (LINAU_FIELD_NAME_SPID_STR);
-	case LINAU_FIELD_NAME_SPORT:
-		return (LINAU_FIELD_NAME_SPORT_STR);
-	case LINAU_FIELD_NAME_STATE:
-		return (LINAU_FIELD_NAME_STATE_STR);
-	case LINAU_FIELD_NAME_SUBJ:
-		return (LINAU_FIELD_NAME_SUBJ_STR);
-	case LINAU_FIELD_NAME_SUCCESS:
-		return (LINAU_FIELD_NAME_SUCCESS_STR);
-	case LINAU_FIELD_NAME_SUID:
-		return (LINAU_FIELD_NAME_SUID_STR);
-	case LINAU_FIELD_NAME_SYSCALL:
-		return (LINAU_FIELD_NAME_SYSCALL_STR);
-	case LINAU_FIELD_NAME_TABLE:
-		return (LINAU_FIELD_NAME_TABLE_STR);
-	case LINAU_FIELD_NAME_TCLASS:
-		return (LINAU_FIELD_NAME_TCLASS_STR);
-	case LINAU_FIELD_NAME_TCONTEXT:
-		return (LINAU_FIELD_NAME_TCONTEXT_STR);
-	case LINAU_FIELD_NAME_TERMINAL:
-		return (LINAU_FIELD_NAME_TERMINAL_STR);
-	case LINAU_FIELD_NAME_TTY:
-		return (LINAU_FIELD_NAME_TTY_STR);
-	case LINAU_FIELD_NAME_TYPE:
-		return (LINAU_FIELD_NAME_TYPE_STR);
-	case LINAU_FIELD_NAME_UID:
-		return (LINAU_FIELD_NAME_UID_STR);
-	case LINAU_FIELD_NAME_UNIT:
-		return (LINAU_FIELD_NAME_UNIT_STR);
-	case LINAU_FIELD_NAME_URI:
-		return (LINAU_FIELD_NAME_URI_STR);
-	case LINAU_FIELD_NAME_USER:
-		return (LINAU_FIELD_NAME_USER_STR);
-	case LINAU_FIELD_NAME_UUID:
-		return (LINAU_FIELD_NAME_UUID_STR);
-	case LINAU_FIELD_NAME_VAL:
-		return (LINAU_FIELD_NAME_VAL_STR);
-	case LINAU_FIELD_NAME_VER:
-		return (LINAU_FIELD_NAME_VER_STR);
-	case LINAU_FIELD_NAME_VIRT:
-		return (LINAU_FIELD_NAME_VIRT_STR);
-	case LINAU_FIELD_NAME_VM:
-		return (LINAU_FIELD_NAME_VM_STR);
-	case LINAU_FIELD_NAME_VM_CTX:
-		return (LINAU_FIELD_NAME_VM_CTX_STR);
-	case LINAU_FIELD_NAME_VM_PID:
-		return (LINAU_FIELD_NAME_VM_PID_STR);
-	case LINAU_FIELD_NAME_WATCH:
-		return (LINAU_FIELD_NAME_WATCH_STR);
+	switch (typenum) {
+	case LINAU_TYPE_UNDEFINED:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_undefined);
+		break;
+	/* case LINAU_TYPE_GET: */
+	/* case LINAU_TYPE_SET: */
+	/* case LINAU_TYPE_LIST: */
+	/* case LINAU_TYPE_ADD: */
+	/* case LINAU_TYPE_DEL: */
+	case LINAU_TYPE_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user);
+		break;
+	case LINAU_TYPE_LOGIN:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_login);
+		break;
+	/* case LINAU_TYPE_SIGNAL_INFO: */
+	/* case LINAU_TYPE_ADD_RULE: */
+	/* case LINAU_TYPE_DEL_RULE: */
+	/* case LINAU_TYPE_LIST_RULES: */
+	/* case LINAU_TYPE_TRIM: */
+	/* case LINAU_TYPE_MAKE_EQUIV: */
+	/* case LINAU_TYPE_TTY_GET: */
+	/* case LINAU_TYPE_TTY_SET: */
+	/* case LINAU_TYPE_SET_FEATURE: */
+	/* case LINAU_TYPE_GET_FEATURE: */
+	case LINAU_TYPE_USER_AUTH:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_auth);
+		break;
+	case LINAU_TYPE_USER_ACCT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_acct);
+		break;
+	case LINAU_TYPE_USER_MGMT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_mgmt);
+		break;
+	case LINAU_TYPE_CRED_ACQ:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_cred_acq);
+		break;
+	case LINAU_TYPE_CRED_DISP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_cred_disp);
+		break;
+	case LINAU_TYPE_USER_START:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_start);
+		break;
+	case LINAU_TYPE_USER_END:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_end);
+		break;
+	case LINAU_TYPE_USER_AVC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_avc);
+		break;
+	case LINAU_TYPE_USER_CHAUTHTOK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_chauthtok);
+		break;
+	case LINAU_TYPE_USER_ERR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_err);
+		break;
+	case LINAU_TYPE_CRED_REFR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_cred_refr);
+		break;
+	case LINAU_TYPE_USYS_CONFIG:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_usys_config);
+		break;
+	case LINAU_TYPE_USER_LOGIN:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_login);
+		break;
+	case LINAU_TYPE_USER_LOGOUT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_logout);
+		break;
+	case LINAU_TYPE_ADD_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_add_user);
+		break;
+	case LINAU_TYPE_DEL_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_del_user);
+		break;
+	case LINAU_TYPE_ADD_GROUP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_add_group);
+		break;
+	case LINAU_TYPE_DEL_GROUP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_del_group);
+		break;
+	case LINAU_TYPE_DAC_CHECK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_dac_check);
+		break;
+	case LINAU_TYPE_CHGRP_ID:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_chgrp_id);
+		break;
+	case LINAU_TYPE_TEST:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_test);
+		break;
+	case LINAU_TYPE_TRUSTED_APP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_trusted_app);
+		break;
+	case LINAU_TYPE_USER_SELINUX_ERR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_selinux_err);
+		break;
+	case LINAU_TYPE_USER_CMD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_cmd);
+		break;
+	case LINAU_TYPE_USER_TTY:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_tty);
+		break;
+	case LINAU_TYPE_CHUSER_ID:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_chuser_id);
+		break;
+	case LINAU_TYPE_GRP_AUTH:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_grp_auth);
+		break;
+	case LINAU_TYPE_MAC_CHECK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_check);
+		break;
+	case LINAU_TYPE_ACCT_LOCK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_acct_lock);
+		break;
+	case LINAU_TYPE_ACCT_UNLOCK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_acct_unlock);
+		break;
+	case LINAU_TYPE_SYSTEM_BOOT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_system_boot);
+		break;
+	case LINAU_TYPE_SYSTEM_SHUTDOWN:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_system_shutdown);
+		break;
+	case LINAU_TYPE_SYSTEM_RUNLEVEL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_system_runlevel);
+		break;
+	case LINAU_TYPE_SERVICE_START:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_service_start);
+		break;
+	case LINAU_TYPE_SERVICE_STOP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_service_stop);
+		break;
+	case LINAU_TYPE_GRP_MGMT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_grp_mgmt);
+		break;
+	case LINAU_TYPE_GRP_CHAUTHTOK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_grp_chauthtok);
+		break;
+	case LINAU_TYPE_DAEMON_START:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_start);
+		break;
+	case LINAU_TYPE_DAEMON_END:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_end);
+		break;
+	case LINAU_TYPE_DAEMON_ABORT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_abort);
+		break;
+	case LINAU_TYPE_DAEMON_CONFIG:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_config);
+		break;
+	/* case LINAU_TYPE_DAEMON_RECONFIG: */
+	case LINAU_TYPE_DAEMON_ROTATE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_rotate);
+		break;
+	case LINAU_TYPE_DAEMON_RESUME:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_resume);
+		break;
+	case LINAU_TYPE_DAEMON_ACCEPT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_accept);
+		break;
+	case LINAU_TYPE_DAEMON_CLOSE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_close);
+		break;
+	case LINAU_TYPE_DAEMON_ERR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_daemon_err);
+		break;
+	case LINAU_TYPE_SYSCALL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_syscall);
+		break;
+	/* case LINAU_TYPE_FS_WATCH: */
+	case LINAU_TYPE_PATH:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_path);
+		break;
+	case LINAU_TYPE_IPC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_ipc);
+		break;
+	case LINAU_TYPE_SOCKETCALL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_socketcall);
+		break;
+	case LINAU_TYPE_CONFIG_CHANGE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_config_change);
+		break;
+	case LINAU_TYPE_SOCKADDR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_sockaddr);
+		break;
+	case LINAU_TYPE_CWD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_cwd);
+		break;
+	/* case LINAU_TYPE_FS_INODE: */
+	case LINAU_TYPE_EXECVE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_execve);
+		break;
+	case LINAU_TYPE_IPC_SET_PERM:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_ipc_set_perm);
+		break;
+	case LINAU_TYPE_MQ_OPEN:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mq_open);
+		break;
+	case LINAU_TYPE_MQ_SENDRECV:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mq_sendrecv);
+		break;
+	case LINAU_TYPE_MQ_NOTIFY:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mq_notify);
+		break;
+	case LINAU_TYPE_MQ_GETSETATTR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mq_getsetattr);
+		break;
+	case LINAU_TYPE_KERNEL_OTHER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_kernel_other);
+		break;
+	case LINAU_TYPE_FD_PAIR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_fd_pair);
+		break;
+	case LINAU_TYPE_OBJ_PID:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_obj_pid);
+		break;
+	case LINAU_TYPE_TTY:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_tty);
+		break;
+	case LINAU_TYPE_EOE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_eoe);
+		break;
+	case LINAU_TYPE_BPRM_FCAPS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_bprm_fcaps);
+		break;
+	case LINAU_TYPE_CAPSET:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_capset);
+		break;
+	case LINAU_TYPE_MMAP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mmap);
+		break;
+	case LINAU_TYPE_NETFILTER_PKT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_netfilter_pkt);
+		break;
+	case LINAU_TYPE_NETFILTER_CFG:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_netfilter_cfg);
+		break;
+	case LINAU_TYPE_SECCOMP:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_seccomp);
+		break;
+	case LINAU_TYPE_PROCTITLE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_proctitle);
+		break;
+	case LINAU_TYPE_FEATURE_CHANGE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_feature_change);
+		break;
+	case LINAU_TYPE_AVC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_avc);
+		break;
+	case LINAU_TYPE_SELINUX_ERR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_selinux_err);
+		break;
+	case LINAU_TYPE_AVC_PATH:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_avc_path);
+		break;
+	case LINAU_TYPE_MAC_POLICY_LOAD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_policy_load);
+		break;
+	case LINAU_TYPE_MAC_STATUS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_status);
+		break;
+	case LINAU_TYPE_MAC_CONFIG_CHANGE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_config_change);
+		break;
+	case LINAU_TYPE_MAC_UNLBL_ALLOW:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_unlbl_allow);
+		break;
+	case LINAU_TYPE_MAC_CIPSOV4_ADD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_cipsov4_add);
+		break;
+	case LINAU_TYPE_MAC_CIPSOV4_DEL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_cipsov4_del);
+		break;
+	case LINAU_TYPE_MAC_MAP_ADD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_map_add);
+		break;
+	case LINAU_TYPE_MAC_MAP_DEL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_map_del);
+		break;
+	case LINAU_TYPE_MAC_IPSEC_ADDSA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_ipsec_addsa);
+		break;
+	case LINAU_TYPE_MAC_IPSEC_DELSA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_ipsec_delsa);
+		break;
+	case LINAU_TYPE_MAC_IPSEC_ADDSPD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_ipsec_addspd);
+		break;
+	case LINAU_TYPE_MAC_IPSEC_DELSPD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_ipsec_delspd);
+		break;
+	case LINAU_TYPE_MAC_IPSEC_EVENT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_ipsec_event);
+		break;
+	case LINAU_TYPE_MAC_UNLBL_STCADD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_unlbl_stcadd);
+		break;
+	case LINAU_TYPE_MAC_UNLBL_STCDEL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_mac_unlbl_stcdel);
+		break;
+	case LINAU_TYPE_ANOM_PROMISCUOUS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_promiscuous);
+		break;
+	case LINAU_TYPE_ANOM_ABEND:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_abend);
+		break;
+	case LINAU_TYPE_ANOM_LINK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_link);
+		break;
+	case LINAU_TYPE_INTEGRITY_DATA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_integrity_data);
+		break;
+	case LINAU_TYPE_INTEGRITY_METADATA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_integrity_metadata);
+		break;
+	case LINAU_TYPE_INTEGRITY_STATUS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_integrity_status);
+		break;
+	case LINAU_TYPE_INTEGRITY_HASH:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_integrity_hash);
+		break;
+	case LINAU_TYPE_INTEGRITY_PCR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_integrity_pcr);
+		break;
+	case LINAU_TYPE_INTEGRITY_RULE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_integrity_rule);
+		break;
+	case LINAU_TYPE_AA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_aa);
+		break;
+	case LINAU_TYPE_APPARMOR_AUDIT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_apparmor_audit);
+		break;
+	case LINAU_TYPE_APPARMOR_ALLOWED:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_apparmor_allowed);
+		break;
+	case LINAU_TYPE_APPARMOR_DENIED:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_apparmor_denied);
+		break;
+	case LINAU_TYPE_APPARMOR_HINT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_apparmor_hint);
+		break;
+		/* FALLTHROUGH */
+	case LINAU_TYPE_APPARMOR_STATUS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_apparmor_status);
+		break;
+	case LINAU_TYPE_APPARMOR_ERROR:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_apparmor_error);
+		break;
+	case LINAU_TYPE_KERNEL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_kernel);
+		break;
+	case LINAU_TYPE_ANOM_LOGIN_FAILURES:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_login_failures);
+		break;
+	case LINAU_TYPE_ANOM_LOGIN_TIME:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_login_time);
+		break;
+	case LINAU_TYPE_ANOM_LOGIN_SESSIONS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_login_sessions);
+		break;
+	case LINAU_TYPE_ANOM_LOGIN_ACCT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_login_acct);
+		break;
+	case LINAU_TYPE_ANOM_LOGIN_LOCATION:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_login_location);
+		break;
+	case LINAU_TYPE_ANOM_MAX_DAC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_max_dac);
+		break;
+	case LINAU_TYPE_ANOM_MAX_MAC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_max_mac);
+		break;
+	case LINAU_TYPE_ANOM_AMTU_FAIL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_amtu_fail);
+		break;
+	case LINAU_TYPE_ANOM_RBAC_FAIL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_rbac_fail);
+		break;
+	case LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_rbac_integrity_fail);
+		break;
+	case LINAU_TYPE_ANOM_CRYPTO_FAIL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_crypto_fail);
+		break;
+	case LINAU_TYPE_ANOM_ACCESS_FS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_access_fs);
+		break;
+	case LINAU_TYPE_ANOM_EXEC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_exec);
+		break;
+	case LINAU_TYPE_ANOM_MK_EXEC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_mk_exec);
+		break;
+	case LINAU_TYPE_ANOM_ADD_ACCT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_add_acct);
+		break;
+	case LINAU_TYPE_ANOM_DEL_ACCT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_del_acct);
+		break;
+	case LINAU_TYPE_ANOM_MOD_ACCT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_mod_acct);
+		break;
+	case LINAU_TYPE_ANOM_ROOT_TRANS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_anom_root_trans);
+		break;
+	case LINAU_TYPE_RESP_ANOMALY:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_anomaly);
+		break;
+	case LINAU_TYPE_RESP_ALERT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_alert);
+		break;
+	case LINAU_TYPE_RESP_KILL_PROC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_kill_proc);
+		break;
+	case LINAU_TYPE_RESP_TERM_ACCESS:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_term_access);
+		break;
+	case LINAU_TYPE_RESP_ACCT_REMOTE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_acct_remote);
+		break;
+	case LINAU_TYPE_RESP_ACCT_LOCK_TIMED:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_acct_lock_timed);
+		break;
+	case LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_acct_unlock_timed);
+		break;
+	case LINAU_TYPE_RESP_ACCT_LOCK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_acct_lock);
+		break;
+	case LINAU_TYPE_RESP_TERM_LOCK:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_term_lock);
+		break;
+	case LINAU_TYPE_RESP_SEBOOL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_sebool);
+		break;
+	case LINAU_TYPE_RESP_EXEC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_exec);
+		break;
+	case LINAU_TYPE_RESP_SINGLE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_single);
+		break;
+	case LINAU_TYPE_RESP_HALT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_resp_halt);
+		break;
+	case LINAU_TYPE_USER_ROLE_CHANGE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_role_change);
+		break;
+	case LINAU_TYPE_ROLE_ASSIGN:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_role_assign);
+		break;
+	case LINAU_TYPE_ROLE_REMOVE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_role_remove);
+		break;
+	case LINAU_TYPE_LABEL_OVERRIDE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_label_override);
+		break;
+	case LINAU_TYPE_LABEL_LEVEL_CHANGE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_label_level_change);
+		break;
+	case LINAU_TYPE_USER_LABELED_EXPORT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_labeled_export);
+		break;
+	case LINAU_TYPE_USER_UNLABELED_EXPORT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_unlabeled_export);
+		break;
+	case LINAU_TYPE_DEV_ALLOC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_dev_alloc);
+		break;
+	case LINAU_TYPE_DEV_DEALLOC:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_dev_dealloc);
+		break;
+	case LINAU_TYPE_FS_RELABEL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_fs_relabel);
+		break;
+	case LINAU_TYPE_USER_MAC_POLICY_LOAD:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_mac_policy_load);
+		break;
+	case LINAU_TYPE_ROLE_MODIFY:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_role_modify);
+		break;
+	case LINAU_TYPE_USER_MAC_CONFIG_CHANGE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_user_mac_config_change);
+		break;
+	case LINAU_TYPE_CRYPTO_TEST_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_test_user);
+		break;
+	case LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_param_change_user);
+		break;
+	case LINAU_TYPE_CRYPTO_LOGIN:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_login);
+		break;
+	case LINAU_TYPE_CRYPTO_LOGOUT:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_logout);
+		break;
+	case LINAU_TYPE_CRYPTO_KEY_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_key_user);
+		break;
+	case LINAU_TYPE_CRYPTO_FAILURE_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_failure_user);
+		break;
+	case LINAU_TYPE_CRYPTO_REPLAY_USER:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_replay_user);
+		break;
+	case LINAU_TYPE_CRYPTO_SESSION:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_session);
+		break;
+	case LINAU_TYPE_CRYPTO_IKE_SA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_ike_sa);
+		break;
+	case LINAU_TYPE_CRYPTO_IPSEC_SA:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_crypto_ipsec_sa);
+		break;
+	case LINAU_TYPE_VIRT_CONTROL:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_virt_control);
+		break;
+	case LINAU_TYPE_VIRT_RESOURCE:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_virt_resource);
+		break;
+	case LINAU_TYPE_VIRT_MACHINE_ID:
+		linau_conv_process_record(aurecordd, record,
+		    &lcrectype_virt_machine_id);
+		break;
 	default:
-		PJDLOG_ABORT("Field name should be marked as "
-		    "LINAU_FIELD_NAME_UNDEFINED if "
-		    "it is not a standard name");
+		PJDLOG_ABORT("The type of the record is set neither to "
+		    "a type from the Linux Audit standard nor to an undefined "
+		    "type. If the type is not standard then "
+		    "LINAU_TYPE_UNDEFINED must be used.");
 	}
 }
 
@@ -2642,705 +3863,4 @@ linau_conv_get_type_number(const char *type)
 		return (LINAU_TYPE_VIRT_MACHINE_ID);
 
 	return (LINAU_TYPE_UNDEFINED);
-}
-
-void
-linau_conv_to_au(int aurecordd, const struct linau_record *record,
-    int typenum)
-{
-
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(aurecordd >= 0);
-
-	switch (typenum) {
-	case LINAU_TYPE_UNDEFINED:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_UNDEFINED);
-		break;
-	/* case LINAU_TYPE_GET: */
-	/* case LINAU_TYPE_SET: */
-	/* case LINAU_TYPE_LIST: */
-	/* case LINAU_TYPE_ADD: */
-	/* case LINAU_TYPE_DEL: */
-	case LINAU_TYPE_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER);
-		break;
-	case LINAU_TYPE_LOGIN:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_LOGIN);
-		break;
-	/* case LINAU_TYPE_SIGNAL_INFO: */
-	/* case LINAU_TYPE_ADD_RULE: */
-	/* case LINAU_TYPE_DEL_RULE: */
-	/* case LINAU_TYPE_LIST_RULES: */
-	/* case LINAU_TYPE_TRIM: */
-	/* case LINAU_TYPE_MAKE_EQUIV: */
-	/* case LINAU_TYPE_TTY_GET: */
-	/* case LINAU_TYPE_TTY_SET: */
-	/* case LINAU_TYPE_SET_FEATURE: */
-	/* case LINAU_TYPE_GET_FEATURE: */
-	case LINAU_TYPE_USER_AUTH:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_AUTH);
-		break;
-	case LINAU_TYPE_USER_ACCT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_ACCT);
-		break;
-	case LINAU_TYPE_USER_MGMT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_MGMT);
-		break;
-	case LINAU_TYPE_CRED_ACQ:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRED_ACQ);
-		break;
-	case LINAU_TYPE_CRED_DISP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRED_DISP);
-		break;
-	case LINAU_TYPE_USER_START:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_START);
-		break;
-	case LINAU_TYPE_USER_END:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_END);
-		break;
-	case LINAU_TYPE_USER_AVC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_AVC);
-		break;
-	case LINAU_TYPE_USER_CHAUTHTOK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_CHAUTHTOK);
-		break;
-	case LINAU_TYPE_USER_ERR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_ERR);
-		break;
-	case LINAU_TYPE_CRED_REFR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRED_REFR);
-		break;
-	case LINAU_TYPE_USYS_CONFIG:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USYS_CONFIG);
-		break;
-	case LINAU_TYPE_USER_LOGIN:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_LOGIN);
-		break;
-	case LINAU_TYPE_USER_LOGOUT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_LOGOUT);
-		break;
-	case LINAU_TYPE_ADD_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ADD_USER);
-		break;
-	case LINAU_TYPE_DEL_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DEL_USER);
-		break;
-	case LINAU_TYPE_ADD_GROUP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ADD_GROUP);
-		break;
-	case LINAU_TYPE_DEL_GROUP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DEL_GROUP);
-		break;
-	case LINAU_TYPE_DAC_CHECK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAC_CHECK);
-		break;
-	case LINAU_TYPE_CHGRP_ID:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CHGRP_ID);
-		break;
-	case LINAU_TYPE_TEST:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_TEST);
-		break;
-	case LINAU_TYPE_TRUSTED_APP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_TRUSTED_APP);
-		break;
-	case LINAU_TYPE_USER_SELINUX_ERR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_SELINUX_ERR);
-		break;
-	case LINAU_TYPE_USER_CMD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_CMD);
-		break;
-	case LINAU_TYPE_USER_TTY:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_TTY);
-		break;
-	case LINAU_TYPE_CHUSER_ID:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CHUSER_ID);
-		break;
-	case LINAU_TYPE_GRP_AUTH:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_GRP_AUTH);
-		break;
-	case LINAU_TYPE_MAC_CHECK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_CHECK);
-		break;
-	case LINAU_TYPE_ACCT_LOCK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ACCT_LOCK);
-		break;
-	case LINAU_TYPE_ACCT_UNLOCK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ACCT_UNLOCK);
-		break;
-	case LINAU_TYPE_SYSTEM_BOOT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SYSTEM_BOOT);
-		break;
-	case LINAU_TYPE_SYSTEM_SHUTDOWN:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SYSTEM_SHUTDOWN);
-		break;
-	case LINAU_TYPE_SYSTEM_RUNLEVEL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SYSTEM_RUNLEVEL);
-		break;
-	case LINAU_TYPE_SERVICE_START:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SERVICE_START);
-		break;
-	case LINAU_TYPE_SERVICE_STOP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SERVICE_STOP);
-		break;
-	case LINAU_TYPE_GRP_MGMT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_GRP_MGMT);
-		break;
-	case LINAU_TYPE_GRP_CHAUTHTOK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_GRP_CHAUTHTOK);
-		break;
-	case LINAU_TYPE_DAEMON_START:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_START);
-		break;
-	case LINAU_TYPE_DAEMON_END:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_END);
-		break;
-	case LINAU_TYPE_DAEMON_ABORT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_ABORT);
-		break;
-	case LINAU_TYPE_DAEMON_CONFIG:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_CONFIG);
-		break;
-	/* case LINAU_TYPE_DAEMON_RECONFIG: */
-	case LINAU_TYPE_DAEMON_ROTATE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_ROTATE);
-		break;
-	case LINAU_TYPE_DAEMON_RESUME:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_RESUME);
-		break;
-	case LINAU_TYPE_DAEMON_ACCEPT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_ACCEPT);
-		break;
-	case LINAU_TYPE_DAEMON_CLOSE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_CLOSE);
-		break;
-	case LINAU_TYPE_DAEMON_ERR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DAEMON_ERR);
-		break;
-	case LINAU_TYPE_SYSCALL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SYSCALL);
-		break;
-	/* case LINAU_TYPE_FS_WATCH: */
-	case LINAU_TYPE_PATH:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_PATH);
-		break;
-	case LINAU_TYPE_IPC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_IPC);
-		break;
-	case LINAU_TYPE_SOCKETCALL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SOCKETCALL);
-		break;
-	case LINAU_TYPE_CONFIG_CHANGE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CONFIG_CHANGE);
-		break;
-	case LINAU_TYPE_SOCKADDR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SOCKADDR);
-		break;
-	case LINAU_TYPE_CWD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CWD);
-		break;
-	/* case LINAU_TYPE_FS_INODE: */
-	case LINAU_TYPE_EXECVE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_EXECVE);
-		break;
-	case LINAU_TYPE_IPC_SET_PERM:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_IPC_SET_PERM);
-		break;
-	case LINAU_TYPE_MQ_OPEN:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MQ_OPEN);
-		break;
-	case LINAU_TYPE_MQ_SENDRECV:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MQ_SENDRECV);
-		break;
-	case LINAU_TYPE_MQ_NOTIFY:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MQ_NOTIFY);
-		break;
-	case LINAU_TYPE_MQ_GETSETATTR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MQ_GETSETATTR);
-		break;
-	case LINAU_TYPE_KERNEL_OTHER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_KERNEL_OTHER);
-		break;
-	case LINAU_TYPE_FD_PAIR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_FD_PAIR);
-		break;
-	case LINAU_TYPE_OBJ_PID:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_OBJ_PID);
-		break;
-	case LINAU_TYPE_TTY:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_TTY);
-		break;
-	case LINAU_TYPE_EOE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_EOE);
-		break;
-	case LINAU_TYPE_BPRM_FCAPS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_BPRM_FCAPS);
-		break;
-	case LINAU_TYPE_CAPSET:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CAPSET);
-		break;
-	case LINAU_TYPE_MMAP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MMAP);
-		break;
-	case LINAU_TYPE_NETFILTER_PKT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_NETFILTER_PKT);
-		break;
-	case LINAU_TYPE_NETFILTER_CFG:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_NETFILTER_CFG);
-		break;
-	case LINAU_TYPE_SECCOMP:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SECCOMP);
-		break;
-	case LINAU_TYPE_PROCTITLE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_PROCTITLE);
-		break;
-	case LINAU_TYPE_FEATURE_CHANGE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_FEATURE_CHANGE);
-		break;
-	case LINAU_TYPE_AVC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_AVC);
-		break;
-	case LINAU_TYPE_SELINUX_ERR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_SELINUX_ERR);
-		break;
-	case LINAU_TYPE_AVC_PATH:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_AVC_PATH);
-		break;
-	case LINAU_TYPE_MAC_POLICY_LOAD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_POLICY_LOAD);
-		break;
-	case LINAU_TYPE_MAC_STATUS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_STATUS);
-		break;
-	case LINAU_TYPE_MAC_CONFIG_CHANGE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_CONFIG_CHANGE);
-		break;
-	case LINAU_TYPE_MAC_UNLBL_ALLOW:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_UNLBL_ALLOW);
-		break;
-	case LINAU_TYPE_MAC_CIPSOV4_ADD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_CIPSOV4_ADD);
-		break;
-	case LINAU_TYPE_MAC_CIPSOV4_DEL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_CIPSOV4_DEL);
-		break;
-	case LINAU_TYPE_MAC_MAP_ADD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_MAP_ADD);
-		break;
-	case LINAU_TYPE_MAC_MAP_DEL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_MAP_DEL);
-		break;
-	case LINAU_TYPE_MAC_IPSEC_ADDSA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_IPSEC_ADDSA);
-		break;
-	case LINAU_TYPE_MAC_IPSEC_DELSA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_IPSEC_DELSA);
-		break;
-	case LINAU_TYPE_MAC_IPSEC_ADDSPD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_IPSEC_ADDSPD);
-		break;
-	case LINAU_TYPE_MAC_IPSEC_DELSPD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_IPSEC_DELSPD);
-		break;
-	case LINAU_TYPE_MAC_IPSEC_EVENT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_IPSEC_EVENT);
-		break;
-	case LINAU_TYPE_MAC_UNLBL_STCADD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_UNLBL_STCADD);
-		break;
-	case LINAU_TYPE_MAC_UNLBL_STCDEL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_MAC_UNLBL_STCDEL);
-		break;
-	case LINAU_TYPE_ANOM_PROMISCUOUS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_PROMISCUOUS);
-		break;
-	case LINAU_TYPE_ANOM_ABEND:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_ABEND);
-		break;
-	case LINAU_TYPE_ANOM_LINK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_LINK);
-		break;
-	case LINAU_TYPE_INTEGRITY_DATA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_INTEGRITY_DATA);
-		break;
-	case LINAU_TYPE_INTEGRITY_METADATA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_INTEGRITY_METADATA);
-		break;
-	case LINAU_TYPE_INTEGRITY_STATUS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_INTEGRITY_STATUS);
-		break;
-	case LINAU_TYPE_INTEGRITY_HASH:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_INTEGRITY_HASH);
-		break;
-	case LINAU_TYPE_INTEGRITY_PCR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_INTEGRITY_PCR);
-		break;
-	case LINAU_TYPE_INTEGRITY_RULE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_INTEGRITY_RULE);
-		break;
-	case LINAU_TYPE_AA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_AA);
-		break;
-	case LINAU_TYPE_APPARMOR_AUDIT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_APPARMOR_AUDIT);
-		break;
-	case LINAU_TYPE_APPARMOR_ALLOWED:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_APPARMOR_ALLOWED);
-		break;
-	case LINAU_TYPE_APPARMOR_DENIED:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_APPARMOR_DENIED);
-		break;
-	case LINAU_TYPE_APPARMOR_HINT:
-		/* FALLTHROUGH */
-	case LINAU_TYPE_APPARMOR_STATUS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_APPARMOR_STATUS);
-		break;
-	case LINAU_TYPE_APPARMOR_ERROR:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_APPARMOR_ERROR);
-		break;
-	case LINAU_TYPE_KERNEL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_KERNEL);
-		break;
-	case LINAU_TYPE_ANOM_LOGIN_FAILURES:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_LOGIN_FAILURES);
-		break;
-	case LINAU_TYPE_ANOM_LOGIN_TIME:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_LOGIN_TIME);
-		break;
-	case LINAU_TYPE_ANOM_LOGIN_SESSIONS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_LOGIN_SESSIONS);
-		break;
-	case LINAU_TYPE_ANOM_LOGIN_ACCT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_LOGIN_ACCT);
-		break;
-	case LINAU_TYPE_ANOM_LOGIN_LOCATION:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_LOGIN_LOCATION);
-		break;
-	case LINAU_TYPE_ANOM_MAX_DAC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_MAX_DAC);
-		break;
-	case LINAU_TYPE_ANOM_MAX_MAC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_MAX_MAC);
-		break;
-	case LINAU_TYPE_ANOM_AMTU_FAIL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_AMTU_FAIL);
-		break;
-	case LINAU_TYPE_ANOM_RBAC_FAIL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_RBAC_FAIL);
-		break;
-	case LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL);
-		break;
-	case LINAU_TYPE_ANOM_CRYPTO_FAIL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_CRYPTO_FAIL);
-		break;
-	case LINAU_TYPE_ANOM_ACCESS_FS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_ACCESS_FS);
-		break;
-	case LINAU_TYPE_ANOM_EXEC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_EXEC);
-		break;
-	case LINAU_TYPE_ANOM_MK_EXEC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_MK_EXEC);
-		break;
-	case LINAU_TYPE_ANOM_ADD_ACCT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_ADD_ACCT);
-		break;
-	case LINAU_TYPE_ANOM_DEL_ACCT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_DEL_ACCT);
-		break;
-	case LINAU_TYPE_ANOM_MOD_ACCT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_MOD_ACCT);
-		break;
-	case LINAU_TYPE_ANOM_ROOT_TRANS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ANOM_ROOT_TRANS);
-		break;
-	case LINAU_TYPE_RESP_ANOMALY:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_ANOMALY);
-		break;
-	case LINAU_TYPE_RESP_ALERT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_ALERT);
-		break;
-	case LINAU_TYPE_RESP_KILL_PROC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_KILL_PROC);
-		break;
-	case LINAU_TYPE_RESP_TERM_ACCESS:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_TERM_ACCESS);
-		break;
-	case LINAU_TYPE_RESP_ACCT_REMOTE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_ACCT_REMOTE);
-		break;
-	case LINAU_TYPE_RESP_ACCT_LOCK_TIMED:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_ACCT_LOCK_TIMED);
-		break;
-	case LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED);
-		break;
-	case LINAU_TYPE_RESP_ACCT_LOCK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_ACCT_LOCK);
-		break;
-	case LINAU_TYPE_RESP_TERM_LOCK:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_TERM_LOCK);
-		break;
-	case LINAU_TYPE_RESP_SEBOOL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_SEBOOL);
-		break;
-	case LINAU_TYPE_RESP_EXEC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_EXEC);
-		break;
-	case LINAU_TYPE_RESP_SINGLE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_SINGLE);
-		break;
-	case LINAU_TYPE_RESP_HALT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_RESP_HALT);
-		break;
-	case LINAU_TYPE_USER_ROLE_CHANGE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_ROLE_CHANGE);
-		break;
-	case LINAU_TYPE_ROLE_ASSIGN:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ROLE_ASSIGN);
-		break;
-	case LINAU_TYPE_ROLE_REMOVE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ROLE_REMOVE);
-		break;
-	case LINAU_TYPE_LABEL_OVERRIDE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_LABEL_OVERRIDE);
-		break;
-	case LINAU_TYPE_LABEL_LEVEL_CHANGE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_LABEL_LEVEL_CHANGE);
-		break;
-	case LINAU_TYPE_USER_LABELED_EXPORT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_LABELED_EXPORT);
-		break;
-	case LINAU_TYPE_USER_UNLABELED_EXPORT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_UNLABELED_EXPORT);
-		break;
-	case LINAU_TYPE_DEV_ALLOC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DEV_ALLOC);
-		break;
-	case LINAU_TYPE_DEV_DEALLOC:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_DEV_DEALLOC);
-		break;
-	case LINAU_TYPE_FS_RELABEL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_FS_RELABEL);
-		break;
-	case LINAU_TYPE_USER_MAC_POLICY_LOAD:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_MAC_POLICY_LOAD);
-		break;
-	case LINAU_TYPE_ROLE_MODIFY:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_ROLE_MODIFY);
-		break;
-	case LINAU_TYPE_USER_MAC_CONFIG_CHANGE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_USER_MAC_CONFIG_CHANGE);
-		break;
-	case LINAU_TYPE_CRYPTO_TEST_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_TEST_USER);
-		break;
-	case LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER);
-		break;
-	case LINAU_TYPE_CRYPTO_LOGIN:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_LOGIN);
-		break;
-	case LINAU_TYPE_CRYPTO_LOGOUT:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_LOGOUT);
-		break;
-	case LINAU_TYPE_CRYPTO_KEY_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_KEY_USER);
-		break;
-	case LINAU_TYPE_CRYPTO_FAILURE_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_FAILURE_USER);
-		break;
-	case LINAU_TYPE_CRYPTO_REPLAY_USER:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_REPLAY_USER);
-		break;
-	case LINAU_TYPE_CRYPTO_SESSION:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_SESSION);
-		break;
-	case LINAU_TYPE_CRYPTO_IKE_SA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_IKE_SA);
-		break;
-	case LINAU_TYPE_CRYPTO_IPSEC_SA:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_CRYPTO_IPSEC_SA);
-		break;
-	case LINAU_TYPE_VIRT_CONTROL:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_VIRT_CONTROL);
-		break;
-	case LINAU_TYPE_VIRT_RESOURCE:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_VIRT_RESOURCE);
-		break;
-	case LINAU_TYPE_VIRT_MACHINE_ID:
-		CONVERT_RECORD_TO_AU(aurecordd, record,
-		    LINAU_TYPE_VIRT_MACHINE_ID);
-		break;
-	default:
-		PJDLOG_ABORT("The type of the record is set neither to "
-		    "a type from the Linux Audit standard nor to an undefined "
-		    "type. If the type is not standard then "
-		    "LINAU_TYPE_UNDEFINED must be used.");
-	}
 }

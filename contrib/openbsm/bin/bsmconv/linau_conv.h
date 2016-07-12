@@ -1,7 +1,7 @@
 #ifndef _LINAU_CONV_H_
 #define _LINAU_CONV_H_
 
-#include "linau_impl.h"
+#include "linau.h"
 
 void	linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	    int typenum);

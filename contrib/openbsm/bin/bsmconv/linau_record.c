@@ -570,4 +570,5 @@ linau_record_to_au(const struct linau_record *record, int aurecordd)
 
 	/* Generate a token. */
 	linau_conv_to_au(aurecordd, record, typenum);
+
 }
