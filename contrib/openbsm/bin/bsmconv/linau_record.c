@@ -508,7 +508,7 @@ linau_record_fetch(FILE *fp)
 	buflen = sbuf_len(inbuf);
 	data = sbuf_data(inbuf);
 	pjdlog_debug(3, " . . . buflen: (%zu)", buflen);
-	/* XXX Assert or verify? This is a vital assumption. */
+	/* XXX: Assert or verify? This is a vital assumption. */
 	PJDLOG_VERIFY(strcmp(data + (buflen - 1), "\n\0") == 0);
 
 	/* Remove the trailing newline. */
@@ -539,20 +539,13 @@ int
 linau_record_comapre_origin(const struct linau_record *reca,
     const struct linau_record *recb)
 {
-	uint64_t recatime;
-	uint64_t recbtime;
-	uint32_t recaid;
-	uint32_t recbid;
 
 	PJDLOG_ASSERT(reca != NULL);
 	PJDLOG_ASSERT(recb != NULL);
 
-	recatime = linau_record_get_time(reca);
-	recbtime = linau_record_get_time(recb);
-	recaid = linau_record_get_id(reca);
-	recbid = linau_record_get_id(recb);
-
-	return (linau_proto_compare_origin(recaid, recatime, recbid, recbtime));
+	return (linau_proto_compare_origin(
+	    linau_record_get_id(reca), linau_record_get_time(reca),
+	    linau_record_get_id(recb), linau_record_get_time(recb)));
 }
 
 void
@@ -570,5 +563,4 @@ linau_record_to_au(const struct linau_record *record, int aurecordd)
 
 	/* Generate a token. */
 	linau_conv_to_au(aurecordd, record, typenum);
-
 }

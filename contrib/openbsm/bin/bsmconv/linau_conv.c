@@ -1,5 +1,6 @@
 #include <sys/types.h>
 
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
@@ -387,7 +388,7 @@
 #define LINAU_FIELD_NAME_A1_STR			"a1"
 #define LINAU_FIELD_NAME_A2_STR			"a2"
 #define LINAU_FIELD_NAME_A3_STR			"a3"
-/* TODO This one needs special attention. */
+/* TODO: This one needs special attention. */
 #define LINAU_FIELD_NAME_A_EXECVE_SYSCALL_STR	""
 #define	LINAU_FIELD_NAME_ACCT_STR		"acct"
 #define	LINAU_FIELD_NAME_ACL_STR		"acl"
@@ -621,7 +622,7 @@
 #define LINAU_FIELD_NAME_A1				2
 #define LINAU_FIELD_NAME_A2				3
 #define LINAU_FIELD_NAME_A3				4
-/* TODO This one needs special attention. */
+/* TODO: This one needs special attention. */
 #define LINAU_FIELD_NAME_A_EXECVE_SYSCALL		5
 #define	LINAU_FIELD_NAME_ACCT				6
 #define	LINAU_FIELD_NAME_ACL				7
@@ -855,7 +856,7 @@
 static pid_t try_get_pid_field(const struct linau_record *record,
     const char *fieldname);
 /*
- * XXX This function might belong to the token generating functions' section.
+ * XXX: This function might belong to the token generating functions' section.
  */
 static token_t *generate_token_text_from_field(
     const struct linau_record *record, const char *fieldname);
@@ -871,6 +872,13 @@ static int linau_conv_is_numeric(const char *field);
  */
 static token_t *generate_token_process32(const struct linau_record *record);
 static token_t *generate_token_text_from_msg(const struct linau_record *record);
+
+static void linau_conv_write_unprocessed_fields(int aurecordd,
+    const struct linau_record *record,
+    const struct linau_conv_record_type *lcrectype);
+static void linau_conv_process_record(int aurecordd,
+    const struct linau_record *record,
+    const struct linau_conv_record_type *lcrectype);
 
 struct linau_conv_field {
 	int	lcf_id;
@@ -912,7 +920,7 @@ struct linau_conv_record_type {
 /*         NULL */
 /* }; */
 /* static struct linau_conv_field lcfield_a_execve_syscall = { */
-/*         [> TODO This one needs special attention. <] */
+/*         [> TODO: This one needs special attention. <] */
 /*         LINAU_FIELD_NAME_A_EXECVE_SYSCALL, */
 /*         NULL */
 /* }; */
@@ -2046,7 +2054,7 @@ static struct linau_conv_record_type lcrectype_user_cmd = {
 	LINAU_TYPE_USER_CMD,
 	LINAU_TYPE_USER_CMD_STR,
 	/*
-	 * XXX How about a define to add & before every object and a NULL
+	 * XXX: How about a define to add & before every object and a NULL
 	 * at the end?
 	 */
 	{
@@ -2808,9 +2816,9 @@ generate_token_text_from_field(const struct linau_record *record,
 }
 
 /*
- * TODO Implement it.
+ * TODO: Implement it.
  *
- * XXX This function should probably check if the value is in the form of a
+ * XXX: This function should probably check if the value is in the form of a
  * text in a string like 'pid=320 cwd="/usr"' or "pid=320 cwd='/usr'".  I am
  * not sure though. The best idea is to ask about it on the LA mailing list.
  */
@@ -2824,15 +2832,25 @@ linau_conv_is_alphanumeric(const char *field)
 }
 
 /*
- * TODO: Not implemented yet.
  * XXX: This function might go to linau_field.c and be added to the interface in
  * linau.h.
+ *
+ * Check if the field is made of digits only.
+ *
+ * Parameters:
+ * field	The null-terminated string.
  */
 static int
 linau_conv_is_numeric(const char *field)
 {
+	size_t ii;
 
 	PJDLOG_ASSERT(field != NULL);
+	PJDLOG_ASSERT(strchr(field, '\0') != NULL);
+
+	for (ii = 0; field[ii] != '\0'; ii++)
+		if (!isdigit(field[ii]))
+			return (0);
 
 	return (1);
 }
@@ -2924,17 +2942,67 @@ generate_token_text_from_msg(const struct linau_record *record)
 }
 
 static void
-linau_conv_process_record(int aurecordd, const struct linau_record *record,
+linau_conv_write_unprocessed_fields(int aurecordd,
+    const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype)
 {
-	struct linau_conv_token *lctoken;
+	void *cookie;
+	const char *fieldname;
+	nvlist_t *fields;
+	const struct linau_conv_field *lcfield;
+	const struct linau_conv_token *lctoken;
+	const char *name;
 	token_t *tok;
+	size_t fi;
 	size_t ti;
+	int type;
 
 	PJDLOG_ASSERT(aurecordd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(lcrectype != NULL);
 	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
+
+	fields = linau_record_clone_fields(record);
+
+	for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++) {
+		lctoken = lcrectype->lcrt_tokens[ti];
+		for (fi = 0; lctoken->lct_fields[fi] != NULL; fi++) {
+			lcfield = lctoken->lct_fields[fi];
+			fieldname = field_name_from_field_name_id(
+			    lcfield->lcf_id);
+			if (nvlist_exists_string(fields, fieldname))
+				free(nvlist_take_string(fields, fieldname));
+		}
+	}
+
+	cookie = NULL;
+	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
+		PJDLOG_ASSERT(type == NV_TYPE_STRING);
+		tok = generate_token_text_from_field(record, name);
+		PJDLOG_VERIFY(tok != NULL);
+		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+	}
+
+	nvlist_destroy(fields);
+}
+
+static void
+linau_conv_process_record(int aurecordd, const struct linau_record *record,
+    const struct linau_conv_record_type *lcrectype)
+{
+	void *cookie;
+	struct linau_conv_token *lctoken;
+	const char *name;
+	token_t *tok;
+	size_t ti;
+	int type;
+
+	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(lcrectype != NULL);
+	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
+
+	pjdlog_debug(3, "%s", __func__);
 
 	for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++) {
 		lctoken = lcrectype->lcrt_tokens[ti];
@@ -2948,6 +3016,11 @@ linau_conv_process_record(int aurecordd, const struct linau_record *record,
 		 */
 		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 	}
+
+	/* TODO: Write unprocessed fields as text. */
+	linau_conv_write_unprocessed_fields(aurecordd, record, lcrectype);
+
+	pjdlog_debug(3, "End %s", __func__);
 }
 
 /*
