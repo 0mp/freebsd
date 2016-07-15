@@ -28,7 +28,7 @@ get_any_record(const struct linau_event *event)
 }
 
 /*
- * TODO This is a temporary solution.
+ * TODO: This is a temporary solution.
  *
  * XXX If this function goes public one day it should return short instead of
  * unsigned short.
@@ -83,7 +83,6 @@ linau_event_clear(struct linau_event *event)
 }
 
 
-/* TODO */
 void
 linau_event_add_record(struct linau_event *event,
     struct linau_record *record)
@@ -223,7 +222,7 @@ linau_event_compare_origin(const struct linau_event *event,
 }
 
 /*
- * TODO We allow empty events. Create a test to be sure that this function is
+ * TODO: We allow empty events. Create a test to be sure that this function is
  * empty-event proof.
  */
 int

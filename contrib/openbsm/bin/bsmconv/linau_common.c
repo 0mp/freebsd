@@ -66,7 +66,7 @@ extract_substring(const char *buf, size_t start, size_t len)
 	return (substr);
 }
 
-/* XXX Ugly. */
+/* STYLE: Ugly. */
 void
 locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
     size_t *nsecsposp, size_t *idposp, size_t *msgendp)

@@ -102,6 +102,9 @@ struct linau_field	*linau_field_create(void);
 void			 linau_field_destroy(struct linau_field *field);
 void			 linau_field_shallow_destroy(struct linau_field *field);
 
+const char		*linau_field_get_name(const struct linau_field *field);
+const char		*linau_field_get_value(const struct linau_field *field);
+
 void			 linau_field_move_name(struct linau_field *field,
 			    char *name);
 void			 linau_field_move_value(struct linau_field *field,

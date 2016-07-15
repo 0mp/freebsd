@@ -71,7 +71,6 @@ main(int argc, char **argv)
 			PJDLOG_ABORT("Invalid command line options detected");
 		}
 
-
 	pjdlog_debug_set(debuglevel);
 
 	process_events(stdin, debuglevel);

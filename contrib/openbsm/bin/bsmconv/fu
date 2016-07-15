@@ -5,6 +5,7 @@ POSITIVE_DIR=${TEST_DIR}positive/
 NEGATIVE_DIR=${TEST_DIR}negative/
 MAKEFILE_DIR=../../../../usr.bin/bsmconv/
 BIN=${MAKEFILE_DIR}bsmconv
+LA_DOCS_JS=NOTES_ON_LINUX_AUDIT.js
 MAKEFILE=${MAKEFILE_DIR}Makefile
 
 PROGRESS_PENDING_CHAR="\."
@@ -92,6 +93,9 @@ while [ "$#" -gt 0 ]; do
         "$BIN" < "$2" | praudit
         shift
         ;;
+    docs)
+        node "$LA_DOCS_JS" | python -m json.tool
+	;;
     usage|help|-h|*)
         fu_usage
         ;;
