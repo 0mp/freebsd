@@ -1,0 +1,1 @@
+type=TESTTYPE5 msg=audit(1800000000.125:3002): w=beforecomma,w=aftercomma

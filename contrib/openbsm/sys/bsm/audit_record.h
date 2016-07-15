@@ -189,6 +189,8 @@ int	 au_open(void);
 int	 au_write(int d, token_t *m);
 int	 au_close(int d, int keep, short event);
 int	 au_close_buffer(int d, short event, u_char *buffer, size_t *buflen);
+int	 au_close_buffer_tm(int d, short event, u_char *buffer,
+	    size_t *buflen, struct timeval *tm);
 int	 au_close_token(token_t *tok, u_char *buffer, size_t *buflen);
 
 token_t	*au_to_file(const char *file, struct timeval tm);

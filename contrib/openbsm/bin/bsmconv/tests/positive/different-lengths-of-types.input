@@ -1,0 +1,11 @@
+type=1 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=12 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=123 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=1234 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=12345 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=123456 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=1234567 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=12345678 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=123456789 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=12345678910 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=1234567891011 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
