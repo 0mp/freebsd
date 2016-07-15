@@ -110,7 +110,7 @@ linau_record_get_field(const struct linau_record *record, const char *name)
 	PJDLOG_ASSERT(name != NULL);
 	PJDLOG_ASSERT(record->lr_fields != NULL);
 
-	/* XXX Return NULL or exit? */
+	/* XXX: Return NULL or exit? */
 	/* if (!linau_record_exists_field(record, name)) */
 	/*         return (NULL); */
 	PJDLOG_VERIFY(linau_record_exists_field(record, name));
@@ -205,17 +205,18 @@ linau_record_move_fields(struct linau_record *record, nvlist_t *fields)
 	record->lr_fields = fields;
 }
 
+/*
+ * The assertion will fire if the lr_fields_count is set before
+ * setting lr_fields.
+ */
 void
 linau_record_set_fields_count(struct linau_record *record, size_t fields_count)
 {
+
 	PJDLOG_ASSERT(record != NULL);
-	/*
-	 * XXX This assert is check whether it makes sense to set fields_count.
-	 */
 	PJDLOG_ASSERT(record->lr_fields != NULL);
 
 	record->lr_fields_count = fields_count;
-
 }
 
 void
@@ -322,10 +323,6 @@ linau_record_parse_id(const char *buf)
 	return (id);
 }
 
-/*
- * XXX Is size_t *fields_countp a nice way to pass the number of fields back to
- * the caller?
- */
 nvlist_t *
 linau_record_parse_fields(const char *buf, size_t *fields_countp)
 {
@@ -344,14 +341,12 @@ linau_record_parse_fields(const char *buf, size_t *fields_countp)
 	buflen = strlen(buf);
 
 	/*
-	 * XXX NV_FLAG_NO_UNIQUE is currently not supported because I cannot
+	 * XXX: NV_FLAG_NO_UNIQUE is currently not supported because I cannot
 	 * link the new library. I failed to make install the library from
 	 * sources either.
 	 */
 	/* fields = nvlist_create(NV_FLAG_NO_UNIQUE); */
 	fields = nvlist_create(0);
-	/* XXX Do we need this VERIFY? */
-	PJDLOG_VERIFY(fields != NULL);
 	PJDLOG_VERIFY(nvlist_error(fields) == 0);
 
 	/* Find the beginning of the field section. */
@@ -437,7 +432,7 @@ linau_record_parse_type(const char *buf)
 	typeprefix = "type";
 	typeprefixlen = strlen(typeprefix);
 
-	/* XXX Does it make sense? */
+	/* XXX: Does it make sense? */
 	PJDLOG_ASSERT(typeprefixlen + 2 < strlen(buf));
 	pjdlog_debug(4, " . . . . (%.*s), (%.*s)",
 	    typeprefixlen, buf, typeprefixlen, typeprefix);
@@ -508,8 +503,7 @@ linau_record_fetch(FILE *fp)
 	buflen = sbuf_len(inbuf);
 	data = sbuf_data(inbuf);
 	pjdlog_debug(3, " . . . buflen: (%zu)", buflen);
-	/* XXX: Assert or verify? This is a vital assumption. */
-	PJDLOG_VERIFY(strcmp(data + (buflen - 1), "\n\0") == 0);
+	PJDLOG_ASSERT(strcmp(data + (buflen - 1), "\n\0") == 0);
 
 	/* Remove the trailing newline. */
 	data[buflen - 1] = '\0';
