@@ -2053,7 +2053,11 @@ static struct linau_conv_record_type lcrectype_user_start = {
 static struct linau_conv_record_type lcrectype_user_end = {
 	LINAU_TYPE_USER_END,
 	LINAU_TYPE_USER_END_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		&lctoken_text_from_msg,
+		NULL
+	}
 };
 static struct linau_conv_record_type lcrectype_user_avc = {
 	LINAU_TYPE_USER_AVC,

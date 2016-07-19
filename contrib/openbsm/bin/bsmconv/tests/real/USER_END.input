@@ -1,0 +1,1 @@
+type=USER_END msg=audit(1464013671.549:407): pid=3569 uid=0 auid=1000 ses=7 msg='op=PAM:session_close acct="root" exe="/usr/bin/sudo" hostname=? addr=? terminal=/dev/pts/1 res=success'
