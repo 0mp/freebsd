@@ -2037,7 +2037,11 @@ static struct linau_conv_record_type lcrectype_user_err = {
 static struct linau_conv_record_type lcrectype_cred_refr = {
 	LINAU_TYPE_CRED_REFR,
 	LINAU_TYPE_CRED_REFR_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		&lctoken_text_from_msg,
+		NULL
+    }
 };
 static struct linau_conv_record_type lcrectype_usys_config = {
 	LINAU_TYPE_USYS_CONFIG,
