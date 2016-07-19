@@ -1848,13 +1848,31 @@ static struct linau_conv_field lcfield_ses = {
 
 /*
  * Tokens definitions.
+ *
+ * Rules for putting fields in linau_conv_token structures:
+ * - Fields required by the functions generating tokens, like au_to_text(3)
+ *   (see au_token(3)).
+ * - Fields are expected to occure in the records which are built of those
+ *   tokens, for example:
+ *
+ *   Record: TYPE=USER_CMD
+ *   Fields: msg
+ *   Included tokens: lctoken_text_from_msg
+ *   linau_conv_token fields: lcfield_msg
  */
 static struct linau_conv_token lctoken_process32 = {
 	generate_token_process32,
 	{
 		&lcfield_auid,
-		&lcfield_egid,
-		&lcfield_euid,
+        /*
+         * XXX: These fields:
+         * - Exist in Linux Audit.
+         * - Are required by the process token.
+         * - Are not present in most Linux Audit records.
+         * This is why I put them here and commented out.
+         */
+		/* &lcfield_egid, */
+		/* &lcfield_euid, */
 		&lcfield_pid,
 		&lcfield_ses,
 		NULL
@@ -1990,7 +2008,11 @@ static struct linau_conv_record_type lcrectype_cred_disp = {
 static struct linau_conv_record_type lcrectype_user_start = {
 	LINAU_TYPE_USER_START,
 	LINAU_TYPE_USER_START_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		&lctoken_text_from_msg,
+		NULL
+    }
 };
 static struct linau_conv_record_type lcrectype_user_end = {
 	LINAU_TYPE_USER_END,
