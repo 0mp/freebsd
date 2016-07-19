@@ -87,23 +87,27 @@ linau_field_get_value(const struct linau_field *field)
 }
 
 void
-linau_field_move_name(struct linau_field *field, char *name)
+linau_field_set_name(struct linau_field *field, const char *name)
 {
 
 	PJDLOG_ASSERT(field != NULL);
 	PJDLOG_ASSERT(name != NULL);
+	PJDLOG_ASSERT(strchr(name, '\0') != NULL);
 
-	field->lf_name = name;
+	field->lf_name = strdup(name);
+	PJDLOG_VERIFY(field->lf_name != NULL);
 }
 
 void
-linau_field_move_value(struct linau_field *field, char *value)
+linau_field_set_value(struct linau_field *field, const char *value)
 {
 
 	PJDLOG_ASSERT(field != NULL);
 	PJDLOG_ASSERT(value != NULL);
+	PJDLOG_ASSERT(strchr(value, '\0') != NULL);
 
-	field->lf_value = value;
+	field->lf_value = strdup(value);
+	PJDLOG_VERIFY(field->lf_value != NULL);
 }
 
 struct linau_field *
@@ -159,13 +163,15 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	PJDLOG_ASSERT(buf[nameend] != '=');
 
 	name = linau_field_parse_name(buf, namestart, nameend);
-	linau_field_move_name(field, name);
+	linau_field_set_name(field, name);
+	free(name);
 
 	valstart = equalpos + 1;
 	PJDLOG_ASSERT(valstart < buflen);
 
 	value = linau_field_parse_value(buf, valstart);
-	linau_field_move_value(field, value);
+	linau_field_set_value(field, value);
+	free(value);
 
 	*lastposp = valstart + strlen(value);
 

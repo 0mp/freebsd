@@ -67,10 +67,10 @@ bool			 linau_record_try_get_uint32_field(
 			    const struct linau_record *record,
 			    const char *fieldname, uint32_t *fieldvalp);
 
-void			 linau_record_move_fields(struct linau_record *record,
-			    nvlist_t *fields);
-void			 linau_record_move_type(struct linau_record *record,
-			    char *type);
+void			 linau_record_set_fields(struct linau_record *record,
+			    const nvlist_t *fields);
+void			 linau_record_set_type(struct linau_record *record,
+			    const char *type);
 
 void			 linau_record_set_fields_count(
 			    struct linau_record *record, size_t fields_count);
@@ -105,10 +105,10 @@ void			 linau_field_shallow_destroy(struct linau_field *field);
 const char		*linau_field_get_name(const struct linau_field *field);
 const char		*linau_field_get_value(const struct linau_field *field);
 
-void			 linau_field_move_name(struct linau_field *field,
-			    char *name);
-void			 linau_field_move_value(struct linau_field *field,
-			    char *value);
+void			 linau_field_set_name(struct linau_field *field,
+			    const char *name);
+void			 linau_field_set_value(struct linau_field *field,
+			    const char *value);
 
 struct linau_field	*linau_field_parse(const char *buf, size_t *lastposp);
 char			*linau_field_parse_name(const char *buf, size_t start,

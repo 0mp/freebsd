@@ -196,13 +196,15 @@ linau_record_try_get_uint32_field(const struct linau_record *record,
 }
 
 void
-linau_record_move_fields(struct linau_record *record, nvlist_t *fields)
+linau_record_set_fields(struct linau_record *record, const nvlist_t *fields)
 {
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fields != NULL);
 
-	record->lr_fields = fields;
+	record->lr_fields = nvlist_clone(fields);
+	PJDLOG_VERIFY(nvlist_error(fields) == 0);
+	PJDLOG_VERIFY(record->lr_fields != NULL);
 }
 
 /*
@@ -255,13 +257,15 @@ linau_record_set_time(struct linau_record *record, uint64_t time)
 }
 
 void
-linau_record_move_type(struct linau_record *record, char *type)
+linau_record_set_type(struct linau_record *record, const char *type)
 {
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(type != NULL);
+	PJDLOG_ASSERT(strchr(type, '\0') != NULL);
 
-	record->lr_type = type;
+	record->lr_type = strdup(type);
+	PJDLOG_VERIFY(record->lr_type != NULL);
 }
 
 /*
@@ -271,7 +275,9 @@ linau_record_move_type(struct linau_record *record, char *type)
 struct linau_record *
 linau_record_parse(const char *buf)
 {
+	nvlist_t *fields;
 	struct linau_record *record;
+	char *type;
 	size_t fields_count;
 
 	PJDLOG_ASSERT(buf != NULL);
@@ -281,11 +287,14 @@ linau_record_parse(const char *buf)
 
 	record = linau_record_create();
 
-	linau_record_move_type(record, linau_record_parse_type(buf));
+	type = linau_record_parse_type(buf);
+	linau_record_move_type(record, type);
+	free(type);
 	linau_record_set_id(record, linau_record_parse_id(buf));
 	linau_record_set_time(record, linau_record_parse_time(buf));
-	linau_record_move_fields(record, linau_record_parse_fields(buf,
-	     &fields_count));
+	fields = linau_record_parse_fields(buf, &fields_count);
+	linau_record_set_fields(record, fields);
+	nvlist_destroy(fields);
 	linau_record_set_fields_count(record, fields_count);
 	linau_record_set_text(record, buf);
 
