@@ -2039,7 +2039,11 @@ static struct linau_conv_record_type lcrectype_cred_acq = {
 static struct linau_conv_record_type lcrectype_cred_disp = {
 	LINAU_TYPE_CRED_DISP,
 	LINAU_TYPE_CRED_DISP_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		&lctoken_text_from_msg,
+		NULL
+	}
 };
 static struct linau_conv_record_type lcrectype_user_start = {
 	LINAU_TYPE_USER_START,
