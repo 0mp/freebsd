@@ -1,3 +1,8 @@
+/*
+ * The list of fields and records is up-to-date with the audit-linux
+ * repository on GitHub as of 2016.07.19.
+ */
+
 #include <sys/types.h>
 
 #include <sys/sbuf.h>
@@ -874,13 +879,21 @@ static token_t *generate_token_text_from_field(
  * Functions which verifies the format and the type of fields.
  */
 static int linau_conv_is_alphanumeric(const char *field);
+static int linau_conv_is_encoded(const char *field);
 static int linau_conv_is_numeric(const char *field);
 
 /*
  * Token generating functions.
  */
 static token_t *generate_token_process32(const struct linau_record *record);
+static token_t *generate_token_process32_without_pid(
+    const struct linau_record *record);
+static token_t *generate_token_text_from_key(const struct linau_record *record);
+static token_t *generate_token_text_from_list(
+    const struct linau_record *record);
 static token_t *generate_token_text_from_msg(const struct linau_record *record);
+static token_t *generate_token_text_from_op(const struct linau_record *record);
+static token_t *generate_token_text_from_res(const struct linau_record *record);
 
 /*
  * Tokens generating functions.
@@ -1289,10 +1302,10 @@ static struct linau_conv_field lcfield_euid = {
 /*         LINAU_FIELD_NAME_KERNEL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_key = { */
-/*         LINAU_FIELD_NAME_KEY, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_key = {
+	LINAU_FIELD_NAME_KEY,
+	linau_conv_is_encoded
+};
 /* static struct linau_conv_field lcfield_kind = { */
 /*         LINAU_FIELD_NAME_KIND, */
 /*         NULL */
@@ -1577,10 +1590,10 @@ static struct linau_conv_field lcfield_msg = {
 /*         LINAU_FIELD_NAME_OLD_VCPU, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_op = { */
-/*         LINAU_FIELD_NAME_OP, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_op = {
+	LINAU_FIELD_NAME_OP,
+	linau_conv_is_alphanumeric
+};
 /* static struct linau_conv_field lcfield_opid = { */
 /*         LINAU_FIELD_NAME_OPID, */
 /*         NULL */
@@ -1864,13 +1877,13 @@ static struct linau_conv_token lctoken_process32 = {
 	generate_token_process32,
 	{
 		&lcfield_auid,
-        /*
-         * XXX: These fields:
-         * - Exist in Linux Audit.
-         * - Are required by the process token.
-         * - Are not present in most Linux Audit records.
-         * This is why I put them here and commented out.
-         */
+		/*
+		 * XXX: These fields:
+		 * - Exist in Linux Audit.
+		 * - Are required by the process token.
+		 * - Are not present in most Linux Audit records.
+		 * This is why I put them here and commented out.
+		 */
 		/* &lcfield_egid, */
 		/* &lcfield_euid, */
 		&lcfield_pid,
@@ -1878,10 +1891,33 @@ static struct linau_conv_token lctoken_process32 = {
 		NULL
 	}
 };
+/* See lctoken_process32. */
+static struct linau_conv_token lctoken_process32_without_pid = {
+	generate_token_process32,
+	{
+		&lcfield_auid,
+		&lcfield_ses,
+		NULL
+	}
+};
+static struct linau_conv_token lctoken_text_from_key = {
+	generate_token_text_from_key,
+	{
+		&lcfield_key,
+		NULL
+	}
+};
 static struct linau_conv_token lctoken_text_from_msg = {
 	generate_token_text_from_msg,
 	{
 		&lcfield_msg,
+		NULL
+	}
+};
+static struct linau_conv_token lctoken_text_from_op = {
+	generate_token_text_from_op,
+	{
+		&lcfield_op,
 		NULL
 	}
 };
@@ -2012,7 +2048,7 @@ static struct linau_conv_record_type lcrectype_user_start = {
 		&lctoken_process32,
 		&lctoken_text_from_msg,
 		NULL
-    }
+	}
 };
 static struct linau_conv_record_type lcrectype_user_end = {
 	LINAU_TYPE_USER_END,
@@ -2041,7 +2077,7 @@ static struct linau_conv_record_type lcrectype_cred_refr = {
 		&lctoken_process32,
 		&lctoken_text_from_msg,
 		NULL
-    }
+	}
 };
 static struct linau_conv_record_type lcrectype_usys_config = {
 	LINAU_TYPE_USYS_CONFIG,
@@ -2255,7 +2291,21 @@ static struct linau_conv_record_type lcrectype_socketcall = {
 static struct linau_conv_record_type lcrectype_config_change = {
 	LINAU_TYPE_CONFIG_CHANGE,
 	LINAU_TYPE_CONFIG_CHANGE_STR,
-	{ NULL }
+	{
+		generate_token_process32_without_pid,
+		generate_token_text_from_op,
+		generate_token_text_from_key,
+		generate_token_text_from_list,
+		/*
+		 * generate_token_text_from_res is weird because the value
+		 * of res is not either success or fail.
+		 * It is 1 which doesn't make sense according to
+		 * the documentation.  I've sent an email on 2016.07.19 to
+		 * linux-audit@redhat.com with a question about it.
+		 */
+		generate_token_text_from_res,
+		NULL
+	}
 };
 static struct linau_conv_record_type lcrectype_sockaddr = {
 	LINAU_TYPE_SOCKADDR,
@@ -3372,6 +3422,15 @@ linau_conv_is_alphanumeric(const char *field)
 	return (1);
 }
 
+static int
+linau_conv_is_encoded(const char *field)
+{
+
+	PJDLOG_ASSERT(field != NULL);
+
+	return (1);
+}
+
 /*
  * STYLE: This function might go to linau_field.c
  * and be added to the interface in linau.h.
@@ -3469,6 +3528,35 @@ generate_token_process32(const struct linau_record *record)
 }
 
 static token_t *
+generate_token_process32_without_pid(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_process32(record));
+}
+
+static token_t *
+generate_token_text_from_key(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_text_from_field(record,
+	    LINAU_FIELD_NAME_KEY_STR));
+}
+
+static token_t *
+generate_token_text_from_list(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_text_from_field(record,
+	    LINAU_FIELD_NAME_LIST_STR));
+}
+
+static token_t *
 generate_token_text_from_msg(const struct linau_record *record)
 {
 
@@ -3476,6 +3564,26 @@ generate_token_text_from_msg(const struct linau_record *record)
 
 	return (generate_token_text_from_field(record,
 	    LINAU_FIELD_NAME_MSG_STR));
+}
+
+static token_t *
+generate_token_text_from_op(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_text_from_field(record,
+	    LINAU_FIELD_NAME_OP_STR));
+}
+
+static token_t *
+generate_token_text_from_res(const struct linau_record *record)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+
+	return (generate_token_text_from_field(record,
+	    LINAU_FIELD_NAME_RES_STR));
 }
 
 static void

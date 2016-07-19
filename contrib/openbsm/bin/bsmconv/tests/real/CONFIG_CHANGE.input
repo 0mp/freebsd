@@ -1,0 +1,1 @@
+type=CONFIG_CHANGE msg=audit(1464013671.541:406): auid=1000 ses=7 op="add rule" key=(null) list=4 res=1
