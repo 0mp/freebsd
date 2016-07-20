@@ -1130,10 +1130,10 @@ static struct linau_conv_field lcfield_auid = {
 /*         LINAU_FIELD_NAME_DPORT, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_egid = {
-	LINAU_FIELD_NAME_EGID,
-	linau_conv_is_numeric
-};
+/* static struct linau_conv_field lcfield_egid = { */
+/*         LINAU_FIELD_NAME_EGID, */
+/*         linau_conv_is_numeric */
+/* }; */
 /* static struct linau_conv_field lcfield_enforcing = { */
 /*         LINAU_FIELD_NAME_ENFORCING, */
 /*         NULL */
@@ -1142,10 +1142,10 @@ static struct linau_conv_field lcfield_egid = {
 /*         LINAU_FIELD_NAME_ENTRIES, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_euid = {
-	LINAU_FIELD_NAME_EUID,
-	linau_conv_is_numeric
-};
+/* static struct linau_conv_field lcfield_euid = { */
+/*         LINAU_FIELD_NAME_EUID, */
+/*         linau_conv_is_numeric */
+/* }; */
 /* static struct linau_conv_field lcfield_exe = { */
 /*         LINAU_FIELD_NAME_EXE, */
 /*         NULL */
@@ -1326,10 +1326,10 @@ static struct linau_conv_field lcfield_key = {
 /*         LINAU_FIELD_NAME_LPORT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_list = { */
-/*         LINAU_FIELD_NAME_LIST, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_list = {
+	LINAU_FIELD_NAME_LIST,
+	linau_conv_is_numeric
+};
 /* static struct linau_conv_field lcfield_mac = { */
 /*         LINAU_FIELD_NAME_MAC, */
 /*         NULL */
@@ -1682,10 +1682,10 @@ static struct linau_conv_field lcfield_pid = {
 /*         LINAU_FIELD_NAME_REMOVED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_res = { */
-/*         LINAU_FIELD_NAME_RES, */
-/*         NULL */
-/* }; */
+static struct linau_conv_field lcfield_res = {
+	LINAU_FIELD_NAME_RES,
+	linau_conv_is_alphanumeric
+};
 /* static struct linau_conv_field lcfield_resrc = { */
 /*         LINAU_FIELD_NAME_RESRC, */
 /*         NULL */
@@ -1893,7 +1893,7 @@ static struct linau_conv_token lctoken_process32 = {
 };
 /* See lctoken_process32. */
 static struct linau_conv_token lctoken_process32_without_pid = {
-	generate_token_process32,
+	generate_token_process32_without_pid,
 	{
 		&lcfield_auid,
 		&lcfield_ses,
@@ -1904,6 +1904,13 @@ static struct linau_conv_token lctoken_text_from_key = {
 	generate_token_text_from_key,
 	{
 		&lcfield_key,
+		NULL
+	}
+};
+static struct linau_conv_token lctoken_text_from_list = {
+	generate_token_text_from_list,
+	{
+		&lcfield_list,
 		NULL
 	}
 };
@@ -1918,6 +1925,13 @@ static struct linau_conv_token lctoken_text_from_op = {
 	generate_token_text_from_op,
 	{
 		&lcfield_op,
+		NULL
+	}
+};
+static struct linau_conv_token lctoken_text_from_res = {
+	generate_token_text_from_res,
+	{
+		&lcfield_res,
 		NULL
 	}
 };
@@ -2300,10 +2314,10 @@ static struct linau_conv_record_type lcrectype_config_change = {
 	LINAU_TYPE_CONFIG_CHANGE,
 	LINAU_TYPE_CONFIG_CHANGE_STR,
 	{
-		generate_token_process32_without_pid,
-		generate_token_text_from_op,
-		generate_token_text_from_key,
-		generate_token_text_from_list,
+		&lctoken_process32_without_pid,
+		&lctoken_text_from_op,
+		&lctoken_text_from_key,
+		&lctoken_text_from_list,
 		/*
 		 * generate_token_text_from_res is weird because the value
 		 * of res is not either success or fail.
@@ -2311,7 +2325,7 @@ static struct linau_conv_record_type lcrectype_config_change = {
 		 * the documentation.  I've sent an email on 2016.07.19 to
 		 * linux-audit@redhat.com with a question about it.
 		 */
-		generate_token_text_from_res,
+		&lctoken_text_from_res,
 		NULL
 	}
 };

@@ -288,7 +288,7 @@ linau_record_parse(const char *buf)
 	record = linau_record_create();
 
 	type = linau_record_parse_type(buf);
-	linau_record_move_type(record, type);
+	linau_record_set_type(record, type);
 	free(type);
 	linau_record_set_id(record, linau_record_parse_id(buf));
 	linau_record_set_time(record, linau_record_parse_time(buf));
