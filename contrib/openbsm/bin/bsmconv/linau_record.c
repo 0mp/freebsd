@@ -110,6 +110,9 @@ linau_record_get_field(const struct linau_record *record, const char *name)
 	PJDLOG_ASSERT(name != NULL);
 	PJDLOG_ASSERT(record->lr_fields != NULL);
 
+	pjdlog_debug(4, "%s", __func__);
+	pjdlog_debug(4, "name (%s)", name);
+
 	/* XXX: Return NULL or exit? */
 	/* if (!linau_record_exists_field(record, name)) */
 	/*         return (NULL); */
@@ -117,6 +120,8 @@ linau_record_get_field(const struct linau_record *record, const char *name)
 
 
 	fields = linau_record_get_fields(record);
+
+	pjdlog_debug(4, "End %s", __func__);
 
 	return (nvlist_get_string(fields, name));
 }
@@ -185,12 +190,18 @@ linau_record_try_get_uint32_field(const struct linau_record *record,
 	PJDLOG_ASSERT(fieldname != NULL);
 	PJDLOG_ASSERT(fieldvalp != NULL);
 
+	pjdlog_debug(4, "%s", __func__);
+	pjdlog_debug(4, "name (%s)", fieldname);
+
 	if (!linau_record_exists_field(record, fieldname))
 		return (false);
 
+	pjdlog_debug(4, "%s field exists. Let's get it", fieldname);
 	fieldvalstr = linau_record_get_field(record, fieldname);
 
 	*fieldvalp = string_to_uint32(fieldvalstr);
+
+	pjdlog_debug(4, "End %s", __func__);
 
 	return (true);
 }
@@ -441,10 +452,13 @@ linau_record_parse_type(const char *buf)
 	typeprefix = "type";
 	typeprefixlen = strlen(typeprefix);
 
-	/* XXX: Does it make sense? */
-	PJDLOG_ASSERT(typeprefixlen + 2 < strlen(buf));
+	/*
+	 * Sometimes the program will abort here if the input file has an
+	 * additional newline at the end of the file (empty line).
+	 */
 	pjdlog_debug(4, " . . . . (%.*s), (%.*s)",
 	    typeprefixlen, buf, typeprefixlen, typeprefix);
+	PJDLOG_ASSERT(typeprefixlen + 2 < strlen(buf));
 	PJDLOG_VERIFY(strncmp(buf, typeprefix, typeprefixlen) == 0);
 
 	typestart = typeprefixlen + 1;

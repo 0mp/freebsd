@@ -1900,41 +1900,21 @@ static struct linau_conv_token lctoken_process32_without_pid = {
 		NULL
 	}
 };
-static struct linau_conv_token lctoken_text_from_key = {
-	generate_token_text_from_key,
-	{
-		&lcfield_key,
-		NULL
-	}
-};
-static struct linau_conv_token lctoken_text_from_list = {
-	generate_token_text_from_list,
-	{
-		&lcfield_list,
-		NULL
-	}
-};
-static struct linau_conv_token lctoken_text_from_msg = {
-	generate_token_text_from_msg,
-	{
-		&lcfield_msg,
-		NULL
-	}
-};
-static struct linau_conv_token lctoken_text_from_op = {
-	generate_token_text_from_op,
-	{
-		&lcfield_op,
-		NULL
-	}
-};
-static struct linau_conv_token lctoken_text_from_res = {
-	generate_token_text_from_res,
-	{
-		&lcfield_res,
-		NULL
-	}
-};
+/* STYLE: Not sure how to indent properly. */
+#define define_lctoken_text_from_field(field)				\
+	static struct linau_conv_token lctoken_text_from_ ## field = {	\
+		generate_token_text_from_ ## field,			\
+		{							\
+			&lcfield_ ## field,				\
+			NULL						\
+		}							\
+	};
+define_lctoken_text_from_field(key);
+define_lctoken_text_from_field(list);
+define_lctoken_text_from_field(msg);
+define_lctoken_text_from_field(op);
+define_lctoken_text_from_field(res);
+#undef define_lctoken_text_from_field
 
 /*
  * Record types definitions.
@@ -3401,6 +3381,9 @@ try_get_pid_field(const struct linau_record *record, const char *fieldname)
 	return (pid);
 }
 
+/*
+ * Returns NULL if there is no field fieldname in record.
+ */
 static token_t *
 generate_token_text_from_field(const struct linau_record *record,
     const char *fieldname)
@@ -3411,6 +3394,9 @@ generate_token_text_from_field(const struct linau_record *record,
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fieldname != NULL);
+
+	if (!linau_record_exists_field(record, fieldname))
+		return (NULL);
 
 	buf = sbuf_new_auto();
 	PJDLOG_VERIFY(buf != NULL);
@@ -3480,6 +3466,8 @@ linau_conv_is_numeric(const char *field)
 /*
  * XXX: Assume that all the fields have reasonable data, so there are no
  * easter eggs like pid='hummus'.
+ *
+ * Always returns a token.
  */
 static token_t *
 generate_token_process32(const struct linau_record *record)
@@ -3655,7 +3643,8 @@ linau_conv_write_unprocessed_fields(int aurecordd,
 		PJDLOG_ASSERT(type == NV_TYPE_STRING);
 		pjdlog_debug(4, "name (%s)", name);
 		tok = generate_token_text_from_field(record, name);
-		PJDLOG_VERIFY(tok != NULL);
+		if (tok == NULL)
+			continue;
 		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
 	}
 
@@ -3684,7 +3673,8 @@ linau_conv_process_record(int aurecordd, const struct linau_record *record,
 		/* Assume that there is always a way to generate a token. */
 		PJDLOG_ASSERT(lctoken->lct_generate != NULL);
 		tok = lctoken->lct_generate(record);
-		PJDLOG_VERIFY(tok != NULL);
+		if (tok == NULL)
+			continue;
 		/*
 		 * XXX: Implementing the easiest version of conversion.
 		 * It just adds anything it can to the aurecordd.
@@ -4427,6 +4417,9 @@ linau_conv_get_type_number(const char *type)
 
 	PJDLOG_ASSERT(type != NULL);
 
+	pjdlog_debug(3, "%s", __func__);
+	pjdlog_debug(3, "%s", type);
+
 	/* if (strcmp(LINAU_TYPE_GET_STR, type) == 0) */
 	/*         return (LINAU_TYPE_GET); */
 	/* if (strcmp(LINAU_TYPE_SET_STR, type) == 0) */
@@ -4795,6 +4788,8 @@ linau_conv_get_type_number(const char *type)
 		return (LINAU_TYPE_VIRT_RESOURCE);
 	if (strcmp(LINAU_TYPE_VIRT_MACHINE_ID_STR, type) == 0)
 		return (LINAU_TYPE_VIRT_MACHINE_ID);
+
+	pjdlog_debug(3, "End %s", __func__);
 
 	return (LINAU_TYPE_UNDEFINED);
 }
