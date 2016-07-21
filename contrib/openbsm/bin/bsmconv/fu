@@ -42,8 +42,14 @@ fu_run_test_set() {
         echo ======================================================
         echo "[$TEST_FILE]"
         echo ------------------------------------------------------
+    if [ "$OPTS" = "--" ]; then
+        "$BIN" "$OPTS" < "$TEST_FILE" > /tmp/fu.log
+        RETVAL="$?"
+        praudit /tmp/fu.log
+    else
         "$BIN" "$OPTS" < "$TEST_FILE"
         RETVAL="$?"
+    fi
         echo ------------------------------------------------------
         if [ "$RETVAL" -eq 0 ]; then
             $ONSUCCESS $TEST_FILE $RETVAL
@@ -61,8 +67,15 @@ fu_run_tests() {
 }
 
 fu_usage() {
-    echo "usage: $0 ACTION [ACTION ...]"
-    echo "ACTION is {m, t, tv -v. rv -v test, usage}."
+    echo "Usage: $0 <options>... "
+    echo
+    echo "  docs"
+    echo "  -h"
+    echo "  m"
+    echo "  rp <test>"
+    echo "  rv <args> <test>"
+    echo "  t"
+    echo "  tsv <args>"
     printf "%s\n%s\n" \
     "The game of chess is like a sword fight." \
     "You must think first before you move."
@@ -71,35 +84,50 @@ fu_usage() {
 
 PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
 
+if [ "$#" -eq 0 ]; then
+    fu_usage
+fi
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
-    t|test|tests)
-        fu_run_tests
-        ;;
-    tv)
-        fu_run_tests "$2"
+    docs)
         shift
+        # node "$LA_DOCS_JS" | python -m json.tool
+        node "$LA_DOCS_JS" | \
+            ruby -ryaml -rjson -e 'puts YAML.dump(JSON.parse(STDIN.read))'
         ;;
     m|make)
+        shift
         fu_make
         ;;
-    rv)
-        "$BIN" "$2" < "$3"
-        shift
-        shift
-        ;;
     rp)
-        "$BIN" < "$2" | praudit
+        shift
+        "$BIN" < "$1" | praudit
         shift
         ;;
-    docs)
-        node "$LA_DOCS_JS" | python -m json.tool
-	;;
+    rv)
+        shift
+        "$BIN" "$1" < "$2"
+        shift 2
+        ;;
+    t|test|tests)
+        shift
+        fu_run_tests
+        ;;
+    tsv)
+        shift
+        fu_run_test_set "$2" 'fu_success' 'fu_failure' "$1"
+        shift 2
+        ;;
+    tv)
+        shift
+        fu_run_tests "$1"
+        shift
+        ;;
     usage|help|-h|*)
+        shift
         fu_usage
         ;;
     esac
-    shift
 done
 
