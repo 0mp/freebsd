@@ -19,9 +19,21 @@
 #include "linau.h"
 #include "pjdlog.h"
 
-struct linau_conv_field;
-struct linau_conv_record_type;
-struct linau_conv_token;
+struct linau_conv_field {
+	int	lcf_id;
+	int	(*lcf_validate)(const char *);
+};
+
+struct linau_conv_token {
+	token_t *(*lct_generate)(const struct linau_record *);
+	const struct linau_conv_field *lct_fields[];
+};
+
+struct linau_conv_record_type {
+	int				 lcrt_id;
+	const char			*lcrt_str;
+	const struct linau_conv_token	*lcrt_tokens[];
+};
 
 /*
  * Helper functions.
@@ -43,7 +55,7 @@ static token_t *generate_proto_token_return(const struct linau_record *record,
 static int linau_conv_is_alphanumeric(const char *field);
 static int linau_conv_is_encoded(const char *field);
 static int linau_conv_is_numeric(const char *field);
-static int linau_conv_validate_res(const char *field);
+static int linau_conv_is_valid_res(const char *field);
 
 /*
  * Token generating functions.
@@ -74,955 +86,936 @@ static void linau_conv_write_invalid_expected_fields(int aurecordd,
     const struct linau_record *record, const struct linau_conv_token *lctoken);
 
 /*
- * Implementation.
- */
-struct linau_conv_field {
-	int	lcf_id;
-	int	(*lcf_validate)(const char *);
-};
-
-struct linau_conv_token {
-	token_t			*(*lct_generate)(const struct linau_record *);
-	struct linau_conv_field	*lct_fields[];
-};
-
-struct linau_conv_record_type {
-	int			 lcrt_id;
-	const char		*lcrt_str;
-	struct linau_conv_token	*lcrt_tokens[];
-};
-
-/*
  * Fields definitions.
  *
  * Only currently supported fields are not commented out.
  */
-/* static struct linau_conv_field lcfield_undefined = { */
+/* const static struct linau_conv_field lcfield_undefined = { */
 /*         LINAU_FIELD_NAME_UNDEFINED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_a0 = { */
+/* const static struct linau_conv_field lcfield_a0 = { */
 /*         LINAU_FIELD_NAME_A0, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_a1 = { */
+/* const static struct linau_conv_field lcfield_a1 = { */
 /*         LINAU_FIELD_NAME_A1, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_a2 = { */
+/* const static struct linau_conv_field lcfield_a2 = { */
 /*         LINAU_FIELD_NAME_A2, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_a3 = { */
+/* const static struct linau_conv_field lcfield_a3 = { */
 /*         LINAU_FIELD_NAME_A3, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_a_execve_syscall = { */
+/* const static struct linau_conv_field lcfield_a_execve_syscall = { */
 /*         [> TODO: This one needs special attention. <] */
 /*         LINAU_FIELD_NAME_A_EXECVE_SYSCALL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_acct = { */
+/* const static struct linau_conv_field lcfield_acct = { */
 /*         LINAU_FIELD_NAME_ACCT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_acl = { */
+/* const static struct linau_conv_field lcfield_acl = { */
 /*         LINAU_FIELD_NAME_ACL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_action = { */
+/* const static struct linau_conv_field lcfield_action = { */
 /*         LINAU_FIELD_NAME_ACTION, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_added = { */
+/* const static struct linau_conv_field lcfield_added = { */
 /*         LINAU_FIELD_NAME_ADDED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_addr = { */
+/* const static struct linau_conv_field lcfield_addr = { */
 /*         LINAU_FIELD_NAME_ADDR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_apparmor = { */
+/* const static struct linau_conv_field lcfield_apparmor = { */
 /*         LINAU_FIELD_NAME_APPARMOR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_arch = { */
+/* const static struct linau_conv_field lcfield_arch = { */
 /*         LINAU_FIELD_NAME_ARCH, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_argc = { */
+/* const static struct linau_conv_field lcfield_argc = { */
 /*         LINAU_FIELD_NAME_ARGC, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_audit_backlog_limit = { */
+/* const static struct linau_conv_field lcfield_audit_backlog_limit = { */
 /*         LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_audit_backlog_wait_time = { */
+/* const static struct linau_conv_field lcfield_audit_backlog_wait_time = { */
 /*         LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_audit_enabled = { */
+/* const static struct linau_conv_field lcfield_audit_enabled = { */
 /*         LINAU_FIELD_NAME_AUDIT_ENABLED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_audit_failure = { */
+/* const static struct linau_conv_field lcfield_audit_failure = { */
 /*         LINAU_FIELD_NAME_AUDIT_FAILURE, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_auid = {
+const static struct linau_conv_field lcfield_auid = {
 	LINAU_FIELD_NAME_AUID,
 	linau_conv_is_numeric
 };
-/* static struct linau_conv_field lcfield_banners = { */
+/* const static struct linau_conv_field lcfield_banners = { */
 /*         LINAU_FIELD_NAME_BANNERS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_bool = { */
+/* const static struct linau_conv_field lcfield_bool = { */
 /*         LINAU_FIELD_NAME_BOOL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_bus = { */
+/* const static struct linau_conv_field lcfield_bus = { */
 /*         LINAU_FIELD_NAME_BUS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_capability = { */
+/* const static struct linau_conv_field lcfield_capability = { */
 /*         LINAU_FIELD_NAME_CAPABILITY, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_fe = { */
+/* const static struct linau_conv_field lcfield_cap_fe = { */
 /*         LINAU_FIELD_NAME_CAP_FE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_fi = { */
+/* const static struct linau_conv_field lcfield_cap_fi = { */
 /*         LINAU_FIELD_NAME_CAP_FI, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_fp = { */
+/* const static struct linau_conv_field lcfield_cap_fp = { */
 /*         LINAU_FIELD_NAME_CAP_FP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_fver = { */
+/* const static struct linau_conv_field lcfield_cap_fver = { */
 /*         LINAU_FIELD_NAME_CAP_FVER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_pe = { */
+/* const static struct linau_conv_field lcfield_cap_pe = { */
 /*         LINAU_FIELD_NAME_CAP_PE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_pi = { */
+/* const static struct linau_conv_field lcfield_cap_pi = { */
 /*         LINAU_FIELD_NAME_CAP_PI, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cap_pp = { */
+/* const static struct linau_conv_field lcfield_cap_pp = { */
 /*         LINAU_FIELD_NAME_CAP_PP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_category = { */
+/* const static struct linau_conv_field lcfield_category = { */
 /*         LINAU_FIELD_NAME_CATEGORY, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cgroup = { */
+/* const static struct linau_conv_field lcfield_cgroup = { */
 /*         LINAU_FIELD_NAME_CGROUP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_changed = { */
+/* const static struct linau_conv_field lcfield_changed = { */
 /*         LINAU_FIELD_NAME_CHANGED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cipher = { */
+/* const static struct linau_conv_field lcfield_cipher = { */
 /*         LINAU_FIELD_NAME_CIPHER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_class = { */
+/* const static struct linau_conv_field lcfield_class = { */
 /*         LINAU_FIELD_NAME_CLASS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cmd = { */
+/* const static struct linau_conv_field lcfield_cmd = { */
 /*         LINAU_FIELD_NAME_CMD, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_code = { */
+/* const static struct linau_conv_field lcfield_code = { */
 /*         LINAU_FIELD_NAME_CODE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_comm = { */
+/* const static struct linau_conv_field lcfield_comm = { */
 /*         LINAU_FIELD_NAME_COMM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_compat = { */
+/* const static struct linau_conv_field lcfield_compat = { */
 /*         LINAU_FIELD_NAME_COMPAT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_cwd = { */
+/* const static struct linau_conv_field lcfield_cwd = { */
 /*         LINAU_FIELD_NAME_CWD, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_daddr = { */
+/* const static struct linau_conv_field lcfield_daddr = { */
 /*         LINAU_FIELD_NAME_DADDR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_data = { */
+/* const static struct linau_conv_field lcfield_data = { */
 /*         LINAU_FIELD_NAME_DATA, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_default = { */
+/* const static struct linau_conv_field lcfield_default = { */
 /*         LINAU_FIELD_NAME_DEFAULT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_dev = { */
+/* const static struct linau_conv_field lcfield_dev = { */
 /*         LINAU_FIELD_NAME_DEV, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_dev2 = { */
+/* const static struct linau_conv_field lcfield_dev2 = { */
 /*         LINAU_FIELD_NAME_DEV2, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_device = { */
+/* const static struct linau_conv_field lcfield_device = { */
 /*         LINAU_FIELD_NAME_DEVICE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_dir = { */
+/* const static struct linau_conv_field lcfield_dir = { */
 /*         LINAU_FIELD_NAME_DIR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_direction = { */
+/* const static struct linau_conv_field lcfield_direction = { */
 /*         LINAU_FIELD_NAME_DIRECTION, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_dmac = { */
+/* const static struct linau_conv_field lcfield_dmac = { */
 /*         LINAU_FIELD_NAME_DMAC, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_dport = { */
+/* const static struct linau_conv_field lcfield_dport = { */
 /*         LINAU_FIELD_NAME_DPORT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_egid = { */
+/* const static struct linau_conv_field lcfield_egid = { */
 /*         LINAU_FIELD_NAME_EGID, */
 /*         linau_conv_is_numeric */
 /* }; */
-/* static struct linau_conv_field lcfield_enforcing = { */
+/* const static struct linau_conv_field lcfield_enforcing = { */
 /*         LINAU_FIELD_NAME_ENFORCING, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_entries = { */
+/* const static struct linau_conv_field lcfield_entries = { */
 /*         LINAU_FIELD_NAME_ENTRIES, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_euid = { */
+/* const static struct linau_conv_field lcfield_euid = { */
 /*         LINAU_FIELD_NAME_EUID, */
 /*         linau_conv_is_numeric */
 /* }; */
-/* static struct linau_conv_field lcfield_exe = { */
+/* const static struct linau_conv_field lcfield_exe = { */
 /*         LINAU_FIELD_NAME_EXE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_exit = { */
+/* const static struct linau_conv_field lcfield_exit = { */
 /*         LINAU_FIELD_NAME_EXIT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fam = { */
+/* const static struct linau_conv_field lcfield_fam = { */
 /*         LINAU_FIELD_NAME_FAM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_family = { */
+/* const static struct linau_conv_field lcfield_family = { */
 /*         LINAU_FIELD_NAME_FAMILY, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fd = { */
+/* const static struct linau_conv_field lcfield_fd = { */
 /*         LINAU_FIELD_NAME_FD, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_file = { */
+/* const static struct linau_conv_field lcfield_file = { */
 /*         LINAU_FIELD_NAME_FILE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_flags = { */
+/* const static struct linau_conv_field lcfield_flags = { */
 /*         LINAU_FIELD_NAME_FLAGS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fe = { */
+/* const static struct linau_conv_field lcfield_fe = { */
 /*         LINAU_FIELD_NAME_FE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_feature = { */
+/* const static struct linau_conv_field lcfield_feature = { */
 /*         LINAU_FIELD_NAME_FEATURE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fi = { */
+/* const static struct linau_conv_field lcfield_fi = { */
 /*         LINAU_FIELD_NAME_FI, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fp = { */
+/* const static struct linau_conv_field lcfield_fp = { */
 /*         LINAU_FIELD_NAME_FP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fp2 = { */
+/* const static struct linau_conv_field lcfield_fp2 = { */
 /*         LINAU_FIELD_NAME_FP2, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_format = { */
+/* const static struct linau_conv_field lcfield_format = { */
 /*         LINAU_FIELD_NAME_FORMAT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fsgid = { */
+/* const static struct linau_conv_field lcfield_fsgid = { */
 /*         LINAU_FIELD_NAME_FSGID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fsuid = { */
+/* const static struct linau_conv_field lcfield_fsuid = { */
 /*         LINAU_FIELD_NAME_FSUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_fver = { */
+/* const static struct linau_conv_field lcfield_fver = { */
 /*         LINAU_FIELD_NAME_FVER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_gid = { */
+/* const static struct linau_conv_field lcfield_gid = { */
 /*         LINAU_FIELD_NAME_GID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_grantors = { */
+/* const static struct linau_conv_field lcfield_grantors = { */
 /*         LINAU_FIELD_NAME_GRANTORS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_grp = { */
+/* const static struct linau_conv_field lcfield_grp = { */
 /*         LINAU_FIELD_NAME_GRP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_hook = { */
+/* const static struct linau_conv_field lcfield_hook = { */
 /*         LINAU_FIELD_NAME_HOOK, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_hostname = { */
+/* const static struct linau_conv_field lcfield_hostname = { */
 /*         LINAU_FIELD_NAME_HOSTNAME, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_icmp_type = { */
+/* const static struct linau_conv_field lcfield_icmp_type = { */
 /*         LINAU_FIELD_NAME_ICMP_TYPE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_id = { */
+/* const static struct linau_conv_field lcfield_id = { */
 /*         LINAU_FIELD_NAME_ID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_igid = { */
+/* const static struct linau_conv_field lcfield_igid = { */
 /*         LINAU_FIELD_NAME_IGID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_img = { */
+/* const static struct linau_conv_field lcfield_img = { */
 /*         LINAU_FIELD_NAME_IMG, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_inif = { */
+/* const static struct linau_conv_field lcfield_inif = { */
 /*         LINAU_FIELD_NAME_INIF, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ip = { */
+/* const static struct linau_conv_field lcfield_ip = { */
 /*         LINAU_FIELD_NAME_IP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ipid = { */
+/* const static struct linau_conv_field lcfield_ipid = { */
 /*         LINAU_FIELD_NAME_IPID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ino = { */
+/* const static struct linau_conv_field lcfield_ino = { */
 /*         LINAU_FIELD_NAME_INO, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_inode = { */
+/* const static struct linau_conv_field lcfield_inode = { */
 /*         LINAU_FIELD_NAME_INODE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_inode_gid = { */
+/* const static struct linau_conv_field lcfield_inode_gid = { */
 /*         LINAU_FIELD_NAME_INODE_GID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_inode_uid = { */
+/* const static struct linau_conv_field lcfield_inode_uid = { */
 /*         LINAU_FIELD_NAME_INODE_UID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_invalid_context = { */
+/* const static struct linau_conv_field lcfield_invalid_context = { */
 /*         LINAU_FIELD_NAME_INVALID_CONTEXT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ioctlcmd = { */
+/* const static struct linau_conv_field lcfield_ioctlcmd = { */
 /*         LINAU_FIELD_NAME_IOCTLCMD */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ipx = { */
+/* const static struct linau_conv_field lcfield_ipx = { */
 /*         LINAU_FIELD_NAME_IPX, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_item = { */
+/* const static struct linau_conv_field lcfield_item = { */
 /*         LINAU_FIELD_NAME_ITEM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_items = { */
+/* const static struct linau_conv_field lcfield_items = { */
 /*         LINAU_FIELD_NAME_ITEMS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_iuid = { */
+/* const static struct linau_conv_field lcfield_iuid = { */
 /*         LINAU_FIELD_NAME_IUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_kernel = { */
+/* const static struct linau_conv_field lcfield_kernel = { */
 /*         LINAU_FIELD_NAME_KERNEL, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_key = {
+const static struct linau_conv_field lcfield_key = {
 	LINAU_FIELD_NAME_KEY,
 	linau_conv_is_encoded
 };
-/* static struct linau_conv_field lcfield_kind = { */
+/* const static struct linau_conv_field lcfield_kind = { */
 /*         LINAU_FIELD_NAME_KIND, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ksize = { */
+/* const static struct linau_conv_field lcfield_ksize = { */
 /*         LINAU_FIELD_NAME_KSIZE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_laddr = { */
+/* const static struct linau_conv_field lcfield_laddr = { */
 /*         LINAU_FIELD_NAME_LADDR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_len = { */
+/* const static struct linau_conv_field lcfield_len = { */
 /*         LINAU_FIELD_NAME_LEN, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_lport = { */
+/* const static struct linau_conv_field lcfield_lport = { */
 /*         LINAU_FIELD_NAME_LPORT, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_list = {
+const static struct linau_conv_field lcfield_list = {
 	LINAU_FIELD_NAME_LIST,
 	linau_conv_is_numeric
 };
-/* static struct linau_conv_field lcfield_mac = { */
+/* const static struct linau_conv_field lcfield_mac = { */
 /*         LINAU_FIELD_NAME_MAC, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_macproto = { */
+/* const static struct linau_conv_field lcfield_macproto = { */
 /*         LINAU_FIELD_NAME_MACPROTO, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_maj = { */
+/* const static struct linau_conv_field lcfield_maj = { */
 /*         LINAU_FIELD_NAME_MAJ, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_major = { */
+/* const static struct linau_conv_field lcfield_major = { */
 /*         LINAU_FIELD_NAME_MAJOR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_minor = { */
+/* const static struct linau_conv_field lcfield_minor = { */
 /*         LINAU_FIELD_NAME_MINOR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_mode = { */
+/* const static struct linau_conv_field lcfield_mode = { */
 /*         LINAU_FIELD_NAME_MODE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_model = { */
+/* const static struct linau_conv_field lcfield_model = { */
 /*         LINAU_FIELD_NAME_MODEL, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_msg = {
+const static struct linau_conv_field lcfield_msg = {
 	LINAU_FIELD_NAME_MSG,
 	linau_conv_is_alphanumeric
 };
-/* static struct linau_conv_field lcfield_nargs = { */
+/* const static struct linau_conv_field lcfield_nargs = { */
 /*         LINAU_FIELD_NAME_NARGS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_name = { */
+/* const static struct linau_conv_field lcfield_name = { */
 /*         LINAU_FIELD_NAME_NAME, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_nametype = { */
+/* const static struct linau_conv_field lcfield_nametype = { */
 /*         LINAU_FIELD_NAME_NAMETYPE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_net = { */
+/* const static struct linau_conv_field lcfield_net = { */
 /*         LINAU_FIELD_NAME_NET, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new = { */
+/* const static struct linau_conv_field lcfield_new = { */
 /*         LINAU_FIELD_NAME_NEW, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_chardev = { */
+/* const static struct linau_conv_field lcfield_new_chardev = { */
 /*         LINAU_FIELD_NAME_NEW_CHARDEV, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_disk = { */
+/* const static struct linau_conv_field lcfield_new_disk = { */
 /*         LINAU_FIELD_NAME_NEW_DISK, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_enabled = { */
+/* const static struct linau_conv_field lcfield_new_enabled = { */
 /*         LINAU_FIELD_NAME_NEW_ENABLED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_fs = { */
+/* const static struct linau_conv_field lcfield_new_fs = { */
 /*         LINAU_FIELD_NAME_NEW_FS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_gid = { */
+/* const static struct linau_conv_field lcfield_new_gid = { */
 /*         LINAU_FIELD_NAME_NEW_GID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_level = { */
+/* const static struct linau_conv_field lcfield_new_level = { */
 /*         LINAU_FIELD_NAME_NEW_LEVEL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_lock = { */
+/* const static struct linau_conv_field lcfield_new_lock = { */
 /*         LINAU_FIELD_NAME_NEW_LOCK, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_log_passwd = { */
+/* const static struct linau_conv_field lcfield_new_log_passwd = { */
 /*         LINAU_FIELD_NAME_NEW_LOG_PASSWD, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_mem = { */
+/* const static struct linau_conv_field lcfield_new_mem = { */
 /*         LINAU_FIELD_NAME_NEW_MEM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_net = { */
+/* const static struct linau_conv_field lcfield_new_net = { */
 /*         LINAU_FIELD_NAME_NEW_NET, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_pe = { */
+/* const static struct linau_conv_field lcfield_new_pe = { */
 /*         LINAU_FIELD_NAME_NEW_PE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_pi = { */
+/* const static struct linau_conv_field lcfield_new_pi = { */
 /*         LINAU_FIELD_NAME_NEW_PI, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_pp = { */
+/* const static struct linau_conv_field lcfield_new_pp = { */
 /*         LINAU_FIELD_NAME_NEW_PP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_range = { */
+/* const static struct linau_conv_field lcfield_new_range = { */
 /*         LINAU_FIELD_NAME_NEW_RANGE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_rng = { */
+/* const static struct linau_conv_field lcfield_new_rng = { */
 /*         LINAU_FIELD_NAME_NEW_RNG, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_role = { */
+/* const static struct linau_conv_field lcfield_new_role = { */
 /*         LINAU_FIELD_NAME_NEW_ROLE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_seuser = { */
+/* const static struct linau_conv_field lcfield_new_seuser = { */
 /*         LINAU_FIELD_NAME_NEW_SEUSER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_new_vcpu = { */
+/* const static struct linau_conv_field lcfield_new_vcpu = { */
 /*         LINAU_FIELD_NAME_NEW_VCPU, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_nlnk_fam = { */
+/* const static struct linau_conv_field lcfield_nlnk_fam = { */
 /*         LINAU_FIELD_NAME_NLNK_FAM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_nlnk_grp = { */
+/* const static struct linau_conv_field lcfield_nlnk_grp = { */
 /*         LINAU_FIELD_NAME_NLNK_GRP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_nlnk_pid = { */
+/* const static struct linau_conv_field lcfield_nlnk_pid = { */
 /*         LINAU_FIELD_NAME_NLNK_PID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_oauid = { */
+/* const static struct linau_conv_field lcfield_oauid = { */
 /*         LINAU_FIELD_NAME_OAUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_obj = { */
+/* const static struct linau_conv_field lcfield_obj = { */
 /*         LINAU_FIELD_NAME_OBJ, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_obj_gid = { */
+/* const static struct linau_conv_field lcfield_obj_gid = { */
 /*         LINAU_FIELD_NAME_OBJ_GID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_obj_uid = { */
+/* const static struct linau_conv_field lcfield_obj_uid = { */
 /*         LINAU_FIELD_NAME_OBJ_UID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_oflag = { */
+/* const static struct linau_conv_field lcfield_oflag = { */
 /*         LINAU_FIELD_NAME_OFLAG, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ogid = { */
+/* const static struct linau_conv_field lcfield_ogid = { */
 /*         LINAU_FIELD_NAME_OGID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ocomm = { */
+/* const static struct linau_conv_field lcfield_ocomm = { */
 /*         LINAU_FIELD_NAME_OCOMM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old = { */
+/* const static struct linau_conv_field lcfield_old = { */
 /*         LINAU_FIELD_NAME_OLD, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old2 = { */
+/* const static struct linau_conv_field lcfield_old2 = { */
 /*         LINAU_FIELD_NAME_OLD2, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_auid = { */
+/* const static struct linau_conv_field lcfield_old_auid = { */
 /*         LINAU_FIELD_NAME_OLD_AUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_chardev = { */
+/* const static struct linau_conv_field lcfield_old_chardev = { */
 /*         LINAU_FIELD_NAME_OLD_CHARDEV, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_disk = { */
+/* const static struct linau_conv_field lcfield_old_disk = { */
 /*         LINAU_FIELD_NAME_OLD_DISK, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_enabled = { */
+/* const static struct linau_conv_field lcfield_old_enabled = { */
 /*         LINAU_FIELD_NAME_OLD_ENABLED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_enforcing = { */
+/* const static struct linau_conv_field lcfield_old_enforcing = { */
 /*         LINAU_FIELD_NAME_OLD_ENFORCING, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_fs = { */
+/* const static struct linau_conv_field lcfield_old_fs = { */
 /*         LINAU_FIELD_NAME_OLD_FS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_level = { */
+/* const static struct linau_conv_field lcfield_old_level = { */
 /*         LINAU_FIELD_NAME_OLD_LEVEL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_lock = { */
+/* const static struct linau_conv_field lcfield_old_lock = { */
 /*         LINAU_FIELD_NAME_OLD_LOCK, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_log_passwd = { */
+/* const static struct linau_conv_field lcfield_old_log_passwd = { */
 /*         LINAU_FIELD_NAME_OLD_LOG_PASSWD, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_mem = { */
+/* const static struct linau_conv_field lcfield_old_mem = { */
 /*         LINAU_FIELD_NAME_OLD_MEM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_net = { */
+/* const static struct linau_conv_field lcfield_old_net = { */
 /*         LINAU_FIELD_NAME_OLD_NET, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_pe = { */
+/* const static struct linau_conv_field lcfield_old_pe = { */
 /*         LINAU_FIELD_NAME_OLD_PE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_pi = { */
+/* const static struct linau_conv_field lcfield_old_pi = { */
 /*         LINAU_FIELD_NAME_OLD_PI, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_pp = { */
+/* const static struct linau_conv_field lcfield_old_pp = { */
 /*         LINAU_FIELD_NAME_OLD_PP, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_prom = { */
+/* const static struct linau_conv_field lcfield_old_prom = { */
 /*         LINAU_FIELD_NAME_OLD_PROM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_range = { */
+/* const static struct linau_conv_field lcfield_old_range = { */
 /*         LINAU_FIELD_NAME_OLD_RANGE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_rng = { */
+/* const static struct linau_conv_field lcfield_old_rng = { */
 /*         LINAU_FIELD_NAME_OLD_RNG, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_role = { */
+/* const static struct linau_conv_field lcfield_old_role = { */
 /*         LINAU_FIELD_NAME_OLD_ROLE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_ses = { */
+/* const static struct linau_conv_field lcfield_old_ses = { */
 /*         LINAU_FIELD_NAME_OLD_SES, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_seuser = { */
+/* const static struct linau_conv_field lcfield_old_seuser = { */
 /*         LINAU_FIELD_NAME_OLD_SEUSER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_val = { */
+/* const static struct linau_conv_field lcfield_old_val = { */
 /*         LINAU_FIELD_NAME_OLD_VAL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_old_vcpu = { */
+/* const static struct linau_conv_field lcfield_old_vcpu = { */
 /*         LINAU_FIELD_NAME_OLD_VCPU, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_op = {
+const static struct linau_conv_field lcfield_op = {
 	LINAU_FIELD_NAME_OP,
 	linau_conv_is_alphanumeric
 };
-/* static struct linau_conv_field lcfield_opid = { */
+/* const static struct linau_conv_field lcfield_opid = { */
 /*         LINAU_FIELD_NAME_OPID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_oses = { */
+/* const static struct linau_conv_field lcfield_oses = { */
 /*         LINAU_FIELD_NAME_OSES, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ouid = { */
+/* const static struct linau_conv_field lcfield_ouid = { */
 /*         LINAU_FIELD_NAME_OUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_outif = { */
+/* const static struct linau_conv_field lcfield_outif = { */
 /*         LINAU_FIELD_NAME_OUTIF, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_parent = { */
+/* const static struct linau_conv_field lcfield_parent = { */
 /*         LINAU_FIELD_NAME_PARENT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_path = { */
+/* const static struct linau_conv_field lcfield_path = { */
 /*         LINAU_FIELD_NAME_PATH, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_per = { */
+/* const static struct linau_conv_field lcfield_per = { */
 /*         LINAU_FIELD_NAME_PER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_perm = { */
+/* const static struct linau_conv_field lcfield_perm = { */
 /*         LINAU_FIELD_NAME_PERM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_perm_mask = { */
+/* const static struct linau_conv_field lcfield_perm_mask = { */
 /*         LINAU_FIELD_NAME_PERM_MASK, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_permissive = { */
+/* const static struct linau_conv_field lcfield_permissive = { */
 /*         LINAU_FIELD_NAME_PERMISSIVE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_pfs = { */
+/* const static struct linau_conv_field lcfield_pfs = { */
 /*         LINAU_FIELD_NAME_PFS, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_pid = {
+const static struct linau_conv_field lcfield_pid = {
 	LINAU_FIELD_NAME_PID,
 	linau_conv_is_numeric
 };
-/* static struct linau_conv_field lcfield_ppid = { */
+/* const static struct linau_conv_field lcfield_ppid = { */
 /*         LINAU_FIELD_NAME_PPID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_printer = { */
+/* const static struct linau_conv_field lcfield_printer = { */
 /*         LINAU_FIELD_NAME_PRINTER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_prom = { */
+/* const static struct linau_conv_field lcfield_prom = { */
 /*         LINAU_FIELD_NAME_PROM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_proctitle = { */
+/* const static struct linau_conv_field lcfield_proctitle = { */
 /*         LINAU_FIELD_NAME_PROCTITLE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_proto = { */
+/* const static struct linau_conv_field lcfield_proto = { */
 /*         LINAU_FIELD_NAME_PROTO, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_qbytes = { */
+/* const static struct linau_conv_field lcfield_qbytes = { */
 /*         LINAU_FIELD_NAME_QBYTES, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_range = { */
+/* const static struct linau_conv_field lcfield_range = { */
 /*         LINAU_FIELD_NAME_RANGE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_rdev = { */
+/* const static struct linau_conv_field lcfield_rdev = { */
 /*         LINAU_FIELD_NAME_RDEV, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_reason = { */
+/* const static struct linau_conv_field lcfield_reason = { */
 /*         LINAU_FIELD_NAME_REASON, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_removed = { */
+/* const static struct linau_conv_field lcfield_removed = { */
 /*         LINAU_FIELD_NAME_REMOVED, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_res = {
+const static struct linau_conv_field lcfield_res = {
 	LINAU_FIELD_NAME_RES,
-	linau_conv_validate_res
+	linau_conv_is_valid_res
 };
-/* static struct linau_conv_field lcfield_resrc = { */
+/* const static struct linau_conv_field lcfield_resrc = { */
 /*         LINAU_FIELD_NAME_RESRC, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_result = { */
+/* const static struct linau_conv_field lcfield_result = { */
 /*         LINAU_FIELD_NAME_RESULT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_role = { */
+/* const static struct linau_conv_field lcfield_role = { */
 /*         LINAU_FIELD_NAME_ROLE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_rport = { */
+/* const static struct linau_conv_field lcfield_rport = { */
 /*         LINAU_FIELD_NAME_RPORT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_saddr = { */
+/* const static struct linau_conv_field lcfield_saddr = { */
 /*         LINAU_FIELD_NAME_SADDR, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_sauid = { */
+/* const static struct linau_conv_field lcfield_sauid = { */
 /*         LINAU_FIELD_NAME_SAUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_scontext = { */
+/* const static struct linau_conv_field lcfield_scontext = { */
 /*         LINAU_FIELD_NAME_SCONTEXT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_selected = { */
+/* const static struct linau_conv_field lcfield_selected = { */
 /*         LINAU_FIELD_NAME_SELECTED, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_seperm = { */
+/* const static struct linau_conv_field lcfield_seperm = { */
 /*         LINAU_FIELD_NAME_SEPERM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_seqno = { */
+/* const static struct linau_conv_field lcfield_seqno = { */
 /*         LINAU_FIELD_NAME_SEQNO, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_seperms = { */
+/* const static struct linau_conv_field lcfield_seperms = { */
 /*         LINAU_FIELD_NAME_SEPERMS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_seresult = { */
+/* const static struct linau_conv_field lcfield_seresult = { */
 /*         LINAU_FIELD_NAME_SERESULT, */
 /*         NULL */
 /* }; */
-static struct linau_conv_field lcfield_ses = {
+const static struct linau_conv_field lcfield_ses = {
 	LINAU_FIELD_NAME_SES,
 	linau_conv_is_numeric
 };
-/* static struct linau_conv_field lcfield_seuser = { */
+/* const static struct linau_conv_field lcfield_seuser = { */
 /*         LINAU_FIELD_NAME_SEUSER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_sgid = { */
+/* const static struct linau_conv_field lcfield_sgid = { */
 /*         LINAU_FIELD_NAME_SGID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_sig = { */
+/* const static struct linau_conv_field lcfield_sig = { */
 /*         LINAU_FIELD_NAME_SIG, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_sigev_signo = { */
+/* const static struct linau_conv_field lcfield_sigev_signo = { */
 /*         LINAU_FIELD_NAME_SIGEV_SIGNO, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_smac = { */
+/* const static struct linau_conv_field lcfield_smac = { */
 /*         LINAU_FIELD_NAME_SMAC, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_spid = { */
+/* const static struct linau_conv_field lcfield_spid = { */
 /*         LINAU_FIELD_NAME_SPID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_sport = { */
+/* const static struct linau_conv_field lcfield_sport = { */
 /*         LINAU_FIELD_NAME_SPORT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_state = { */
+/* const static struct linau_conv_field lcfield_state = { */
 /*         LINAU_FIELD_NAME_STATE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_subj = { */
+/* const static struct linau_conv_field lcfield_subj = { */
 /*         LINAU_FIELD_NAME_SUBJ, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_success = { */
+/* const static struct linau_conv_field lcfield_success = { */
 /*         LINAU_FIELD_NAME_SUCCESS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_suid = { */
+/* const static struct linau_conv_field lcfield_suid = { */
 /*         LINAU_FIELD_NAME_SUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_syscall = { */
+/* const static struct linau_conv_field lcfield_syscall = { */
 /*         LINAU_FIELD_NAME_SYSCALL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_table = { */
+/* const static struct linau_conv_field lcfield_table = { */
 /*         LINAU_FIELD_NAME_TABLE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_tclass = { */
+/* const static struct linau_conv_field lcfield_tclass = { */
 /*         LINAU_FIELD_NAME_TCLASS, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_tcontext = { */
+/* const static struct linau_conv_field lcfield_tcontext = { */
 /*         LINAU_FIELD_NAME_TCONTEXT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_terminal = { */
+/* const static struct linau_conv_field lcfield_terminal = { */
 /*         LINAU_FIELD_NAME_TERMINAL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_tty = { */
+/* const static struct linau_conv_field lcfield_tty = { */
 /*         LINAU_FIELD_NAME_TTY, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_type = { */
+/* const static struct linau_conv_field lcfield_type = { */
 /*         LINAU_FIELD_NAME_TYPE, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_uid = { */
+/* const static struct linau_conv_field lcfield_uid = { */
 /*         LINAU_FIELD_NAME_UID, */
 /*         linau_conv_is_numeric */
 /* }; */
-/* static struct linau_conv_field lcfield_unit = { */
+/* const static struct linau_conv_field lcfield_unit = { */
 /*         LINAU_FIELD_NAME_UNIT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_uri = { */
+/* const static struct linau_conv_field lcfield_uri = { */
 /*         LINAU_FIELD_NAME_URI, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_user = { */
+/* const static struct linau_conv_field lcfield_user = { */
 /*         LINAU_FIELD_NAME_USER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_uuid = { */
+/* const static struct linau_conv_field lcfield_uuid = { */
 /*         LINAU_FIELD_NAME_UUID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_val = { */
+/* const static struct linau_conv_field lcfield_val = { */
 /*         LINAU_FIELD_NAME_VAL, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_ver = { */
+/* const static struct linau_conv_field lcfield_ver = { */
 /*         LINAU_FIELD_NAME_VER, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_virt = { */
+/* const static struct linau_conv_field lcfield_virt = { */
 /*         LINAU_FIELD_NAME_VIRT, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_vm = { */
+/* const static struct linau_conv_field lcfield_vm = { */
 /*         LINAU_FIELD_NAME_VM, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_vm_ctx = { */
+/* const static struct linau_conv_field lcfield_vm_ctx = { */
 /*         LINAU_FIELD_NAME_VM_CTX, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_vm_pid = { */
+/* const static struct linau_conv_field lcfield_vm_pid = { */
 /*         LINAU_FIELD_NAME_VM_PID, */
 /*         NULL */
 /* }; */
-/* static struct linau_conv_field lcfield_watch = { */
+/* const static struct linau_conv_field lcfield_watch = { */
 /*         LINAU_FIELD_NAME_WATCH, */
 /*         NULL */
 /* }; */
@@ -1031,7 +1024,7 @@ static struct linau_conv_field lcfield_ses = {
  * Tokens definitions.
  *
  * Rules for putting fields in linau_conv_token structures:
- * - Fields required by the functions generating tokens, like au_to_text(3)
+ * - Fields are required by the functions generating tokens, like au_to_text(3)
  *   (see au_token(3)).
  * - Fields are expected to occure in the records which are built of those
  *   tokens, for example:
@@ -1041,7 +1034,7 @@ static struct linau_conv_field lcfield_ses = {
  *   Included tokens: lctoken_text_from_msg
  *   linau_conv_token fields: lcfield_msg
  */
-static struct linau_conv_token lctoken_process32 = {
+const static struct linau_conv_token lctoken_process32 = {
 	generate_token_process32,
 	{
 		&lcfield_auid,
@@ -1060,7 +1053,7 @@ static struct linau_conv_token lctoken_process32 = {
 	}
 };
 /* See lctoken_process32. */
-static struct linau_conv_token lctoken_process32_without_pid = {
+const static struct linau_conv_token lctoken_process32_without_pid = {
 	generate_token_process32_without_pid,
 	{
 		&lcfield_auid,
@@ -1072,7 +1065,7 @@ static struct linau_conv_token lctoken_process32_without_pid = {
  * This lctoken applies only to the res field. It does not cover the case
  * of the usage of a synonymous result field.
  */
-static struct linau_conv_token lctoken_return_from_res = {
+const static struct linau_conv_token lctoken_return_from_res = {
 	generate_token_return_from_res,
 	{
 		&lcfield_res,
@@ -1083,7 +1076,7 @@ static struct linau_conv_token lctoken_return_from_res = {
  * This lctoken applies only to the result field. It does not cover the case
  * of the usage of a synonymous res field.
  */
-/* static struct linau_conv_token lctoken_return_from_result = { */
+/* const static struct linau_conv_token lctoken_return_from_result = { */
 /*         generate_token_return_from_result, */
 /*         { */
 /*                 &lcfield_result, */
@@ -1092,7 +1085,8 @@ static struct linau_conv_token lctoken_return_from_res = {
 /* }; */
 /* STYLE: Not sure how to indent properly. */
 #define define_lctoken_text_from_field(field)				\
-	static struct linau_conv_token lctoken_text_from_ ## field = {	\
+	const static struct linau_conv_token				\
+	    lctoken_text_from_ ## field = {				\
 		generate_token_text_from_ ## field,			\
 		{							\
 			&lcfield_ ## field,				\
@@ -1109,117 +1103,117 @@ define_lctoken_text_from_field(op);
  * Record types definitions.
  * STYLE: How about a define to add & before every object and a NULL at the end?
  */
-static struct linau_conv_record_type lcrectype_undefined = {
+const static struct linau_conv_record_type lcrectype_undefined = {
 	LINAU_TYPE_UNDEFINED,
 	LINAU_TYPE_UNDEFINED_STR,
 	{ NULL }
 };
-/* static struct linau_conv_record_type lcrectype_get = { */
+/* const static struct linau_conv_record_type lcrectype_get = { */
 /*         LINAU_TYPE_GET, */
 /*         LINAU_TYPE_GET_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_set = { */
+/* const static struct linau_conv_record_type lcrectype_set = { */
 /*         LINAU_TYPE_SET, */
 /*         LINAU_TYPE_SET_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_list = { */
+/* const static struct linau_conv_record_type lcrectype_list = { */
 /*         LINAU_TYPE_LIST, */
 /*         LINAU_TYPE_LIST_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_add = { */
+/* const static struct linau_conv_record_type lcrectype_add = { */
 /*         LINAU_TYPE_ADD, */
 /*         LINAU_TYPE_ADD_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_del = { */
+/* const static struct linau_conv_record_type lcrectype_del = { */
 /*         LINAU_TYPE_DEL, */
 /*         LINAU_TYPE_DEL_STR, */
 /*         { NULL } */
 /* }; */
-static struct linau_conv_record_type lcrectype_user = {
+const static struct linau_conv_record_type lcrectype_user = {
 	LINAU_TYPE_USER,
 	LINAU_TYPE_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_login = {
+const static struct linau_conv_record_type lcrectype_login = {
 	LINAU_TYPE_LOGIN,
 	LINAU_TYPE_LOGIN_STR,
 	{ NULL }
 };
-/* static struct linau_conv_record_type lcrectype_signal_info = { */
+/* const static struct linau_conv_record_type lcrectype_signal_info = { */
 /*         LINAU_TYPE_SIGNAL_INFO, */
 /*         LINAU_TYPE_SIGNAL_INFO_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_add_rule = { */
+/* const static struct linau_conv_record_type lcrectype_add_rule = { */
 /*         LINAU_TYPE_ADD_RULE, */
 /*         LINAU_TYPE_ADD_RULE_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_del_rule = { */
+/* const static struct linau_conv_record_type lcrectype_del_rule = { */
 /*         LINAU_TYPE_DEL_RULE, */
 /*         LINAU_TYPE_DEL_RULE_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_list_rules = { */
+/* const static struct linau_conv_record_type lcrectype_list_rules = { */
 /*         LINAU_TYPE_LIST_RULES, */
 /*         LINAU_TYPE_LIST_RULES_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_trim = { */
+/* const static struct linau_conv_record_type lcrectype_trim = { */
 /*         LINAU_TYPE_TRIM, */
 /*         LINAU_TYPE_TRIM_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_make_equiv = { */
+/* const static struct linau_conv_record_type lcrectype_make_equiv = { */
 /*         LINAU_TYPE_MAKE_EQUIV, */
 /*         LINAU_TYPE_MAKE_EQUIV_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_tty_get = { */
+/* const static struct linau_conv_record_type lcrectype_tty_get = { */
 /*         LINAU_TYPE_TTY_GET, */
 /*         LINAU_TYPE_TTY_GET_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_tty_set = { */
+/* const static struct linau_conv_record_type lcrectype_tty_set = { */
 /*         LINAU_TYPE_TTY_SET, */
 /*         LINAU_TYPE_TTY_SET_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_set_feature = { */
+/* const static struct linau_conv_record_type lcrectype_set_feature = { */
 /*         LINAU_TYPE_SET_FEATURE, */
 /*         LINAU_TYPE_SET_FEATURE_STR, */
 /*         { NULL } */
 /* }; */
-/* static struct linau_conv_record_type lcrectype_get_feature = { */
+/* const static struct linau_conv_record_type lcrectype_get_feature = { */
 /*         LINAU_TYPE_GET_FEATURE, */
 /*         LINAU_TYPE_GET_FEATURE_STR, */
 /*         { NULL } */
 /* }; */
-static struct linau_conv_record_type lcrectype_user_auth = {
+const static struct linau_conv_record_type lcrectype_user_auth = {
 	LINAU_TYPE_USER_AUTH,
 	LINAU_TYPE_USER_AUTH_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_acct = {
+const static struct linau_conv_record_type lcrectype_user_acct = {
 	LINAU_TYPE_USER_ACCT,
 	LINAU_TYPE_USER_ACCT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_mgmt = {
+const static struct linau_conv_record_type lcrectype_user_mgmt = {
 	LINAU_TYPE_USER_MGMT,
 	LINAU_TYPE_USER_MGMT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_cred_acq = {
+const static struct linau_conv_record_type lcrectype_cred_acq = {
 	LINAU_TYPE_CRED_ACQ,
 	LINAU_TYPE_CRED_ACQ_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_cred_disp = {
+const static struct linau_conv_record_type lcrectype_cred_disp = {
 	LINAU_TYPE_CRED_DISP,
 	LINAU_TYPE_CRED_DISP_STR,
 	{
@@ -1228,7 +1222,7 @@ static struct linau_conv_record_type lcrectype_cred_disp = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_user_start = {
+const static struct linau_conv_record_type lcrectype_user_start = {
 	LINAU_TYPE_USER_START,
 	LINAU_TYPE_USER_START_STR,
 	{
@@ -1237,7 +1231,7 @@ static struct linau_conv_record_type lcrectype_user_start = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_user_end = {
+const static struct linau_conv_record_type lcrectype_user_end = {
 	LINAU_TYPE_USER_END,
 	LINAU_TYPE_USER_END_STR,
 	{
@@ -1246,7 +1240,7 @@ static struct linau_conv_record_type lcrectype_user_end = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_user_avc = {
+const static struct linau_conv_record_type lcrectype_user_avc = {
 	LINAU_TYPE_USER_AVC,
 	LINAU_TYPE_USER_AVC_STR,
 	{ NULL }
@@ -1256,12 +1250,12 @@ const static struct linau_conv_record_type lcrectype_user_chauthtok = {
 	LINAU_TYPE_USER_CHAUTHTOK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_err = {
+const static struct linau_conv_record_type lcrectype_user_err = {
 	LINAU_TYPE_USER_ERR,
 	LINAU_TYPE_USER_ERR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_cred_refr = {
+const static struct linau_conv_record_type lcrectype_cred_refr = {
 	LINAU_TYPE_CRED_REFR,
 	LINAU_TYPE_CRED_REFR_STR,
 	{
@@ -1270,67 +1264,67 @@ static struct linau_conv_record_type lcrectype_cred_refr = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_usys_config = {
+const static struct linau_conv_record_type lcrectype_usys_config = {
 	LINAU_TYPE_USYS_CONFIG,
 	LINAU_TYPE_USYS_CONFIG_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_login = {
+const static struct linau_conv_record_type lcrectype_user_login = {
 	LINAU_TYPE_USER_LOGIN,
 	LINAU_TYPE_USER_LOGIN_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_logout = {
+const static struct linau_conv_record_type lcrectype_user_logout = {
 	LINAU_TYPE_USER_LOGOUT,
 	LINAU_TYPE_USER_LOGOUT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_add_user = {
+const static struct linau_conv_record_type lcrectype_add_user = {
 	LINAU_TYPE_ADD_USER,
 	LINAU_TYPE_ADD_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_del_user = {
+const static struct linau_conv_record_type lcrectype_del_user = {
 	LINAU_TYPE_DEL_USER,
 	LINAU_TYPE_DEL_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_add_group = {
+const static struct linau_conv_record_type lcrectype_add_group = {
 	LINAU_TYPE_ADD_GROUP,
 	LINAU_TYPE_ADD_GROUP_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_del_group = {
+const static struct linau_conv_record_type lcrectype_del_group = {
 	LINAU_TYPE_DEL_GROUP,
 	LINAU_TYPE_DEL_GROUP_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_dac_check = {
+const static struct linau_conv_record_type lcrectype_dac_check = {
 	LINAU_TYPE_DAC_CHECK,
 	LINAU_TYPE_DAC_CHECK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_chgrp_id = {
+const static struct linau_conv_record_type lcrectype_chgrp_id = {
 	LINAU_TYPE_CHGRP_ID,
 	LINAU_TYPE_CHGRP_ID_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_test = {
+const static struct linau_conv_record_type lcrectype_test = {
 	LINAU_TYPE_TEST,
 	LINAU_TYPE_TEST_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_trusted_app = {
+const static struct linau_conv_record_type lcrectype_trusted_app = {
 	LINAU_TYPE_TRUSTED_APP,
 	LINAU_TYPE_TRUSTED_APP_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_selinux_err = {
+const static struct linau_conv_record_type lcrectype_user_selinux_err = {
 	LINAU_TYPE_USER_SELINUX_ERR,
 	LINAU_TYPE_USER_SELINUX_ERR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_cmd = {
+const static struct linau_conv_record_type lcrectype_user_cmd = {
 	LINAU_TYPE_USER_CMD,
 	LINAU_TYPE_USER_CMD_STR,
 	{
@@ -1339,72 +1333,72 @@ static struct linau_conv_record_type lcrectype_user_cmd = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_user_tty = {
+const static struct linau_conv_record_type lcrectype_user_tty = {
 	LINAU_TYPE_USER_TTY,
 	LINAU_TYPE_USER_TTY_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_chuser_id = {
+const static struct linau_conv_record_type lcrectype_chuser_id = {
 	LINAU_TYPE_CHUSER_ID,
 	LINAU_TYPE_CHUSER_ID_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_grp_auth = {
+const static struct linau_conv_record_type lcrectype_grp_auth = {
 	LINAU_TYPE_GRP_AUTH,
 	LINAU_TYPE_GRP_AUTH_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_check = {
+const static struct linau_conv_record_type lcrectype_mac_check = {
 	LINAU_TYPE_MAC_CHECK,
 	LINAU_TYPE_MAC_CHECK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_acct_lock = {
+const static struct linau_conv_record_type lcrectype_acct_lock = {
 	LINAU_TYPE_ACCT_LOCK,
 	LINAU_TYPE_ACCT_LOCK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_acct_unlock = {
+const static struct linau_conv_record_type lcrectype_acct_unlock = {
 	LINAU_TYPE_ACCT_UNLOCK,
 	LINAU_TYPE_ACCT_UNLOCK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_system_boot = {
+const static struct linau_conv_record_type lcrectype_system_boot = {
 	LINAU_TYPE_SYSTEM_BOOT,
 	LINAU_TYPE_SYSTEM_BOOT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_system_shutdown = {
+const static struct linau_conv_record_type lcrectype_system_shutdown = {
 	LINAU_TYPE_SYSTEM_SHUTDOWN,
 	LINAU_TYPE_SYSTEM_SHUTDOWN_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_system_runlevel = {
+const static struct linau_conv_record_type lcrectype_system_runlevel = {
 	LINAU_TYPE_SYSTEM_RUNLEVEL,
 	LINAU_TYPE_SYSTEM_RUNLEVEL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_service_start = {
+const static struct linau_conv_record_type lcrectype_service_start = {
 	LINAU_TYPE_SERVICE_START,
 	LINAU_TYPE_SERVICE_START_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_service_stop = {
+const static struct linau_conv_record_type lcrectype_service_stop = {
 	LINAU_TYPE_SERVICE_STOP,
 	LINAU_TYPE_SERVICE_STOP_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_grp_mgmt = {
+const static struct linau_conv_record_type lcrectype_grp_mgmt = {
 	LINAU_TYPE_GRP_MGMT,
 	LINAU_TYPE_GRP_MGMT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_grp_chauthtok = {
+const static struct linau_conv_record_type lcrectype_grp_chauthtok = {
 	LINAU_TYPE_GRP_CHAUTHTOK,
 	LINAU_TYPE_GRP_CHAUTHTOK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_start = {
+const static struct linau_conv_record_type lcrectype_daemon_start = {
 	LINAU_TYPE_DAEMON_START,
 	LINAU_TYPE_DAEMON_START_STR,
 	{
@@ -1412,77 +1406,77 @@ static struct linau_conv_record_type lcrectype_daemon_start = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_daemon_end = {
+const static struct linau_conv_record_type lcrectype_daemon_end = {
 	LINAU_TYPE_DAEMON_END,
 	LINAU_TYPE_DAEMON_END_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_abort = {
+const static struct linau_conv_record_type lcrectype_daemon_abort = {
 	LINAU_TYPE_DAEMON_ABORT,
 	LINAU_TYPE_DAEMON_ABORT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_config = {
+const static struct linau_conv_record_type lcrectype_daemon_config = {
 	LINAU_TYPE_DAEMON_CONFIG,
 	LINAU_TYPE_DAEMON_CONFIG_STR,
 	{ NULL }
 };
-/* static struct linau_conv_record_type lcrectype_daemon_reconfig = { */
+/* const static struct linau_conv_record_type lcrectype_daemon_reconfig = { */
 /*         LINAU_TYPE_DAEMON_RECONFIG, */
 /*         LINAU_TYPE_DAEMON_RECONFIG_STR, */
 /*         { NULL } */
 /* }; */
-static struct linau_conv_record_type lcrectype_daemon_rotate = {
+const static struct linau_conv_record_type lcrectype_daemon_rotate = {
 	LINAU_TYPE_DAEMON_ROTATE,
 	LINAU_TYPE_DAEMON_ROTATE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_resume = {
+const static struct linau_conv_record_type lcrectype_daemon_resume = {
 	LINAU_TYPE_DAEMON_RESUME,
 	LINAU_TYPE_DAEMON_RESUME_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_accept = {
+const static struct linau_conv_record_type lcrectype_daemon_accept = {
 	LINAU_TYPE_DAEMON_ACCEPT,
 	LINAU_TYPE_DAEMON_ACCEPT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_close = {
+const static struct linau_conv_record_type lcrectype_daemon_close = {
 	LINAU_TYPE_DAEMON_CLOSE,
 	LINAU_TYPE_DAEMON_CLOSE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_daemon_err = {
+const static struct linau_conv_record_type lcrectype_daemon_err = {
 	LINAU_TYPE_DAEMON_ERR,
 	LINAU_TYPE_DAEMON_ERR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_syscall = {
+const static struct linau_conv_record_type lcrectype_syscall = {
 	LINAU_TYPE_SYSCALL,
 	LINAU_TYPE_SYSCALL_STR,
 	{ NULL }
 };
-/* static struct linau_conv_record_type lcrectype_fs_watch = { */
+/* const static struct linau_conv_record_type lcrectype_fs_watch = { */
 /*         LINAU_TYPE_FS_WATCH, */
 /*         LINAU_TYPE_FS_WATCH_STR, */
 /*         { NULL } */
 /* }; */
-static struct linau_conv_record_type lcrectype_path = {
+const static struct linau_conv_record_type lcrectype_path = {
 	LINAU_TYPE_PATH,
 	LINAU_TYPE_PATH_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_ipc = {
+const static struct linau_conv_record_type lcrectype_ipc = {
 	LINAU_TYPE_IPC,
 	LINAU_TYPE_IPC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_socketcall = {
+const static struct linau_conv_record_type lcrectype_socketcall = {
 	LINAU_TYPE_SOCKETCALL,
 	LINAU_TYPE_SOCKETCALL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_config_change = {
+const static struct linau_conv_record_type lcrectype_config_change = {
 	LINAU_TYPE_CONFIG_CHANGE,
 	LINAU_TYPE_CONFIG_CHANGE_STR,
 	{
@@ -1499,572 +1493,572 @@ static struct linau_conv_record_type lcrectype_config_change = {
 		NULL
 	}
 };
-static struct linau_conv_record_type lcrectype_sockaddr = {
+const static struct linau_conv_record_type lcrectype_sockaddr = {
 	LINAU_TYPE_SOCKADDR,
 	LINAU_TYPE_SOCKADDR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_cwd = {
+const static struct linau_conv_record_type lcrectype_cwd = {
 	LINAU_TYPE_CWD,
 	LINAU_TYPE_CWD_STR,
 	{ NULL }
 };
-/* static struct linau_conv_record_type lcrectype_fs_inode = { */
+/* const static struct linau_conv_record_type lcrectype_fs_inode = { */
 /*         LINAU_TYPE_FS_INODE, */
 /*         LINAU_TYPE_FS_INODE_STR, */
 /*         { NULL } */
 /* }; */
-static struct linau_conv_record_type lcrectype_execve = {
+const static struct linau_conv_record_type lcrectype_execve = {
 	LINAU_TYPE_EXECVE,
 	LINAU_TYPE_EXECVE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_ipc_set_perm = {
+const static struct linau_conv_record_type lcrectype_ipc_set_perm = {
 	LINAU_TYPE_IPC_SET_PERM,
 	LINAU_TYPE_IPC_SET_PERM_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mq_open = {
+const static struct linau_conv_record_type lcrectype_mq_open = {
 	LINAU_TYPE_MQ_OPEN,
 	LINAU_TYPE_MQ_OPEN_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mq_sendrecv = {
+const static struct linau_conv_record_type lcrectype_mq_sendrecv = {
 	LINAU_TYPE_MQ_SENDRECV,
 	LINAU_TYPE_MQ_SENDRECV_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mq_notify = {
+const static struct linau_conv_record_type lcrectype_mq_notify = {
 	LINAU_TYPE_MQ_NOTIFY,
 	LINAU_TYPE_MQ_NOTIFY_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mq_getsetattr = {
+const static struct linau_conv_record_type lcrectype_mq_getsetattr = {
 	LINAU_TYPE_MQ_GETSETATTR,
 	LINAU_TYPE_MQ_GETSETATTR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_kernel_other = {
+const static struct linau_conv_record_type lcrectype_kernel_other = {
 	LINAU_TYPE_KERNEL_OTHER,
 	LINAU_TYPE_KERNEL_OTHER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_fd_pair = {
+const static struct linau_conv_record_type lcrectype_fd_pair = {
 	LINAU_TYPE_FD_PAIR,
 	LINAU_TYPE_FD_PAIR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_obj_pid = {
+const static struct linau_conv_record_type lcrectype_obj_pid = {
 	LINAU_TYPE_OBJ_PID,
 	LINAU_TYPE_OBJ_PID_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_tty = {
+const static struct linau_conv_record_type lcrectype_tty = {
 	LINAU_TYPE_TTY,
 	LINAU_TYPE_TTY_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_eoe = {
+const static struct linau_conv_record_type lcrectype_eoe = {
 	LINAU_TYPE_EOE,
 	LINAU_TYPE_EOE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_bprm_fcaps = {
+const static struct linau_conv_record_type lcrectype_bprm_fcaps = {
 	LINAU_TYPE_BPRM_FCAPS,
 	LINAU_TYPE_BPRM_FCAPS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_capset = {
+const static struct linau_conv_record_type lcrectype_capset = {
 	LINAU_TYPE_CAPSET,
 	LINAU_TYPE_CAPSET_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mmap = {
+const static struct linau_conv_record_type lcrectype_mmap = {
 	LINAU_TYPE_MMAP,
 	LINAU_TYPE_MMAP_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_netfilter_pkt = {
+const static struct linau_conv_record_type lcrectype_netfilter_pkt = {
 	LINAU_TYPE_NETFILTER_PKT,
 	LINAU_TYPE_NETFILTER_PKT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_netfilter_cfg = {
+const static struct linau_conv_record_type lcrectype_netfilter_cfg = {
 	LINAU_TYPE_NETFILTER_CFG,
 	LINAU_TYPE_NETFILTER_CFG_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_seccomp = {
+const static struct linau_conv_record_type lcrectype_seccomp = {
 	LINAU_TYPE_SECCOMP,
 	LINAU_TYPE_SECCOMP_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_proctitle = {
+const static struct linau_conv_record_type lcrectype_proctitle = {
 	LINAU_TYPE_PROCTITLE,
 	LINAU_TYPE_PROCTITLE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_feature_change = {
+const static struct linau_conv_record_type lcrectype_feature_change = {
 	LINAU_TYPE_FEATURE_CHANGE,
 	LINAU_TYPE_FEATURE_CHANGE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_avc = {
+const static struct linau_conv_record_type lcrectype_avc = {
 	LINAU_TYPE_AVC,
 	LINAU_TYPE_AVC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_selinux_err = {
+const static struct linau_conv_record_type lcrectype_selinux_err = {
 	LINAU_TYPE_SELINUX_ERR,
 	LINAU_TYPE_SELINUX_ERR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_avc_path = {
+const static struct linau_conv_record_type lcrectype_avc_path = {
 	LINAU_TYPE_AVC_PATH,
 	LINAU_TYPE_AVC_PATH_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_policy_load = {
+const static struct linau_conv_record_type lcrectype_mac_policy_load = {
 	LINAU_TYPE_MAC_POLICY_LOAD,
 	LINAU_TYPE_MAC_POLICY_LOAD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_status = {
+const static struct linau_conv_record_type lcrectype_mac_status = {
 	LINAU_TYPE_MAC_STATUS,
 	LINAU_TYPE_MAC_STATUS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_config_change = {
+const static struct linau_conv_record_type lcrectype_mac_config_change = {
 	LINAU_TYPE_MAC_CONFIG_CHANGE,
 	LINAU_TYPE_MAC_CONFIG_CHANGE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_unlbl_allow = {
+const static struct linau_conv_record_type lcrectype_mac_unlbl_allow = {
 	LINAU_TYPE_MAC_UNLBL_ALLOW,
 	LINAU_TYPE_MAC_UNLBL_ALLOW_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_cipsov4_add = {
+const static struct linau_conv_record_type lcrectype_mac_cipsov4_add = {
 	LINAU_TYPE_MAC_CIPSOV4_ADD,
 	LINAU_TYPE_MAC_CIPSOV4_ADD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_cipsov4_del = {
+const static struct linau_conv_record_type lcrectype_mac_cipsov4_del = {
 	LINAU_TYPE_MAC_CIPSOV4_DEL,
 	LINAU_TYPE_MAC_CIPSOV4_DEL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_map_add = {
+const static struct linau_conv_record_type lcrectype_mac_map_add = {
 	LINAU_TYPE_MAC_MAP_ADD,
 	LINAU_TYPE_MAC_MAP_ADD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_map_del = {
+const static struct linau_conv_record_type lcrectype_mac_map_del = {
 	LINAU_TYPE_MAC_MAP_DEL,
 	LINAU_TYPE_MAC_MAP_DEL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_ipsec_addsa = {
+const static struct linau_conv_record_type lcrectype_mac_ipsec_addsa = {
 	LINAU_TYPE_MAC_IPSEC_ADDSA,
 	LINAU_TYPE_MAC_IPSEC_ADDSA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_ipsec_delsa = {
+const static struct linau_conv_record_type lcrectype_mac_ipsec_delsa = {
 	LINAU_TYPE_MAC_IPSEC_DELSA,
 	LINAU_TYPE_MAC_IPSEC_DELSA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_ipsec_addspd = {
+const static struct linau_conv_record_type lcrectype_mac_ipsec_addspd = {
 	LINAU_TYPE_MAC_IPSEC_ADDSPD,
 	LINAU_TYPE_MAC_IPSEC_ADDSPD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_ipsec_delspd = {
+const static struct linau_conv_record_type lcrectype_mac_ipsec_delspd = {
 	LINAU_TYPE_MAC_IPSEC_DELSPD,
 	LINAU_TYPE_MAC_IPSEC_DELSPD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_ipsec_event = {
+const static struct linau_conv_record_type lcrectype_mac_ipsec_event = {
 	LINAU_TYPE_MAC_IPSEC_EVENT,
 	LINAU_TYPE_MAC_IPSEC_EVENT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_unlbl_stcadd = {
+const static struct linau_conv_record_type lcrectype_mac_unlbl_stcadd = {
 	LINAU_TYPE_MAC_UNLBL_STCADD,
 	LINAU_TYPE_MAC_UNLBL_STCADD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_mac_unlbl_stcdel = {
+const static struct linau_conv_record_type lcrectype_mac_unlbl_stcdel = {
 	LINAU_TYPE_MAC_UNLBL_STCDEL,
 	LINAU_TYPE_MAC_UNLBL_STCDEL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_promiscuous = {
+const static struct linau_conv_record_type lcrectype_anom_promiscuous = {
 	LINAU_TYPE_ANOM_PROMISCUOUS,
 	LINAU_TYPE_ANOM_PROMISCUOUS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_abend = {
+const static struct linau_conv_record_type lcrectype_anom_abend = {
 	LINAU_TYPE_ANOM_ABEND,
 	LINAU_TYPE_ANOM_ABEND_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_link = {
+const static struct linau_conv_record_type lcrectype_anom_link = {
 	LINAU_TYPE_ANOM_LINK,
 	LINAU_TYPE_ANOM_LINK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_integrity_data = {
+const static struct linau_conv_record_type lcrectype_integrity_data = {
 	LINAU_TYPE_INTEGRITY_DATA,
 	LINAU_TYPE_INTEGRITY_DATA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_integrity_metadata = {
+const static struct linau_conv_record_type lcrectype_integrity_metadata = {
 	LINAU_TYPE_INTEGRITY_METADATA,
 	LINAU_TYPE_INTEGRITY_METADATA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_integrity_status = {
+const static struct linau_conv_record_type lcrectype_integrity_status = {
 	LINAU_TYPE_INTEGRITY_STATUS,
 	LINAU_TYPE_INTEGRITY_STATUS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_integrity_hash = {
+const static struct linau_conv_record_type lcrectype_integrity_hash = {
 	LINAU_TYPE_INTEGRITY_HASH,
 	LINAU_TYPE_INTEGRITY_HASH_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_integrity_pcr = {
+const static struct linau_conv_record_type lcrectype_integrity_pcr = {
 	LINAU_TYPE_INTEGRITY_PCR,
 	LINAU_TYPE_INTEGRITY_PCR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_integrity_rule = {
+const static struct linau_conv_record_type lcrectype_integrity_rule = {
 	LINAU_TYPE_INTEGRITY_RULE,
 	LINAU_TYPE_INTEGRITY_RULE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_aa = {
+const static struct linau_conv_record_type lcrectype_aa = {
 	LINAU_TYPE_AA,
 	LINAU_TYPE_AA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_apparmor_audit = {
+const static struct linau_conv_record_type lcrectype_apparmor_audit = {
 	LINAU_TYPE_APPARMOR_AUDIT,
 	LINAU_TYPE_APPARMOR_AUDIT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_apparmor_allowed = {
+const static struct linau_conv_record_type lcrectype_apparmor_allowed = {
 	LINAU_TYPE_APPARMOR_ALLOWED,
 	LINAU_TYPE_APPARMOR_ALLOWED_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_apparmor_denied = {
+const static struct linau_conv_record_type lcrectype_apparmor_denied = {
 	LINAU_TYPE_APPARMOR_DENIED,
 	LINAU_TYPE_APPARMOR_DENIED_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_apparmor_hint = {
+const static struct linau_conv_record_type lcrectype_apparmor_hint = {
 	LINAU_TYPE_APPARMOR_HINT,
 	LINAU_TYPE_APPARMOR_HINT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_apparmor_status = {
+const static struct linau_conv_record_type lcrectype_apparmor_status = {
 	LINAU_TYPE_APPARMOR_STATUS,
 	LINAU_TYPE_APPARMOR_STATUS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_apparmor_error = {
+const static struct linau_conv_record_type lcrectype_apparmor_error = {
 	LINAU_TYPE_APPARMOR_ERROR,
 	LINAU_TYPE_APPARMOR_ERROR_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_kernel = {
+const static struct linau_conv_record_type lcrectype_kernel = {
 	LINAU_TYPE_KERNEL,
 	LINAU_TYPE_KERNEL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_login_failures = {
+const static struct linau_conv_record_type lcrectype_anom_login_failures = {
 	LINAU_TYPE_ANOM_LOGIN_FAILURES,
 	LINAU_TYPE_ANOM_LOGIN_FAILURES_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_login_time = {
+const static struct linau_conv_record_type lcrectype_anom_login_time = {
 	LINAU_TYPE_ANOM_LOGIN_TIME,
 	LINAU_TYPE_ANOM_LOGIN_TIME_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_login_sessions = {
+const static struct linau_conv_record_type lcrectype_anom_login_sessions = {
 	LINAU_TYPE_ANOM_LOGIN_SESSIONS,
 	LINAU_TYPE_ANOM_LOGIN_SESSIONS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_login_acct = {
+const static struct linau_conv_record_type lcrectype_anom_login_acct = {
 	LINAU_TYPE_ANOM_LOGIN_ACCT,
 	LINAU_TYPE_ANOM_LOGIN_ACCT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_login_location = {
+const static struct linau_conv_record_type lcrectype_anom_login_location = {
 	LINAU_TYPE_ANOM_LOGIN_LOCATION,
 	LINAU_TYPE_ANOM_LOGIN_LOCATION_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_max_dac = {
+const static struct linau_conv_record_type lcrectype_anom_max_dac = {
 	LINAU_TYPE_ANOM_MAX_DAC,
 	LINAU_TYPE_ANOM_MAX_DAC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_max_mac = {
+const static struct linau_conv_record_type lcrectype_anom_max_mac = {
 	LINAU_TYPE_ANOM_MAX_MAC,
 	LINAU_TYPE_ANOM_MAX_MAC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_amtu_fail = {
+const static struct linau_conv_record_type lcrectype_anom_amtu_fail = {
 	LINAU_TYPE_ANOM_AMTU_FAIL,
 	LINAU_TYPE_ANOM_AMTU_FAIL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_rbac_fail = {
+const static struct linau_conv_record_type lcrectype_anom_rbac_fail = {
 	LINAU_TYPE_ANOM_RBAC_FAIL,
 	LINAU_TYPE_ANOM_RBAC_FAIL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_rbac_integrity_fail = {
+const static struct linau_conv_record_type lcrectype_anom_rbac_integrity_fail = {
 	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL,
 	LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_crypto_fail = {
+const static struct linau_conv_record_type lcrectype_anom_crypto_fail = {
 	LINAU_TYPE_ANOM_CRYPTO_FAIL,
 	LINAU_TYPE_ANOM_CRYPTO_FAIL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_access_fs = {
+const static struct linau_conv_record_type lcrectype_anom_access_fs = {
 	LINAU_TYPE_ANOM_ACCESS_FS,
 	LINAU_TYPE_ANOM_ACCESS_FS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_exec = {
+const static struct linau_conv_record_type lcrectype_anom_exec = {
 	LINAU_TYPE_ANOM_EXEC,
 	LINAU_TYPE_ANOM_EXEC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_mk_exec = {
+const static struct linau_conv_record_type lcrectype_anom_mk_exec = {
 	LINAU_TYPE_ANOM_MK_EXEC,
 	LINAU_TYPE_ANOM_MK_EXEC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_add_acct = {
+const static struct linau_conv_record_type lcrectype_anom_add_acct = {
 	LINAU_TYPE_ANOM_ADD_ACCT,
 	LINAU_TYPE_ANOM_ADD_ACCT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_del_acct = {
+const static struct linau_conv_record_type lcrectype_anom_del_acct = {
 	LINAU_TYPE_ANOM_DEL_ACCT,
 	LINAU_TYPE_ANOM_DEL_ACCT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_mod_acct = {
+const static struct linau_conv_record_type lcrectype_anom_mod_acct = {
 	LINAU_TYPE_ANOM_MOD_ACCT,
 	LINAU_TYPE_ANOM_MOD_ACCT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_anom_root_trans = {
+const static struct linau_conv_record_type lcrectype_anom_root_trans = {
 	LINAU_TYPE_ANOM_ROOT_TRANS,
 	LINAU_TYPE_ANOM_ROOT_TRANS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_anomaly = {
+const static struct linau_conv_record_type lcrectype_resp_anomaly = {
 	LINAU_TYPE_RESP_ANOMALY,
 	LINAU_TYPE_RESP_ANOMALY_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_alert = {
+const static struct linau_conv_record_type lcrectype_resp_alert = {
 	LINAU_TYPE_RESP_ALERT,
 	LINAU_TYPE_RESP_ALERT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_kill_proc = {
+const static struct linau_conv_record_type lcrectype_resp_kill_proc = {
 	LINAU_TYPE_RESP_KILL_PROC,
 	LINAU_TYPE_RESP_KILL_PROC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_term_access = {
+const static struct linau_conv_record_type lcrectype_resp_term_access = {
 	LINAU_TYPE_RESP_TERM_ACCESS,
 	LINAU_TYPE_RESP_TERM_ACCESS_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_acct_remote = {
+const static struct linau_conv_record_type lcrectype_resp_acct_remote = {
 	LINAU_TYPE_RESP_ACCT_REMOTE,
 	LINAU_TYPE_RESP_ACCT_REMOTE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_acct_lock_timed = {
+const static struct linau_conv_record_type lcrectype_resp_acct_lock_timed = {
 	LINAU_TYPE_RESP_ACCT_LOCK_TIMED,
 	LINAU_TYPE_RESP_ACCT_LOCK_TIMED_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_acct_unlock_timed = {
+const static struct linau_conv_record_type lcrectype_resp_acct_unlock_timed = {
 	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED,
 	LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_acct_lock = {
+const static struct linau_conv_record_type lcrectype_resp_acct_lock = {
 	LINAU_TYPE_RESP_ACCT_LOCK,
 	LINAU_TYPE_RESP_ACCT_LOCK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_term_lock = {
+const static struct linau_conv_record_type lcrectype_resp_term_lock = {
 	LINAU_TYPE_RESP_TERM_LOCK,
 	LINAU_TYPE_RESP_TERM_LOCK_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_sebool = {
+const static struct linau_conv_record_type lcrectype_resp_sebool = {
 	LINAU_TYPE_RESP_SEBOOL,
 	LINAU_TYPE_RESP_SEBOOL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_exec = {
+const static struct linau_conv_record_type lcrectype_resp_exec = {
 	LINAU_TYPE_RESP_EXEC,
 	LINAU_TYPE_RESP_EXEC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_single = {
+const static struct linau_conv_record_type lcrectype_resp_single = {
 	LINAU_TYPE_RESP_SINGLE,
 	LINAU_TYPE_RESP_SINGLE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_resp_halt = {
+const static struct linau_conv_record_type lcrectype_resp_halt = {
 	LINAU_TYPE_RESP_HALT,
 	LINAU_TYPE_RESP_HALT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_role_change = {
+const static struct linau_conv_record_type lcrectype_user_role_change = {
 	LINAU_TYPE_USER_ROLE_CHANGE,
 	LINAU_TYPE_USER_ROLE_CHANGE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_role_assign = {
+const static struct linau_conv_record_type lcrectype_role_assign = {
 	LINAU_TYPE_ROLE_ASSIGN,
 	LINAU_TYPE_ROLE_ASSIGN_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_role_remove = {
+const static struct linau_conv_record_type lcrectype_role_remove = {
 	LINAU_TYPE_ROLE_REMOVE,
 	LINAU_TYPE_ROLE_REMOVE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_label_override = {
+const static struct linau_conv_record_type lcrectype_label_override = {
 	LINAU_TYPE_LABEL_OVERRIDE,
 	LINAU_TYPE_LABEL_OVERRIDE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_label_level_change = {
+const static struct linau_conv_record_type lcrectype_label_level_change = {
 	LINAU_TYPE_LABEL_LEVEL_CHANGE,
 	LINAU_TYPE_LABEL_LEVEL_CHANGE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_labeled_export = {
+const static struct linau_conv_record_type lcrectype_user_labeled_export = {
 	LINAU_TYPE_USER_LABELED_EXPORT,
 	LINAU_TYPE_USER_LABELED_EXPORT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_unlabeled_export = {
+const static struct linau_conv_record_type lcrectype_user_unlabeled_export = {
 	LINAU_TYPE_USER_UNLABELED_EXPORT,
 	LINAU_TYPE_USER_UNLABELED_EXPORT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_dev_alloc = {
+const static struct linau_conv_record_type lcrectype_dev_alloc = {
 	LINAU_TYPE_DEV_ALLOC,
 	LINAU_TYPE_DEV_ALLOC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_dev_dealloc = {
+const static struct linau_conv_record_type lcrectype_dev_dealloc = {
 	LINAU_TYPE_DEV_DEALLOC,
 	LINAU_TYPE_DEV_DEALLOC_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_fs_relabel = {
+const static struct linau_conv_record_type lcrectype_fs_relabel = {
 	LINAU_TYPE_FS_RELABEL,
 	LINAU_TYPE_FS_RELABEL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_mac_policy_load = {
+const static struct linau_conv_record_type lcrectype_user_mac_policy_load = {
 	LINAU_TYPE_USER_MAC_POLICY_LOAD,
 	LINAU_TYPE_USER_MAC_POLICY_LOAD_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_role_modify = {
+const static struct linau_conv_record_type lcrectype_role_modify = {
 	LINAU_TYPE_ROLE_MODIFY,
 	LINAU_TYPE_ROLE_MODIFY_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_user_mac_config_change = {
+const static struct linau_conv_record_type lcrectype_user_mac_config_change = {
 	LINAU_TYPE_USER_MAC_CONFIG_CHANGE,
 	LINAU_TYPE_USER_MAC_CONFIG_CHANGE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_test_user = {
+const static struct linau_conv_record_type lcrectype_crypto_test_user = {
 	LINAU_TYPE_CRYPTO_TEST_USER,
 	LINAU_TYPE_CRYPTO_TEST_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_param_change_user = {
+const static struct linau_conv_record_type lcrectype_crypto_param_change_user = {
 	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER,
 	LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_login = {
+const static struct linau_conv_record_type lcrectype_crypto_login = {
 	LINAU_TYPE_CRYPTO_LOGIN,
 	LINAU_TYPE_CRYPTO_LOGIN_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_logout = {
+const static struct linau_conv_record_type lcrectype_crypto_logout = {
 	LINAU_TYPE_CRYPTO_LOGOUT,
 	LINAU_TYPE_CRYPTO_LOGOUT_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_key_user = {
+const static struct linau_conv_record_type lcrectype_crypto_key_user = {
 	LINAU_TYPE_CRYPTO_KEY_USER,
 	LINAU_TYPE_CRYPTO_KEY_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_failure_user = {
+const static struct linau_conv_record_type lcrectype_crypto_failure_user = {
 	LINAU_TYPE_CRYPTO_FAILURE_USER,
 	LINAU_TYPE_CRYPTO_FAILURE_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_replay_user = {
+const static struct linau_conv_record_type lcrectype_crypto_replay_user = {
 	LINAU_TYPE_CRYPTO_REPLAY_USER,
 	LINAU_TYPE_CRYPTO_REPLAY_USER_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_session = {
+const static struct linau_conv_record_type lcrectype_crypto_session = {
 	LINAU_TYPE_CRYPTO_SESSION,
 	LINAU_TYPE_CRYPTO_SESSION_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_ike_sa = {
+const static struct linau_conv_record_type lcrectype_crypto_ike_sa = {
 	LINAU_TYPE_CRYPTO_IKE_SA,
 	LINAU_TYPE_CRYPTO_IKE_SA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_crypto_ipsec_sa = {
+const static struct linau_conv_record_type lcrectype_crypto_ipsec_sa = {
 	LINAU_TYPE_CRYPTO_IPSEC_SA,
 	LINAU_TYPE_CRYPTO_IPSEC_SA_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_virt_control = {
+const static struct linau_conv_record_type lcrectype_virt_control = {
 	LINAU_TYPE_VIRT_CONTROL,
 	LINAU_TYPE_VIRT_CONTROL_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_virt_resource = {
+const static struct linau_conv_record_type lcrectype_virt_resource = {
 	LINAU_TYPE_VIRT_RESOURCE,
 	LINAU_TYPE_VIRT_RESOURCE_STR,
 	{ NULL }
 };
-static struct linau_conv_record_type lcrectype_virt_machine_id = {
+const static struct linau_conv_record_type lcrectype_virt_machine_id = {
 	LINAU_TYPE_VIRT_MACHINE_ID,
 	LINAU_TYPE_VIRT_MACHINE_ID_STR,
 	{ NULL }
@@ -2692,7 +2686,7 @@ linau_conv_is_numeric(const char *field)
 }
 
 static int
-linau_conv_validate_res(const char *field)
+linau_conv_is_valid_res(const char *field)
 {
 
 	PJDLOG_ASSERT(field != NULL);
@@ -2857,8 +2851,8 @@ linau_conv_write_unprocessed_fields(int aurecordd,
 	void *cookie;
 	const char *fieldname;
 	nvlist_t *fields;
-	struct linau_conv_field *lcfield;
-	struct linau_conv_token *lctoken;
+	const struct linau_conv_field *lcfield;
+	const struct linau_conv_token *lctoken;
 	const char *name;
 	token_t *tok;
 	size_t fi;
@@ -2910,7 +2904,7 @@ static void
 linau_conv_process_record(int aurecordd, const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype)
 {
-	struct linau_conv_token *lctoken;
+	const struct linau_conv_token *lctoken;
 	token_t *tok;
 	size_t ti;
 
