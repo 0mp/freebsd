@@ -3,9 +3,14 @@
 TEST_DIR=tests/
 POSITIVE_DIR=${TEST_DIR}positive/
 NEGATIVE_DIR=${TEST_DIR}negative/
+FIELDS_CENTOS_V265=${TEST_DIR}fields.centos.v265/
+FIELDS_V245=${TEST_DIR}v245/
+FIELDS_DEBIAN_V24=${TEST_DIR}fields.debian.v24/
+FIELDS_V265=${TEST_DIR}v265/
+
 MAKEFILE_DIR=../../../../usr.bin/bsmconv/
 BIN=${MAKEFILE_DIR}bsmconv
-LA_DOCS_JS=NOTES_ON_LINUX_AUDIT.js
+LA_DOCS_JS=docs/NOTES_ON_LINUX_AUDIT.js
 MAKEFILE=${MAKEFILE_DIR}Makefile
 
 PROGRESS_PENDING_CHAR="\."
@@ -63,6 +68,10 @@ fu_run_test_set() {
 fu_run_tests() {
     OPTS="$1"
     fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_DEBIAN_V24" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_V245" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_CENTOS_V265" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_V265" 'fu_success' 'fu_failure' "$OPTS"
     fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
 }
 
