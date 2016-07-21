@@ -2248,7 +2248,10 @@ static struct linau_conv_record_type lcrectype_grp_chauthtok = {
 static struct linau_conv_record_type lcrectype_daemon_start = {
 	LINAU_TYPE_DAEMON_START,
 	LINAU_TYPE_DAEMON_START_STR,
-	{ NULL }
+	{
+		&lctoken_return_from_res,
+		NULL
+	}
 };
 static struct linau_conv_record_type lcrectype_daemon_end = {
 	LINAU_TYPE_DAEMON_END,
