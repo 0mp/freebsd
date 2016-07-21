@@ -19,6 +19,8 @@
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 
 static uint32_t extract_uint32(const char *buf, size_t start, size_t end);
+static void linau_record_set_fields_count(struct linau_record *record,
+    size_t fields_count);
 static void skip_deprecated_option(const char *buf, size_t *lastposp,
     const char *option);
 
@@ -40,6 +42,20 @@ extract_uint32(const char *buf, size_t start, size_t end)
 	num = string_to_uint32(numstr);
 
 	return (num);
+}
+
+/*
+ * The assertion will fire if the lr_fields_count is set before
+ * setting lr_fields.
+ */
+static void
+linau_record_set_fields_count(struct linau_record *record, size_t fields_count)
+{
+
+	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(record->lr_fields != NULL);
+
+	record->lr_fields_count = fields_count;
 }
 
 /*
@@ -96,6 +112,27 @@ linau_record_create(void)
 	PJDLOG_VERIFY(record != NULL);
 
 	PJDLOG_ASSERT(record->lr_fields_count == 0);
+
+	return (record);
+}
+
+struct linau_record *
+linau_record_construct(const char *type, uint32_t id, uint64_t time,
+    const nvlist_t *fields, size_t fields_count, const char *buf)
+{
+	struct linau_record *record;
+
+	PJDLOG_ASSERT(type != NULL);
+	PJDLOG_ASSERT(fields != NULL);
+	PJDLOG_ASSERT(buf != NULL);
+
+	record = linau_record_create();
+
+	linau_record_set_type(record, type);
+	linau_record_set_id(record, id);
+	linau_record_set_time(record, time);
+	linau_record_set_fields(record, fields, fields_count);
+	linau_record_set_text(record, buf);
 
 	return (record);
 }
@@ -253,7 +290,8 @@ linau_record_try_get_uint32_field(const struct linau_record *record,
 }
 
 void
-linau_record_set_fields(struct linau_record *record, const nvlist_t *fields)
+linau_record_set_fields(struct linau_record *record, const nvlist_t *fields,
+    size_t fields_count)
 {
 
 	PJDLOG_ASSERT(record != NULL);
@@ -262,20 +300,8 @@ linau_record_set_fields(struct linau_record *record, const nvlist_t *fields)
 	record->lr_fields = nvlist_clone(fields);
 	PJDLOG_VERIFY(nvlist_error(fields) == 0);
 	PJDLOG_VERIFY(record->lr_fields != NULL);
-}
 
-/*
- * The assertion will fire if the lr_fields_count is set before
- * setting lr_fields.
- */
-void
-linau_record_set_fields_count(struct linau_record *record, size_t fields_count)
-{
-
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(record->lr_fields != NULL);
-
-	record->lr_fields_count = fields_count;
+	linau_record_set_fields_count(record, fields_count);
 }
 
 void
@@ -345,15 +371,13 @@ linau_record_parse(const char *buf)
 	record = linau_record_create();
 
 	type = linau_record_parse_type(buf);
-	linau_record_set_type(record, type);
-	free(type);
-	linau_record_set_id(record, linau_record_parse_id(buf));
-	linau_record_set_time(record, linau_record_parse_time(buf));
 	fields = linau_record_parse_fields(buf, &fields_count);
-	linau_record_set_fields(record, fields);
+
+	record = linau_record_construct(type, linau_record_parse_id(buf),
+	    linau_record_parse_time(buf), fields, fields_count, buf);
+
+	free(type);
 	nvlist_destroy(fields);
-	linau_record_set_fields_count(record, fields_count);
-	linau_record_set_text(record, buf);
 
 	pjdlog_debug(3, " . . . > id (%u), time (%ju)",
 	    linau_record_get_id(record), linau_record_get_time(record));
@@ -575,7 +599,12 @@ linau_record_fetch(FILE *fp)
 	buflen = sbuf_len(inbuf);
 	data = sbuf_data(inbuf);
 	pjdlog_debug(3, " . . . buflen: (%zu)", buflen);
-	PJDLOG_ASSERT(strcmp(data + (buflen - 1), "\n\0") == 0);
+	/*
+	 * XXX: I use PJDLOG_ASSERT instead of PJDLOG_VERIFY because as long as
+	 * the user provides correct data this assert is not crutial to the
+	 * flow of the program.
+	 */
+	PJDLOG_ASSERT(strcmp(data + buflen - 1, "\n") == 0);
 
 	/* Remove the trailing newline. */
 	data[buflen - 1] = '\0';

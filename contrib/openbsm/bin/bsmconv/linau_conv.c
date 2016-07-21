@@ -2987,8 +2987,8 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
     int typenum)
 {
 
-	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(record != NULL);
 
 	switch (typenum) {
 	case LINAU_TYPE_UNDEFINED:

@@ -39,7 +39,10 @@ u_char			*linau_event_process(const struct linau_event *event,
 			    size_t *buflenp);
 
 /* linau_record. */
-struct			 linau_record *linau_record_create(void);
+struct linau_record	*linau_record_create(void);
+struct linau_record	*linau_record_construct(const char *type, uint32_t id,
+			    uint64_t time, const nvlist_t *fields,
+			    size_t fields_count, const char *buf);
 void			 linau_record_destroy(struct linau_record *record);
 nvlist_t		*linau_record_clone_fields(
 			    const struct linau_record *record);
@@ -68,18 +71,15 @@ bool			 linau_record_try_get_uint32_field(
 			    const char *fieldname, uint32_t *fieldvalp);
 
 void			 linau_record_set_fields(struct linau_record *record,
-			    const nvlist_t *fields);
-void			 linau_record_set_type(struct linau_record *record,
-			    const char *type);
-
-void			 linau_record_set_fields_count(
-			    struct linau_record *record, size_t fields_count);
+			    const nvlist_t *fields, size_t fields_count);
 void			 linau_record_set_id(struct linau_record *record,
 			    uint32_t id);
 void			 linau_record_set_text(struct linau_record *record,
 			    const char *text);
 void			 linau_record_set_time(struct linau_record *record,
 			    uint64_t time);
+void			 linau_record_set_type(struct linau_record *record,
+			    const char *type);
 
 struct linau_record	*linau_record_parse(const char * buf);
 nvlist_t		*linau_record_parse_fields(const char *buf,
