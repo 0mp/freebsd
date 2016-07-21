@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 #include "linau.h"
 #include "linau_common.h"
 #include "linau_conv.h"
@@ -20,6 +19,8 @@
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
 
 static uint32_t extract_uint32(const char *buf, size_t start, size_t end);
+static void skip_deprecated_option(const char *buf, size_t *lastposp,
+    const char *option);
 
 static uint32_t
 extract_uint32(const char *buf, size_t start, size_t end)
@@ -39,6 +40,51 @@ extract_uint32(const char *buf, size_t start, size_t end)
 	num = string_to_uint32(numstr);
 
 	return (num);
+}
+
+/*
+ * Skip option if there is a " <option> " string in the buf where lastposp is
+ * pointing to.
+ *
+ * lastposp should point to the first space after the colon separating type
+ * and msg from fields in a record.  For example:
+ *
+ *     type=T msg=audit(1.000:1): user pid=1000
+ *                               ^
+ *                            lastposp
+ *
+ * STYLE: I don't know how this 'user' thing is called hence I call it an
+ * option.
+ */
+static void
+skip_deprecated_option(const char *buf, size_t *lastposp, const char *option)
+{
+	size_t buflen;
+	size_t optionlen;
+
+	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
+	PJDLOG_ASSERT(lastposp != NULL);
+	PJDLOG_ASSERT(option != NULL);
+	PJDLOG_ASSERT(strchr(option, '\0') != NULL);
+
+	pjdlog_debug(3, "%s", __func__);
+	pjdlog_debug(3, "Start from (%zu)", *lastposp);
+
+	buflen = strlen(buf);
+	optionlen = strlen(option);
+
+	PJDLOG_ASSERT(buf[*lastposp] == ' ');
+	PJDLOG_ASSERT(buflen >= *lastposp + optionlen);
+
+
+	if (strncmp(buf + *lastposp + 1, option, optionlen) == 0 &&
+	    buf[*lastposp + 1 + optionlen] == ' ')
+		*lastposp += 1 + optionlen;
+
+	pjdlog_debug(3, "Skipped to (%zu)", *lastposp);
+
+	pjdlog_debug(3, "End %s", __func__);
 }
 
 struct linau_record *
@@ -376,7 +422,10 @@ linau_record_parse_fields(const char *buf, size_t *fields_countp)
 	PJDLOG_ASSERT(buf[msgend + 2] == ' ');
 
 	lastpos = msgend + 2;
-	pjdlog_debug(5, " . . . . . lastpos (%zu)", lastpos);
+	pjdlog_debug(5, " . . . . . lastpos (%zu) (%c)", lastpos, buf[lastpos]);
+
+	/* Skip deprecated 'user' string. */
+	skip_deprecated_option(buf, &lastpos, "user");
 
 	/* While not all bytes of the buf are processed. */
 	fields_count = 0;
