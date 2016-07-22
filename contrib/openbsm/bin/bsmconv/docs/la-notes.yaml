@@ -11,6 +11,8 @@ fields:
   auid:
     name: auid
     type: numeric
+    notes:
+      - meaning: login user id
   cmd:
     name: cmd
     type: encoded
@@ -18,7 +20,7 @@ fields:
     name: cwd
     type: encoded
     notes:
-      - The current working directory.
+      - meaning: The current working directory.
   egid:
     name: egid
     type: numeric
@@ -34,13 +36,13 @@ fields:
       - terminal
       - res
   notes:
-    - The payload of the audit record.
+    - meaning: The payload of the audit record.
     - It seems to store additional fields inside its value.
   op:
     name: op
     type: alphanumeric
     notes:
-      - The operation being performed that is audited.
+      - meaning: The operation being performed that is audited.
     values:
       - open
   pid:
