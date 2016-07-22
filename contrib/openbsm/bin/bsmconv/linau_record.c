@@ -17,8 +17,6 @@
 
 #define	BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE	16
 #define	BSMCONV_LINAU_RECORD_UINT_BUFFER_SIZE	32
-
-static uint32_t extract_uint32(const char *buf, size_t start, size_t end);
 static void linau_record_set_fields_count(struct linau_record *record,
     size_t fields_count);
 static void skip_deprecated_option(const char *buf, size_t *lastposp,
@@ -39,7 +37,7 @@ extract_uint32(const char *buf, size_t start, size_t end)
 
 	len = end - start + 1;
 	numstr = extract_substring(buf, start, len);
-	num = string_to_uint32(numstr);
+	PJDLOG_VERIFY(string_to_uint32(&num, numstr));
 
 	return (num);
 }
@@ -261,32 +259,6 @@ linau_record_get_type(const struct linau_record *record)
 	PJDLOG_ASSERT(record != NULL);
 
 	return (record->lr_type);
-}
-
-bool
-linau_record_try_get_uint32_field(const struct linau_record *record,
-    const char *fieldname, uint32_t *fieldvalp)
-{
-	const char *fieldvalstr;
-
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(fieldname != NULL);
-	PJDLOG_ASSERT(fieldvalp != NULL);
-
-	pjdlog_debug(4, "%s", __func__);
-	pjdlog_debug(4, "name (%s)", fieldname);
-
-	if (!linau_record_exists_field(record, fieldname))
-		return (false);
-
-	pjdlog_debug(4, "%s field exists. Let's get it", fieldname);
-	fieldvalstr = linau_record_get_field(record, fieldname);
-
-	*fieldvalp = string_to_uint32(fieldvalstr);
-
-	pjdlog_debug(4, "End %s", __func__);
-
-	return (true);
 }
 
 void

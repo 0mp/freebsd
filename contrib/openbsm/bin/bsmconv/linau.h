@@ -66,10 +66,6 @@ uint64_t		 linau_record_get_time(
 const char		*linau_record_get_type(
 			    const struct linau_record *record);
 
-bool			 linau_record_try_get_uint32_field(
-			    const struct linau_record *record,
-			    const char *fieldname, uint32_t *fieldvalp);
-
 void			 linau_record_set_fields(struct linau_record *record,
 			    const nvlist_t *fields, size_t fields_count);
 void			 linau_record_set_id(struct linau_record *record,

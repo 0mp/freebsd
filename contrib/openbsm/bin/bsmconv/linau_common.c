@@ -139,20 +139,24 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	    msgstart, *msgendp);
 }
 
-uint32_t
-string_to_uint32(const char *str)
+/*
+ * Returns:
+ * true on successfuly conversion;
+ * false otherwise
+ */
+bool
+string_to_uint32(uint32_t *num, const char *str)
 {
 	char *endp;
-	uint32_t num;
 
 	PJDLOG_ASSERT(str != NULL);
+	PJDLOG_ASSERT(num != NULL);
 
 	errno = 0;
-	num = (uint32_t)strtoul(str, &endp, 10);
+	*num = (uint32_t)strtoul(str, &endp, 10);
 
-	PJDLOG_VERIFY(str != endp);
-	PJDLOG_VERIFY(*endp == '\0');
-	PJDLOG_VERIFY(num != 0 || errno == 0);
-
-	return (num);
+	if ((str != endp) && (*endp == '\0') && (*num != 0 || errno == 0))
+		return (true);
+	else
+		return (false);
 }
