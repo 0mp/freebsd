@@ -7,6 +7,7 @@ FIELDS_CENTOS_V265=${TEST_DIR}fields.centos.v265/
 FIELDS_V245=${TEST_DIR}v245/
 FIELDS_DEBIAN_V24=${TEST_DIR}fields.debian.v24/
 FIELDS_V265=${TEST_DIR}v265/
+FIELDS_EDGECASES=${TEST_DIR}edgecases/
 
 MAKEFILE_DIR=../../../../usr.bin/bsmconv/
 BIN=${MAKEFILE_DIR}bsmconv
@@ -72,6 +73,7 @@ fu_run_tests() {
     fu_run_test_set "$FIELDS_V245" 'fu_success' 'fu_failure' "$OPTS"
     fu_run_test_set "$FIELDS_CENTOS_V265" 'fu_success' 'fu_failure' "$OPTS"
     fu_run_test_set "$FIELDS_V265" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_EDGECASES" 'fu_success' 'fu_failure' "$OPTS"
     fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
 }
 
@@ -97,6 +99,8 @@ if [ "$#" -eq 0 ]; then
 fi
 
 while [ "$#" -gt 0 ]; do
+    PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | \
+        sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
     case "$1" in
     docs)
         shift
@@ -109,8 +113,6 @@ while [ "$#" -gt 0 ]; do
         fu_make
         ;;
     rp)
-        PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | \
-            sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
         shift
         "$BIN" < "$1" | praudit
         shift

@@ -96,3 +96,8 @@ tokens:
       - |
         The IP address and the port number of the Linux Audit should be
         placed in this token.
+standard:
+  notes:
+    - |
+      According to Steve Grubb fields can be separated by only a comma or
+      a space. There should be no exceptions.

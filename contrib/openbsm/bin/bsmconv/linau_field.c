@@ -110,6 +110,11 @@ linau_field_set_value(struct linau_field *field, const char *value)
 	PJDLOG_VERIFY(field->lf_value != NULL);
 }
 
+/*
+ * XXX: This function allows the fileds to be separated by ",[ ]*" or "[ ]+".
+ * In the future, when the Linux Audit becomes more standardized, this function
+ * should allow "," and " " separators only.
+ */
 struct linau_field *
 linau_field_parse(const char *buf, size_t *lastposp)
 {
@@ -135,17 +140,17 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	pjdlog_debug(6, " . . . . . . namestart (%zu) points to (%c)",
 	    namestart, buf[namestart]);
 
-	/* Skip a comma or a whitespace. */
-	if (namestart + 1 < buflen && isspace(buf[namestart]))
+	/* Skip a comma or a space. */
+	if (namestart + 1 < buflen && buf[namestart] == ' ')
 		namestart++;
 	else if (namestart + 1 < buflen && buf[namestart] == ',')
 		namestart++;
 	else
 		PJDLOG_ABORT("The record fields should be separated by either "
-		    "a comma or a whitespace");
+		    "a comma or a space");
 
-	/* Skip any number of whitespaces. */
-	while (namestart + 1 < buflen && isspace(buf[namestart]))
+	/* Skip any number of spaces. */
+	while (namestart + 1 < buflen && buf[namestart] == ' ')
 		namestart++;
 
 	PJDLOG_ASSERT(!isspace(buf[namestart]));
