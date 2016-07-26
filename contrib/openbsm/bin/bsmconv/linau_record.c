@@ -504,7 +504,7 @@ linau_record_parse_type(const char *buf)
 	pjdlog_debug(4, " . . . . (%.*s), (%.*s)", typeprefixlen, buf,
 	    typeprefixlen, typeprefix);
 	PJDLOG_ASSERT(typeprefixlen + 2 < strlen(buf));
-	PJDLOG_VERIFY(strncmp(buf, typeprefix, typeprefixlen) == 0);
+	PJDLOG_ASSERT(strncmp(buf, typeprefix, typeprefixlen) == 0);
 
 	typestart = typeprefixlen + 1;
 
