@@ -229,22 +229,22 @@ int
 linau_event_to_au(const struct linau_event *event, unsigned short *aueventidp)
 {
 	struct linau_record *record;
-	int aurecordd;
+	int aurd;
 
 	PJDLOG_ASSERT(aueventidp != NULL);
 	PJDLOG_ASSERT(event != NULL);
 
 	/* Get a record descriptor. */
-	aurecordd = au_open();
-	PJDLOG_VERIFY(aurecordd >= 0);
+	aurd = au_open();
+	PJDLOG_VERIFY(aurd >= 0);
 
 	/* Tokenise event's records. */
 	TAILQ_FOREACH(record, &event->le_records, lr_next)
-		linau_record_to_au(record, aurecordd);
+		linau_record_to_au(record, aurd);
 
 	*aueventidp = au_event_type_from_linau_event(event);
 
-	return (aurecordd);
+	return (aurd);
 }
 
 u_char *
@@ -252,7 +252,7 @@ linau_event_process(const struct linau_event *event, size_t *buflenp)
 {
 	u_char *buf;
 	struct timeval *tm;
-	int aurecordd;
+	int aurd;
 	unsigned short aueventid;
 
 	PJDLOG_ASSERT(event != NULL);
@@ -262,10 +262,10 @@ linau_event_process(const struct linau_event *event, size_t *buflenp)
 	buf = malloc(sizeof(*buf) * *buflenp);
 	PJDLOG_VERIFY(buf != NULL);
 
-	aurecordd = linau_event_to_au(event, &aueventid);
+	aurd = linau_event_to_au(event, &aueventid);
 	tm = linau_event_get_timeval(event);
 
-	PJDLOG_VERIFY(au_close_buffer_tm(aurecordd, aueventid, buf,
+	PJDLOG_VERIFY(au_close_buffer_tm(aurd, aueventid, buf,
 	    buflenp, tm) == 0);
 
 	free(tm);

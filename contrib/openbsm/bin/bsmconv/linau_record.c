@@ -619,18 +619,18 @@ linau_record_comapre_origin(const struct linau_record *reca,
 }
 
 void
-linau_record_to_au(const struct linau_record *record, int aurecordd)
+linau_record_to_au(const struct linau_record *record, int aurd)
 {
 	int typenum;
 
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(record->lr_type != NULL);
 	PJDLOG_ASSERT(record->lr_fields != NULL);
-	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(aurd >= 0);
 
 	/* Get the identification number of the type. */
 	typenum = linau_conv_get_type_number(linau_record_get_type(record));
 
 	/* Generate a token. */
-	linau_conv_to_au(aurecordd, record, typenum);
+	linau_conv_to_au(aurd, record, typenum);
 }

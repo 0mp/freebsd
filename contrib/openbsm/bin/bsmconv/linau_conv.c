@@ -26,7 +26,7 @@ struct linau_conv_field {
 };
 
 struct linau_conv_token {
-	void (*lct_write)(int aurecordd, const struct linau_record *);
+	void (*lct_write)(int aurd, const struct linau_record *);
 	const struct linau_conv_field *lct_fields[];
 };
 
@@ -40,10 +40,9 @@ struct linau_conv_record_type {
  * Helper functions.
  */
 static const char *field_name_from_field_name_id(int fieldnameid);
-static bool process_an_id_field(int aurecordd,
-    const struct linau_record *record, const char *fieldname,
-    const struct linau_conv_field *lcfield, uint32_t *idp,
-    size_t *fieldscountp);
+static bool process_an_id_field(int aurd, const struct linau_record *record,
+    const char *fieldname, const struct linau_conv_field *lcfield,
+    uint32_t *idp, size_t *fieldscountp);
 /*
  * STYLE: This function might belong to the token generating functions' section.
  */
@@ -68,18 +67,17 @@ static int linau_conv_is_valid_uid(const char *field);
 /*
  * The lct_write functions for the linau_conv_token structure.
  */
-static void write_token_process32(int aurecordd,
-    const struct linau_record *record);
-static void write_token_return_from_res(int aurecordd,
+static void write_token_process32(int aurd, const struct linau_record *record);
+static void write_token_return_from_res(int aurd,
     const struct linau_record *record);
 
-static void linau_conv_process_record(int aurecordd,
+static void linau_conv_process_record(int aurd,
     const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype);
-static void linau_conv_write_unprocessed_fields(int aurecordd,
+static void linau_conv_write_unprocessed_fields(int aurd,
     const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype);
-static void linau_conv_write_token_text_from_field(int aurecordd,
+static void linau_conv_write_token_text_from_field(int aurd,
     const struct linau_record *record, const char *name);
 
 /*
@@ -2500,13 +2498,13 @@ field_name_from_field_name_id(int fieldnameid)
  * false if there is no field like this in the record or it is invalid.
  */
 static bool
-process_an_id_field(int aurecordd, const struct linau_record *record,
+process_an_id_field(int aurd, const struct linau_record *record,
     const char *fieldname, const struct linau_conv_field *lcfield,
     uint32_t *idp, size_t *fieldscountp)
 {
 	const char *fieldvalue;
 
-	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(aurd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fieldname != NULL);
 	PJDLOG_ASSERT(lcfield != NULL);
@@ -2523,8 +2521,7 @@ process_an_id_field(int aurecordd, const struct linau_record *record,
 		*fieldscountp += 1;
 		return (true);
 	} else {
-		linau_conv_write_token_text_from_field(aurecordd, record,
-		    fieldname);
+		linau_conv_write_token_text_from_field(aurd, record, fieldname);
 		return (false);
 	}
 }
@@ -2710,7 +2707,7 @@ linau_conv_is_valid_uid(const char *field)
  * or invalid (for example pid=NONE).
  */
 static void
-write_token_process32(int aurecordd, const struct linau_record *record)
+write_token_process32(int aurd, const struct linau_record *record)
 {
 	/* STYLE: Sort the variables in the correct order. */
 	token_t *tok;
@@ -2733,18 +2730,18 @@ write_token_process32(int aurecordd, const struct linau_record *record)
 	/* Audit ID.
 	 * XXX: It is NOT lcfield_auid. See auid definition.
 	 */
-	/* if (!process_an_id_field(aurecordd, record,  */
+	/* if (!process_an_id_field(aurd, record,  */
 	/*     LINAU_FIELD_NAME_AUID_STR, &lcfield_auid, &auid,  */
 	/*     &fieldscount)) */
 	auid = 0;
 
 	/* Effective User ID. */
-	if (!process_an_id_field(aurecordd, record, LINAU_FIELD_NAME_EUID_STR,
+	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_EUID_STR,
 	    &lcfield_euid, &euid, &fieldscount))
 		euid = 0;
 
 	/* Effective Group ID. */
-	if (!process_an_id_field(aurecordd, record, LINAU_FIELD_NAME_EGID_STR,
+	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_EGID_STR,
 	    &lcfield_egid, &egid, &fieldscount))
 		egid = 0;
 
@@ -2763,7 +2760,7 @@ write_token_process32(int aurecordd, const struct linau_record *record)
 	rgid = -1;
 
 	/* Process ID. */
-	if (!process_an_id_field(aurecordd, record, LINAU_FIELD_NAME_PID_STR,
+	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_PID_STR,
 	    &lcfield_pid, &pid, &fieldscount))
 		pid = -1;
 
@@ -2773,7 +2770,7 @@ write_token_process32(int aurecordd, const struct linau_record *record)
 	 * XXX: Map to a field which represents login session id in the
 	 * Linux Audit format.
 	 */
-	if (!process_an_id_field(aurecordd, record, LINAU_FIELD_NAME_SES_STR,
+	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_SES_STR,
 	    &lcfield_ses, &sid, &fieldscount))
 		sid = -1;
 
@@ -2801,7 +2798,7 @@ write_token_process32(int aurecordd, const struct linau_record *record)
 		tok = au_to_process32(auid, euid, egid, ruid, rgid, pid, sid,
 		    tid);
 		PJDLOG_VERIFY(tok != NULL);
-		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 	}
 
 	free(tid);
@@ -2810,7 +2807,7 @@ write_token_process32(int aurecordd, const struct linau_record *record)
 }
 
 static void
-write_token_return_from_res(int aurecordd, const struct linau_record *record)
+write_token_return_from_res(int aurd, const struct linau_record *record)
 {
 	token_t *tok;
 
@@ -2819,12 +2816,11 @@ write_token_return_from_res(int aurecordd, const struct linau_record *record)
 	tok = generate_proto_token_return(record, LINAU_FIELD_NAME_RES_STR);
 
 	if (tok != NULL)
-		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 }
 
 static void
-linau_conv_write_unprocessed_fields(int aurecordd,
-    const struct linau_record *record,
+linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype)
 {
 	void *cookie;
@@ -2837,7 +2833,7 @@ linau_conv_write_unprocessed_fields(int aurecordd,
 	size_t ti;
 	int type;
 
-	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(aurd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(lcrectype != NULL);
 	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
@@ -2867,7 +2863,7 @@ linau_conv_write_unprocessed_fields(int aurecordd,
 	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
 		PJDLOG_ASSERT(type == NV_TYPE_STRING);
 		pjdlog_debug(4, "name (%s)", name);
-		linau_conv_write_token_text_from_field(aurecordd, record, name);
+		linau_conv_write_token_text_from_field(aurd, record, name);
 	}
 
 	nvlist_destroy(fields);
@@ -2876,28 +2872,28 @@ linau_conv_write_unprocessed_fields(int aurecordd,
 }
 
 static void
-linau_conv_write_token_text_from_field(int aurecordd,
+linau_conv_write_token_text_from_field(int aurd,
     const struct linau_record *record, const char *name)
 {
 	token_t *tok;
 
-	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(aurd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(name != NULL);
 
 	tok = generate_proto_token_text_from_field(record, name);
 
 	if (tok != NULL)
-		PJDLOG_VERIFY(au_write(aurecordd, tok) == 0);
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 }
 
 static void
-linau_conv_process_record(int aurecordd, const struct linau_record *record,
+linau_conv_process_record(int aurd, const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype)
 {
 	size_t ti;
 
-	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(aurd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(lcrectype != NULL);
 	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
@@ -2905,9 +2901,9 @@ linau_conv_process_record(int aurecordd, const struct linau_record *record,
 	pjdlog_debug(3, "%s", __func__);
 
 	for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++)
-		lcrectype->lcrt_tokens[ti]->lct_write(aurecordd, record);
+		lcrectype->lcrt_tokens[ti]->lct_write(aurd, record);
 
-	linau_conv_write_unprocessed_fields(aurecordd, record, lcrectype);
+	linau_conv_write_unprocessed_fields(aurd, record, lcrectype);
 
 	pjdlog_debug(3, "End %s", __func__);
 }
@@ -2920,16 +2916,15 @@ linau_conv_process_record(int aurecordd, const struct linau_record *record,
  * it by modifying the library and passing a custom typenum.
  */
 void
-linau_conv_to_au(int aurecordd, const struct linau_record *record,
-    int typenum)
+linau_conv_to_au(int aurd, const struct linau_record *record, int typenum)
 {
 
-	PJDLOG_ASSERT(aurecordd >= 0);
+	PJDLOG_ASSERT(aurd >= 0);
 	PJDLOG_ASSERT(record != NULL);
 
 	switch (typenum) {
 	case LINAU_TYPE_UNDEFINED:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_undefined);
 		break;
 	/* case LINAU_TYPE_GET: */
@@ -2938,11 +2933,11 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	/* case LINAU_TYPE_ADD: */
 	/* case LINAU_TYPE_DEL: */
 	case LINAU_TYPE_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user);
 		break;
 	case LINAU_TYPE_LOGIN:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_login);
 		break;
 	/* case LINAU_TYPE_SIGNAL_INFO: */
@@ -2956,663 +2951,663 @@ linau_conv_to_au(int aurecordd, const struct linau_record *record,
 	/* case LINAU_TYPE_SET_FEATURE: */
 	/* case LINAU_TYPE_GET_FEATURE: */
 	case LINAU_TYPE_USER_AUTH:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_auth);
 		break;
 	case LINAU_TYPE_USER_ACCT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_acct);
 		break;
 	case LINAU_TYPE_USER_MGMT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_mgmt);
 		break;
 	case LINAU_TYPE_CRED_ACQ:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_cred_acq);
 		break;
 	case LINAU_TYPE_CRED_DISP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_cred_disp);
 		break;
 	case LINAU_TYPE_USER_START:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_start);
 		break;
 	case LINAU_TYPE_USER_END:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_end);
 		break;
 	case LINAU_TYPE_USER_AVC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_avc);
 		break;
 	case LINAU_TYPE_USER_CHAUTHTOK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_chauthtok);
 		break;
 	case LINAU_TYPE_USER_ERR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_err);
 		break;
 	case LINAU_TYPE_CRED_REFR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_cred_refr);
 		break;
 	case LINAU_TYPE_USYS_CONFIG:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_usys_config);
 		break;
 	case LINAU_TYPE_USER_LOGIN:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_login);
 		break;
 	case LINAU_TYPE_USER_LOGOUT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_logout);
 		break;
 	case LINAU_TYPE_ADD_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_add_user);
 		break;
 	case LINAU_TYPE_DEL_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_del_user);
 		break;
 	case LINAU_TYPE_ADD_GROUP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_add_group);
 		break;
 	case LINAU_TYPE_DEL_GROUP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_del_group);
 		break;
 	case LINAU_TYPE_DAC_CHECK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_dac_check);
 		break;
 	case LINAU_TYPE_CHGRP_ID:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_chgrp_id);
 		break;
 	case LINAU_TYPE_TEST:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_test);
 		break;
 	case LINAU_TYPE_TRUSTED_APP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_trusted_app);
 		break;
 	case LINAU_TYPE_USER_SELINUX_ERR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_selinux_err);
 		break;
 	case LINAU_TYPE_USER_CMD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_cmd);
 		break;
 	case LINAU_TYPE_USER_TTY:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_tty);
 		break;
 	case LINAU_TYPE_CHUSER_ID:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_chuser_id);
 		break;
 	case LINAU_TYPE_GRP_AUTH:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_grp_auth);
 		break;
 	case LINAU_TYPE_MAC_CHECK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_check);
 		break;
 	case LINAU_TYPE_ACCT_LOCK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_acct_lock);
 		break;
 	case LINAU_TYPE_ACCT_UNLOCK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_acct_unlock);
 		break;
 	case LINAU_TYPE_SYSTEM_BOOT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_system_boot);
 		break;
 	case LINAU_TYPE_SYSTEM_SHUTDOWN:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_system_shutdown);
 		break;
 	case LINAU_TYPE_SYSTEM_RUNLEVEL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_system_runlevel);
 		break;
 	case LINAU_TYPE_SERVICE_START:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_service_start);
 		break;
 	case LINAU_TYPE_SERVICE_STOP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_service_stop);
 		break;
 	case LINAU_TYPE_GRP_MGMT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_grp_mgmt);
 		break;
 	case LINAU_TYPE_GRP_CHAUTHTOK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_grp_chauthtok);
 		break;
 	case LINAU_TYPE_DAEMON_START:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_start);
 		break;
 	case LINAU_TYPE_DAEMON_END:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_end);
 		break;
 	case LINAU_TYPE_DAEMON_ABORT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_abort);
 		break;
 	case LINAU_TYPE_DAEMON_CONFIG:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_config);
 		break;
 	/* case LINAU_TYPE_DAEMON_RECONFIG: */
 	case LINAU_TYPE_DAEMON_ROTATE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_rotate);
 		break;
 	case LINAU_TYPE_DAEMON_RESUME:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_resume);
 		break;
 	case LINAU_TYPE_DAEMON_ACCEPT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_accept);
 		break;
 	case LINAU_TYPE_DAEMON_CLOSE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_close);
 		break;
 	case LINAU_TYPE_DAEMON_ERR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_daemon_err);
 		break;
 	case LINAU_TYPE_SYSCALL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_syscall);
 		break;
 	/* case LINAU_TYPE_FS_WATCH: */
 	case LINAU_TYPE_PATH:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_path);
 		break;
 	case LINAU_TYPE_IPC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_ipc);
 		break;
 	case LINAU_TYPE_SOCKETCALL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_socketcall);
 		break;
 	case LINAU_TYPE_CONFIG_CHANGE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_config_change);
 		break;
 	case LINAU_TYPE_SOCKADDR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_sockaddr);
 		break;
 	case LINAU_TYPE_CWD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_cwd);
 		break;
 	/* case LINAU_TYPE_FS_INODE: */
 	case LINAU_TYPE_EXECVE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_execve);
 		break;
 	case LINAU_TYPE_IPC_SET_PERM:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_ipc_set_perm);
 		break;
 	case LINAU_TYPE_MQ_OPEN:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mq_open);
 		break;
 	case LINAU_TYPE_MQ_SENDRECV:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mq_sendrecv);
 		break;
 	case LINAU_TYPE_MQ_NOTIFY:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mq_notify);
 		break;
 	case LINAU_TYPE_MQ_GETSETATTR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mq_getsetattr);
 		break;
 	case LINAU_TYPE_KERNEL_OTHER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_kernel_other);
 		break;
 	case LINAU_TYPE_FD_PAIR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_fd_pair);
 		break;
 	case LINAU_TYPE_OBJ_PID:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_obj_pid);
 		break;
 	case LINAU_TYPE_TTY:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_tty);
 		break;
 	case LINAU_TYPE_EOE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_eoe);
 		break;
 	case LINAU_TYPE_BPRM_FCAPS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_bprm_fcaps);
 		break;
 	case LINAU_TYPE_CAPSET:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_capset);
 		break;
 	case LINAU_TYPE_MMAP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mmap);
 		break;
 	case LINAU_TYPE_NETFILTER_PKT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_netfilter_pkt);
 		break;
 	case LINAU_TYPE_NETFILTER_CFG:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_netfilter_cfg);
 		break;
 	case LINAU_TYPE_SECCOMP:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_seccomp);
 		break;
 	case LINAU_TYPE_PROCTITLE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_proctitle);
 		break;
 	case LINAU_TYPE_FEATURE_CHANGE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_feature_change);
 		break;
 	case LINAU_TYPE_AVC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_avc);
 		break;
 	case LINAU_TYPE_SELINUX_ERR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_selinux_err);
 		break;
 	case LINAU_TYPE_AVC_PATH:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_avc_path);
 		break;
 	case LINAU_TYPE_MAC_POLICY_LOAD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_policy_load);
 		break;
 	case LINAU_TYPE_MAC_STATUS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_status);
 		break;
 	case LINAU_TYPE_MAC_CONFIG_CHANGE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_config_change);
 		break;
 	case LINAU_TYPE_MAC_UNLBL_ALLOW:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_unlbl_allow);
 		break;
 	case LINAU_TYPE_MAC_CIPSOV4_ADD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_cipsov4_add);
 		break;
 	case LINAU_TYPE_MAC_CIPSOV4_DEL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_cipsov4_del);
 		break;
 	case LINAU_TYPE_MAC_MAP_ADD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_map_add);
 		break;
 	case LINAU_TYPE_MAC_MAP_DEL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_map_del);
 		break;
 	case LINAU_TYPE_MAC_IPSEC_ADDSA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_ipsec_addsa);
 		break;
 	case LINAU_TYPE_MAC_IPSEC_DELSA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_ipsec_delsa);
 		break;
 	case LINAU_TYPE_MAC_IPSEC_ADDSPD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_ipsec_addspd);
 		break;
 	case LINAU_TYPE_MAC_IPSEC_DELSPD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_ipsec_delspd);
 		break;
 	case LINAU_TYPE_MAC_IPSEC_EVENT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_ipsec_event);
 		break;
 	case LINAU_TYPE_MAC_UNLBL_STCADD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_unlbl_stcadd);
 		break;
 	case LINAU_TYPE_MAC_UNLBL_STCDEL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_mac_unlbl_stcdel);
 		break;
 	case LINAU_TYPE_ANOM_PROMISCUOUS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_promiscuous);
 		break;
 	case LINAU_TYPE_ANOM_ABEND:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_abend);
 		break;
 	case LINAU_TYPE_ANOM_LINK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_link);
 		break;
 	case LINAU_TYPE_INTEGRITY_DATA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_integrity_data);
 		break;
 	case LINAU_TYPE_INTEGRITY_METADATA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_integrity_metadata);
 		break;
 	case LINAU_TYPE_INTEGRITY_STATUS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_integrity_status);
 		break;
 	case LINAU_TYPE_INTEGRITY_HASH:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_integrity_hash);
 		break;
 	case LINAU_TYPE_INTEGRITY_PCR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_integrity_pcr);
 		break;
 	case LINAU_TYPE_INTEGRITY_RULE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_integrity_rule);
 		break;
 	case LINAU_TYPE_AA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_aa);
 		break;
 	case LINAU_TYPE_APPARMOR_AUDIT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_apparmor_audit);
 		break;
 	case LINAU_TYPE_APPARMOR_ALLOWED:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_apparmor_allowed);
 		break;
 	case LINAU_TYPE_APPARMOR_DENIED:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_apparmor_denied);
 		break;
 	case LINAU_TYPE_APPARMOR_HINT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_apparmor_hint);
 		break;
 		/* FALLTHROUGH */
 	case LINAU_TYPE_APPARMOR_STATUS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_apparmor_status);
 		break;
 	case LINAU_TYPE_APPARMOR_ERROR:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_apparmor_error);
 		break;
 	case LINAU_TYPE_KERNEL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_kernel);
 		break;
 	case LINAU_TYPE_ANOM_LOGIN_FAILURES:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_login_failures);
 		break;
 	case LINAU_TYPE_ANOM_LOGIN_TIME:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_login_time);
 		break;
 	case LINAU_TYPE_ANOM_LOGIN_SESSIONS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_login_sessions);
 		break;
 	case LINAU_TYPE_ANOM_LOGIN_ACCT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_login_acct);
 		break;
 	case LINAU_TYPE_ANOM_LOGIN_LOCATION:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_login_location);
 		break;
 	case LINAU_TYPE_ANOM_MAX_DAC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_max_dac);
 		break;
 	case LINAU_TYPE_ANOM_MAX_MAC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_max_mac);
 		break;
 	case LINAU_TYPE_ANOM_AMTU_FAIL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_amtu_fail);
 		break;
 	case LINAU_TYPE_ANOM_RBAC_FAIL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_rbac_fail);
 		break;
 	case LINAU_TYPE_ANOM_RBAC_INTEGRITY_FAIL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_rbac_integrity_fail);
 		break;
 	case LINAU_TYPE_ANOM_CRYPTO_FAIL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_crypto_fail);
 		break;
 	case LINAU_TYPE_ANOM_ACCESS_FS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_access_fs);
 		break;
 	case LINAU_TYPE_ANOM_EXEC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_exec);
 		break;
 	case LINAU_TYPE_ANOM_MK_EXEC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_mk_exec);
 		break;
 	case LINAU_TYPE_ANOM_ADD_ACCT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_add_acct);
 		break;
 	case LINAU_TYPE_ANOM_DEL_ACCT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_del_acct);
 		break;
 	case LINAU_TYPE_ANOM_MOD_ACCT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_mod_acct);
 		break;
 	case LINAU_TYPE_ANOM_ROOT_TRANS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_anom_root_trans);
 		break;
 	case LINAU_TYPE_RESP_ANOMALY:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_anomaly);
 		break;
 	case LINAU_TYPE_RESP_ALERT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_alert);
 		break;
 	case LINAU_TYPE_RESP_KILL_PROC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_kill_proc);
 		break;
 	case LINAU_TYPE_RESP_TERM_ACCESS:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_term_access);
 		break;
 	case LINAU_TYPE_RESP_ACCT_REMOTE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_acct_remote);
 		break;
 	case LINAU_TYPE_RESP_ACCT_LOCK_TIMED:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_acct_lock_timed);
 		break;
 	case LINAU_TYPE_RESP_ACCT_UNLOCK_TIMED:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_acct_unlock_timed);
 		break;
 	case LINAU_TYPE_RESP_ACCT_LOCK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_acct_lock);
 		break;
 	case LINAU_TYPE_RESP_TERM_LOCK:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_term_lock);
 		break;
 	case LINAU_TYPE_RESP_SEBOOL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_sebool);
 		break;
 	case LINAU_TYPE_RESP_EXEC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_exec);
 		break;
 	case LINAU_TYPE_RESP_SINGLE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_single);
 		break;
 	case LINAU_TYPE_RESP_HALT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_resp_halt);
 		break;
 	case LINAU_TYPE_USER_ROLE_CHANGE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_role_change);
 		break;
 	case LINAU_TYPE_ROLE_ASSIGN:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_role_assign);
 		break;
 	case LINAU_TYPE_ROLE_REMOVE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_role_remove);
 		break;
 	case LINAU_TYPE_LABEL_OVERRIDE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_label_override);
 		break;
 	case LINAU_TYPE_LABEL_LEVEL_CHANGE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_label_level_change);
 		break;
 	case LINAU_TYPE_USER_LABELED_EXPORT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_labeled_export);
 		break;
 	case LINAU_TYPE_USER_UNLABELED_EXPORT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_unlabeled_export);
 		break;
 	case LINAU_TYPE_DEV_ALLOC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_dev_alloc);
 		break;
 	case LINAU_TYPE_DEV_DEALLOC:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_dev_dealloc);
 		break;
 	case LINAU_TYPE_FS_RELABEL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_fs_relabel);
 		break;
 	case LINAU_TYPE_USER_MAC_POLICY_LOAD:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_mac_policy_load);
 		break;
 	case LINAU_TYPE_ROLE_MODIFY:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_role_modify);
 		break;
 	case LINAU_TYPE_USER_MAC_CONFIG_CHANGE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_user_mac_config_change);
 		break;
 	case LINAU_TYPE_CRYPTO_TEST_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_test_user);
 		break;
 	case LINAU_TYPE_CRYPTO_PARAM_CHANGE_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_param_change_user);
 		break;
 	case LINAU_TYPE_CRYPTO_LOGIN:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_login);
 		break;
 	case LINAU_TYPE_CRYPTO_LOGOUT:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_logout);
 		break;
 	case LINAU_TYPE_CRYPTO_KEY_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_key_user);
 		break;
 	case LINAU_TYPE_CRYPTO_FAILURE_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_failure_user);
 		break;
 	case LINAU_TYPE_CRYPTO_REPLAY_USER:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_replay_user);
 		break;
 	case LINAU_TYPE_CRYPTO_SESSION:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_session);
 		break;
 	case LINAU_TYPE_CRYPTO_IKE_SA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_ike_sa);
 		break;
 	case LINAU_TYPE_CRYPTO_IPSEC_SA:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_crypto_ipsec_sa);
 		break;
 	case LINAU_TYPE_VIRT_CONTROL:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_virt_control);
 		break;
 	case LINAU_TYPE_VIRT_RESOURCE:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_virt_resource);
 		break;
 	case LINAU_TYPE_VIRT_MACHINE_ID:
-		linau_conv_process_record(aurecordd, record,
+		linau_conv_process_record(aurd, record,
 		    &lcrectype_virt_machine_id);
 		break;
 	default:

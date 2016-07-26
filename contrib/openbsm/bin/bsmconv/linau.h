@@ -91,7 +91,7 @@ int			 linau_record_comapre_origin(
 			    const struct linau_record *recb);
 
 void			 linau_record_to_au(const struct linau_record *record,
-			    int aurecordd);
+			    int aurd);
 
 /* linau_field. */
 struct linau_field	*linau_field_create(void);
