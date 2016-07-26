@@ -40,7 +40,7 @@ struct linau_conv_record_type {
  * Helper functions.
  */
 static const char *field_name_from_field_name_id(int fieldnameid);
-static bool process_an_id_field(int aurd, const struct linau_record *record,
+static bool process_id_field(int aurd, const struct linau_record *record,
     const char *fieldname, const struct linau_conv_field *lcfield,
     uint32_t *idp, size_t *fieldscountp);
 /*
@@ -77,7 +77,7 @@ static void linau_conv_process_record(int aurd,
 static void linau_conv_write_unprocessed_fields(int aurd,
     const struct linau_record *record,
     const struct linau_conv_record_type *lcrectype);
-static void linau_conv_write_token_text_from_field(int aurd,
+static void linau_conv_write_token_text(int aurd,
     const struct linau_record *record, const char *name);
 
 /*
@@ -2493,12 +2493,15 @@ field_name_from_field_name_id(int fieldnameid)
 }
 
 /*
+ * This is an abstraction for processing the *id fields from both
+ * pid_t (int32_t) and uid_t (uint32_t) families.
+ *
  * Returns:
  * true if the field is valid and was processed;
  * false if there is no field like this in the record or it is invalid.
  */
 static bool
-process_an_id_field(int aurd, const struct linau_record *record,
+process_id_field(int aurd, const struct linau_record *record,
     const char *fieldname, const struct linau_conv_field *lcfield,
     uint32_t *idp, size_t *fieldscountp)
 {
@@ -2521,7 +2524,7 @@ process_an_id_field(int aurd, const struct linau_record *record,
 		*fieldscountp += 1;
 		return (true);
 	} else {
-		linau_conv_write_token_text_from_field(aurd, record, fieldname);
+		linau_conv_write_token_text(aurd, record, fieldname);
 		return (false);
 	}
 }
@@ -2730,18 +2733,18 @@ write_token_process32(int aurd, const struct linau_record *record)
 	/* Audit ID.
 	 * XXX: It is NOT lcfield_auid. See auid definition.
 	 */
-	/* if (!process_an_id_field(aurd, record,  */
+	/* if (!process_id_field(aurd, record,  */
 	/*     LINAU_FIELD_NAME_AUID_STR, &lcfield_auid, &auid,  */
 	/*     &fieldscount)) */
 	auid = 0;
 
 	/* Effective User ID. */
-	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_EUID_STR,
+	if (!process_id_field(aurd, record, LINAU_FIELD_NAME_EUID_STR,
 	    &lcfield_euid, &euid, &fieldscount))
 		euid = 0;
 
 	/* Effective Group ID. */
-	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_EGID_STR,
+	if (!process_id_field(aurd, record, LINAU_FIELD_NAME_EGID_STR,
 	    &lcfield_egid, &egid, &fieldscount))
 		egid = 0;
 
@@ -2760,7 +2763,7 @@ write_token_process32(int aurd, const struct linau_record *record)
 	rgid = -1;
 
 	/* Process ID. */
-	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_PID_STR,
+	if (!process_id_field(aurd, record, LINAU_FIELD_NAME_PID_STR,
 	    &lcfield_pid, &pid, &fieldscount))
 		pid = -1;
 
@@ -2770,7 +2773,7 @@ write_token_process32(int aurd, const struct linau_record *record)
 	 * XXX: Map to a field which represents login session id in the
 	 * Linux Audit format.
 	 */
-	if (!process_an_id_field(aurd, record, LINAU_FIELD_NAME_SES_STR,
+	if (!process_id_field(aurd, record, LINAU_FIELD_NAME_SES_STR,
 	    &lcfield_ses, &sid, &fieldscount))
 		sid = -1;
 
@@ -2863,7 +2866,7 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
 		PJDLOG_ASSERT(type == NV_TYPE_STRING);
 		pjdlog_debug(4, "name (%s)", name);
-		linau_conv_write_token_text_from_field(aurd, record, name);
+		linau_conv_write_token_text(aurd, record, name);
 	}
 
 	nvlist_destroy(fields);
@@ -2872,8 +2875,8 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 }
 
 static void
-linau_conv_write_token_text_from_field(int aurd,
-    const struct linau_record *record, const char *name)
+linau_conv_write_token_text(int aurd, const struct linau_record *record,
+    const char *name)
 {
 	token_t *tok;
 
