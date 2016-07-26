@@ -1,4 +1,8 @@
 # Tests
 
-- Test if the library properly converts pid fields and uid fields for edge
+- [ ] Test if the library properly converts pid fields and uid fields for edge
 cases.
+
+# Style & refactoring
+
+- [ ] Refactor the while loop in process_events() in bsmconv.c.
