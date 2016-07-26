@@ -92,3 +92,7 @@ recordTypes:
 tokens:
   process32:
     function_name: au_to_process32
+    notes:
+      - |
+        The IP address and the port number of the Linux Audit should be
+        placed in this token.
