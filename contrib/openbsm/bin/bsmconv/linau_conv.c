@@ -55,10 +55,13 @@ static token_t *generate_proto_token_return(const struct linau_record *record,
 /*
  * The lcf_validate validators for the linau_conv_field structure.
  */
+/* The standard validators. */
 static int linau_conv_is_alphanumeric(const char *field);
 static int linau_conv_is_encoded(const char *field);
 static int linau_conv_is_numeric(const char *field);
+/* The field specific validators. */
 static int linau_conv_is_valid_field_res(const char *field);
+/* The validators of the whole groups of fields. */
 static int linau_conv_is_valid_pid(const char *field);
 static int linau_conv_is_valid_uid(const char *field);
 
@@ -1028,7 +1031,11 @@ const static struct linau_conv_field lcfield_ses = {
 const static struct linau_conv_token lctoken_process32 = {
 	write_token_process32,
 	{
-		&lcfield_auid,
+		/*
+		 * XXX: This field is not audit user id according to the
+		 * documentation.
+		 */
+		/* &lcfield_auid, */
 		&lcfield_egid,
 		&lcfield_euid,
 		&lcfield_pid,

@@ -91,7 +91,6 @@ fu_usage() {
     exit 1
 }
 
-PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
 
 if [ "$#" -eq 0 ]; then
     fu_usage
@@ -110,6 +109,8 @@ while [ "$#" -gt 0 ]; do
         fu_make
         ;;
     rp)
+        PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | \
+            sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
         shift
         "$BIN" < "$1" | praudit
         shift
