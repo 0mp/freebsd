@@ -501,8 +501,8 @@ linau_record_parse_type(const char *buf)
 	 * Sometimes the program will abort here if the input file has an
 	 * additional newline at the end of the file (empty line).
 	 */
-	pjdlog_debug(4, " . . . . (%.*s), (%.*s)",
-	    typeprefixlen, buf, typeprefixlen, typeprefix);
+	pjdlog_debug(4, " . . . . (%.*s), (%.*s)", typeprefixlen, buf,
+	    typeprefixlen, typeprefix);
 	PJDLOG_ASSERT(typeprefixlen + 2 < strlen(buf));
 	PJDLOG_VERIFY(strncmp(buf, typeprefix, typeprefixlen) == 0);
 
@@ -610,6 +610,9 @@ linau_record_comapre_origin(const struct linau_record *reca,
 	PJDLOG_ASSERT(reca != NULL);
 	PJDLOG_ASSERT(recb != NULL);
 
+	/*
+	 * STYLE: Is this line break fine?
+	 */
 	return (linau_proto_compare_origin(
 	    linau_record_get_id(reca), linau_record_get_time(reca),
 	    linau_record_get_id(recb), linau_record_get_time(recb)));
