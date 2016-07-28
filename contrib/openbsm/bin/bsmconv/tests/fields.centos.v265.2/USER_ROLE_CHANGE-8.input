@@ -1,0 +1,1 @@
+type=USER_ROLE_CHANGE msg=audit(1468855818.969:69): user pid=1244 uid=0 auid=0 ses=4 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='pam: default-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 selected-context=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 exe="/usr/sbin/sshd" hostname=192.168.56.1 addr=192.168.56.1 terminal=ssh res=success'

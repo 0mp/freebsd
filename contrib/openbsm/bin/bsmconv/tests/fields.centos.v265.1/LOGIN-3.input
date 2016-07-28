@@ -1,0 +1,1 @@
+type=LOGIN msg=audit(1468854023.060:54): pid=1297 uid=0 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 old auid=4294967295 new auid=0 old ses=4294967295 new ses=3

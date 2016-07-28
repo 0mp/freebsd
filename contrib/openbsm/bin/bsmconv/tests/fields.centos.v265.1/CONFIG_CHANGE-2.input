@@ -1,0 +1,1 @@
+type=CONFIG_CHANGE msg=audit(1468854093.156:73): audit_backlog_limit=320 old=320 auid=0 ses=2 subj=unconfined_u:system_r:auditctl_t:s0 res=1

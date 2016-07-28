@@ -1,0 +1,1 @@
+type=CRYPTO_KEY_USER msg=audit(1468853703.145:17): user pid=1249 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=server fp=5a:f6:36:d6:7e:87:dd:b3:f5:e7:fd:7d:d8:ae:82:8f direction=? spid=1249 suid=0  exe="/usr/sbin/sshd" hostname=? addr=192.168.56.1 terminal=? res=success'

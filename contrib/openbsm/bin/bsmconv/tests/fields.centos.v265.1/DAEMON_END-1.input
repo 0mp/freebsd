@@ -1,0 +1,1 @@
+type=DAEMON_END msg=audit(1468854088.629:4672): op=terminate auid=0 pid=2386 subj=unconfined_u:system_r:initrc_t:s0 res=success

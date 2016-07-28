@@ -1095,7 +1095,10 @@ const static struct linau_conv_record_type lcrectype_user = {
 const static struct linau_conv_record_type lcrectype_login = {
 	LINAU_TYPE_LOGIN,
 	LINAU_TYPE_LOGIN_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 /* const static struct linau_conv_record_type lcrectype_signal_info = { */
 /*         LINAU_TYPE_SIGNAL_INFO, */
@@ -1158,7 +1161,10 @@ const static struct linau_conv_record_type lcrectype_user_auth = {
 const static struct linau_conv_record_type lcrectype_user_acct = {
 	LINAU_TYPE_USER_ACCT,
 	LINAU_TYPE_USER_ACCT_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_user_mgmt = {
 	LINAU_TYPE_USER_MGMT,
@@ -1168,7 +1174,10 @@ const static struct linau_conv_record_type lcrectype_user_mgmt = {
 const static struct linau_conv_record_type lcrectype_cred_acq = {
 	LINAU_TYPE_CRED_ACQ,
 	LINAU_TYPE_CRED_ACQ_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_cred_disp = {
 	LINAU_TYPE_CRED_DISP,
@@ -1207,7 +1216,10 @@ const static struct linau_conv_record_type lcrectype_user_chauthtok = {
 const static struct linau_conv_record_type lcrectype_user_err = {
 	LINAU_TYPE_USER_ERR,
 	LINAU_TYPE_USER_ERR_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_cred_refr = {
 	LINAU_TYPE_CRED_REFR,
@@ -1225,12 +1237,18 @@ const static struct linau_conv_record_type lcrectype_usys_config = {
 const static struct linau_conv_record_type lcrectype_user_login = {
 	LINAU_TYPE_USER_LOGIN,
 	LINAU_TYPE_USER_LOGIN_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_user_logout = {
 	LINAU_TYPE_USER_LOGOUT,
 	LINAU_TYPE_USER_LOGOUT_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_add_user = {
 	LINAU_TYPE_ADD_USER,
@@ -1323,12 +1341,18 @@ const static struct linau_conv_record_type lcrectype_system_boot = {
 const static struct linau_conv_record_type lcrectype_system_shutdown = {
 	LINAU_TYPE_SYSTEM_SHUTDOWN,
 	LINAU_TYPE_SYSTEM_SHUTDOWN_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_system_runlevel = {
 	LINAU_TYPE_SYSTEM_RUNLEVEL,
 	LINAU_TYPE_SYSTEM_RUNLEVEL_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_service_start = {
 	LINAU_TYPE_SERVICE_START,
@@ -1881,7 +1905,10 @@ const static struct linau_conv_record_type lcrectype_resp_halt = {
 const static struct linau_conv_record_type lcrectype_user_role_change = {
 	LINAU_TYPE_USER_ROLE_CHANGE,
 	LINAU_TYPE_USER_ROLE_CHANGE_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_role_assign = {
 	LINAU_TYPE_ROLE_ASSIGN,
@@ -1966,7 +1993,10 @@ const static struct linau_conv_record_type lcrectype_crypto_logout = {
 const static struct linau_conv_record_type lcrectype_crypto_key_user = {
 	LINAU_TYPE_CRYPTO_KEY_USER,
 	LINAU_TYPE_CRYPTO_KEY_USER_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_crypto_failure_user = {
 	LINAU_TYPE_CRYPTO_FAILURE_USER,
@@ -1981,7 +2011,10 @@ const static struct linau_conv_record_type lcrectype_crypto_replay_user = {
 const static struct linau_conv_record_type lcrectype_crypto_session = {
 	LINAU_TYPE_CRYPTO_SESSION,
 	LINAU_TYPE_CRYPTO_SESSION_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_crypto_ike_sa = {
 	LINAU_TYPE_CRYPTO_IKE_SA,

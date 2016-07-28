@@ -1,0 +1,1 @@
+type=CRED_ACQ msg=audit(1468853209.459:15): user pid=1166 uid=0 auid=0 ses=1 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='op=PAM:setcred acct="root" exe="/bin/login" hostname=? addr=? terminal=tty1 res=success'

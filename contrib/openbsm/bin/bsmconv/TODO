@@ -6,3 +6,8 @@ cases.
 # Style & refactoring
 
 - [ ] Refactor the while loop in process_events() in bsmconv.c.
+
+# Conversion
+
+- [ ] Improve the conversion of the LOGIN type record. See an example
+in tests/fields.centos.v265/LOGIN.input.
