@@ -5,7 +5,7 @@ cases.
 
 # Style & refactoring
 
-- [ ] Refactor the while loop in process_events() in bsmconv.c.
+- [x] Refactor the while loop in process_events() in bsmconv.c.
 
 # Conversion
 

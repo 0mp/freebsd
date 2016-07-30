@@ -41,16 +41,22 @@ process_events(FILE *fp)
 	event = linau_event_create();
 	PJDLOG_ASSERT(event != NULL);
 
-	while ((record = linau_record_fetch(fp)) != NULL) {
-		if (linau_event_compare_origin(event, record) != 0) {
+	/*
+	 * Style: Is this better than the previous while loop?
+	 */
+	for (;;) {
+		record = linau_record_fetch(fp);
+		if (record == NULL) {
+			process_event(event);
+			linau_event_destroy(event);
+			break;
+		}
+		else if (linau_event_compare_origin(event, record) != 0) {
 			process_event(event);
 			linau_event_clear(event);
 		}
 		linau_event_add_record(event, record);
 	}
-	process_event(event);
-
-	linau_event_destroy(event);
 }
 
 int
