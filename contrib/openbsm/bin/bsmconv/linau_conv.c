@@ -2593,10 +2593,6 @@ generate_proto_token_return(const struct linau_record *record,
 		return (NULL);
 
 	tok = au_to_return32(0, retvalue);
-	/*
-	 * STYLE: (NOTE) au_token(3) functions fail rarely so let's use
-	 * PJDLOG_ASSERT instead of PJDLOG_VERIFY.
-	 */
 	PJDLOG_ASSERT(tok != NULL);
 
 	return (tok);
@@ -2735,7 +2731,8 @@ linau_conv_is_valid_uid(const char *field)
  * Returns:
  * - NULL if the token would be written without any fields.  It might happen
  * if all the expected fields are missing (for example no there is no uid)
- * or invalid (for example pid=NONE).
+ * or invalid (for example pid=NONE);
+ * - a process token otherwise.
  */
 static void
 write_token_process32(int aurd, const struct linau_record *record)
@@ -2823,12 +2820,10 @@ write_token_process32(int aurd, const struct linau_record *record)
 	 */
 	tid = calloc(1, sizeof(*tid));
 
-	if (fieldscount == 0) {
-		tok = NULL;
-	} else {
+	if (fieldscount != 0) {
 		tok = au_to_process32(auid, euid, egid, ruid, rgid, pid, sid,
 		    tid);
-		PJDLOG_VERIFY(tok != NULL);
+		PJDLOG_ASSERT(tok != NULL);
 		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 	}
 
@@ -2857,6 +2852,7 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	void *cookie;
 	const char *fieldname;
 	nvlist_t *fields;
+	const char *fieldval;
 	const struct linau_conv_field *lcfield;
 	const struct linau_conv_token *lctoken;
 	const char *name;
@@ -2872,8 +2868,8 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	fields = linau_record_clone_fields(record);
 
 	/*
-	 * Remove the fields declared by tokens.  This way it is possible to
-	 * extract all the unprocessed fields.
+	 * Remove all the fields declared by tokens which have a valid value.
+	 * This way it is possible to extract all the unprocessed fields.
 	 */
 	for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++) {
 		lctoken = lcrectype->lcrt_tokens[ti];
@@ -2881,7 +2877,10 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 			lcfield = lctoken->lct_fields[fi];
 			fieldname = field_name_from_field_name_id(
 			    lcfield->lcf_id);
-			if (nvlist_exists_string(fields, fieldname))
+			if (!nvlist_exists_string(fields, fieldname))
+				continue;
+			fieldval = nvlist_get_string(fields, fieldname);
+			if (lcfield->lcf_validate(fieldval))
 				free(nvlist_take_string(fields, fieldname));
 		}
 	}
