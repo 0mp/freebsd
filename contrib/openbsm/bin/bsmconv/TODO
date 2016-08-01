@@ -6,6 +6,7 @@ cases.
 # Style & refactoring
 
 - [x] Refactor the while loop in process_events() in bsmconv.c.
+- [ ] Standardize the naming convention of static functions.
 
 # Conversion
 

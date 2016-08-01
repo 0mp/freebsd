@@ -10,13 +10,15 @@
 #include "pjdlog.h"
 
 #define	BSMCONV_LINAU_EVENT_AU_BUFFER		8192
-#define	BSMCONV_LINAU_EVENT_KEY_BUFFER		30
 
 static const struct linau_record *get_any_record(
     const struct linau_event *event);
 static unsigned short au_event_type_from_linau_event(
     const struct linau_event *event);
 
+/*
+ * event should not be empty.
+ */
 static const struct linau_record *
 get_any_record(const struct linau_event *event)
 {
@@ -37,7 +39,7 @@ static unsigned short
 au_event_type_from_linau_event(const struct linau_event *event)
 {
 
-	(void)event;
+	PJDLOG_ASSERT(event != NULL);
 
 	return (AUE_NULL);
 }
@@ -48,7 +50,7 @@ linau_event_create(void)
 	struct linau_event *event;
 
 	event = calloc(1, sizeof(*event));
-	PJDLOG_VERIFY(event != NULL);
+	PJDLOG_ASSERT(event != NULL);
 
 	TAILQ_INIT(&event->le_records);
 
@@ -58,8 +60,6 @@ linau_event_create(void)
 void
 linau_event_destroy(struct linau_event *event)
 {
-
-	PJDLOG_ASSERT(event != NULL);
 
 	linau_event_clear(event);
 	free(event);
@@ -84,27 +84,24 @@ linau_event_clear(struct linau_event *event)
 
 
 void
-linau_event_add_record(struct linau_event *event,
-    struct linau_record *record)
+linau_event_add_record(struct linau_event *event, struct linau_record *record)
 {
 
 	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(record != NULL);
 
-	pjdlog_debug(3, " . . + linau_event_add_record");
-
-	pjdlog_debug(3, " . . . id (%u), timestamp (%llu)",
-	    linau_record_get_id(record),
-	    linau_record_get_time(record));
-
 	TAILQ_INSERT_HEAD(&event->le_records, record, lr_next);
-
-	pjdlog_debug(3, " . . -");
 }
 
+/*
+ * Abort if event is NULL.
+ * STYLE: Is it OK to assert here?
+ */
 bool
 linau_event_empty(const struct linau_event *event)
 {
+
+	PJDLOG_ASSERT(event != NULL);
 
 	return (TAILQ_EMPTY(&event->le_records));
 }
@@ -113,7 +110,6 @@ uint32_t
 linau_event_get_id(const struct linau_event *event)
 {
 
-	PJDLOG_ASSERT(event != NULL);
 	PJDLOG_ASSERT(!linau_event_empty(event));
 
 	return (linau_record_get_id(get_any_record(event)));
@@ -123,9 +119,6 @@ uint64_t
 linau_event_get_time(const struct linau_event *event)
 {
 
-	PJDLOG_ASSERT(event != NULL);
-	PJDLOG_ASSERT(!TAILQ_EMPTY(&event->le_records));
-
 	return (linau_record_get_time(get_any_record(event)));
 }
 
@@ -133,16 +126,12 @@ struct timeval *
 linau_event_get_timeval(const struct linau_event *event)
 {
 	uint64_t time;
-	const struct linau_record *record;
 	struct timeval *tm;
 
-	PJDLOG_ASSERT(event != NULL);
-
-	record = get_any_record(event);
-	time = linau_record_get_time(record);
+	time = linau_record_get_time(get_any_record(event));
 
 	tm = calloc(1, sizeof(*tm));
-	PJDLOG_VERIFY(tm != NULL);
+	PJDLOG_ASSERT(tm != NULL);
 
 	tm->tv_sec = time / (1000 * 1000 * 1000);
 	tm->tv_usec = (time % (1000 * 1000 * 1000)) / 1000;
@@ -206,9 +195,6 @@ linau_event_compare_origin(const struct linau_event *event,
 	uint32_t eventid;
 	uint32_t recordid;
 
-	PJDLOG_ASSERT(event != NULL);
-	PJDLOG_ASSERT(record != NULL);
-
 	if (linau_event_empty(event))
 		return (0);
 
@@ -231,12 +217,13 @@ linau_event_to_au(const struct linau_event *event, unsigned short *aueventidp)
 	struct linau_record *record;
 	int aurd;
 
-	PJDLOG_ASSERT(aueventidp != NULL);
 	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(aueventidp != NULL);
 
 	/* Get a record descriptor. */
 	aurd = au_open();
-	PJDLOG_VERIFY(aurd >= 0);
+	/* STYLE: (NOTE) I assume that au_open() failes rather rarely. */
+	PJDLOG_ASSERT(aurd >= 0);
 
 	/* Tokenise event's records. */
 	TAILQ_FOREACH(record, &event->le_records, lr_next)
@@ -255,12 +242,12 @@ linau_event_process(const struct linau_event *event, size_t *buflenp)
 	int aurd;
 	unsigned short aueventid;
 
-	PJDLOG_ASSERT(event != NULL);
+	PJDLOG_ASSERT(buflenp != NULL);
 
 	*buflenp = BSMCONV_LINAU_EVENT_AU_BUFFER;
 
-	buf = malloc(sizeof(*buf) * *buflenp);
-	PJDLOG_VERIFY(buf != NULL);
+	buf = malloc(*buflenp * sizeof(*buf));
+	PJDLOG_ASSERT(buf != NULL);
 
 	aurd = linau_event_to_au(event, &aueventid);
 	tm = linau_event_get_timeval(event);

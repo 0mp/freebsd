@@ -18,8 +18,6 @@ process_event(const struct linau_event *event)
 	size_t buflen;
 	u_char *buf;
 
-	PJDLOG_ASSERT(event != NULL);
-
 	buf = linau_event_process(event, &buflen);
 
 	if (pjdlog_debug_get() == 0)
@@ -35,8 +33,6 @@ process_events(FILE *fp)
 {
 	struct linau_event *event;
 	struct linau_record *record;
-
-	PJDLOG_ASSERT(fp != NULL);
 
 	event = linau_event_create();
 	PJDLOG_ASSERT(event != NULL);

@@ -12,15 +12,15 @@ linau_proto_compare_origin(uint32_t id1, uint64_t time1, uint32_t id2,
 {
 
 	if (time1 < time2)
-		return -1;
-	if (time1 > time2)
-		return 1;
-	if (id1 < id2)
-		return -1;
-	if (id1 > id2)
-		return 1;
-
-	return 0;
+		return (-1);
+	else if (time1 > time2)
+		return (1);
+	else if (id1 < id2)
+		return (-1);
+	else if (id1 > id2)
+		return (1);
+	else
+		return (0);
 }
 
 uint64_t
@@ -35,9 +35,9 @@ find_position(size_t *posp, const char *buf, size_t start, char chr)
 {
 	size_t buflen;
 
-	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
-	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(posp != NULL);
+	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
 
 	buflen = strlen(buf);
 
@@ -55,13 +55,12 @@ extract_substring(const char *buf, size_t start, size_t len)
 
 	PJDLOG_ASSERT(buf != NULL);
 	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
+
 	PJDLOG_ASSERT(start + len <= strlen(buf));
 
-	substr = malloc((len + 1) * sizeof(*substr));
-	PJDLOG_VERIFY(substr != NULL);
-	PJDLOG_VERIFY(strncpy(substr, buf + start, len) != NULL);
-	substr[len] = '\0';
-	PJDLOG_VERIFY(strncmp(substr, buf + start, len) == 0);
+	substr = strndup(buf + start, len);
+	PJDLOG_ASSERT(substr != NULL);
+	PJDLOG_ASSERT(strncmp(substr, buf + start, len) == 0);
 
 	return (substr);
 }
@@ -84,8 +83,13 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	size_t separatorpos;
 	size_t strii;
 
-	PJDLOG_VERIFY(strchr(buf, '\0') != NULL);
 	PJDLOG_ASSERT(buf != NULL);
+	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
+	PJDLOG_ASSERT(msgstartp != NULL);
+	PJDLOG_ASSERT(secsposp != NULL);
+	PJDLOG_ASSERT(nsecsposp != NULL);
+	PJDLOG_ASSERT(idposp != NULL);
+	PJDLOG_ASSERT(msgendp != NULL);
 
 	buflen = strlen(buf);
 
@@ -105,11 +109,14 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 			break;
 	}
 
-	PJDLOG_VERIFY(msgii == msgprefixlen);
+	PJDLOG_RASSERT(msgii == msgprefixlen, "The 'msg=audit' part of the "
+	    "record is missing");
 	msgstart = strii;
 	pjdlog_debug(6, " . . > msgstart: (%zu)", msgstart);
 	secsstart = msgstart + msgprefixlen;
-	PJDLOG_ASSERT(buf[secsstart] != '(');
+	PJDLOG_RASSERT(buf[secsstart] != '(', "The msg=audit part of the "
+	    "record doesn't have an openning bracket '(' after the 'audit' "
+	    "word");
 
 	/* Find msg field msgend. */
 	PJDLOG_VERIFY(find_position(&msgend, buf, msgstart, ')'));
@@ -123,10 +130,8 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	nsecsstart = dotpos + 1;
 	idstart = separatorpos + 1;
 
-	PJDLOG_ASSERT(msgstart < secsstart &&
-	    secsstart < nsecsstart &&
-	    nsecsstart < idstart &&
-	    idstart < msgend);
+	PJDLOG_ASSERT(msgstart < secsstart && secsstart < nsecsstart &&
+	    nsecsstart < idstart && idstart < msgend);
 
 	*msgstartp = msgstart;
 	*secsposp = secsstart;
@@ -141,16 +146,16 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 
 /*
  * Returns:
- * true on successfuly conversion;
- * false otherwise
+ * - true on a successful conversion;
+ * - false otherwise.
  */
 bool
 string_to_uint32(uint32_t *num, const char *str)
 {
 	char *endp;
 
-	PJDLOG_ASSERT(str != NULL);
 	PJDLOG_ASSERT(num != NULL);
+	PJDLOG_ASSERT(str != NULL);
 
 	errno = 0;
 	*num = (uint32_t)strtoul(str, &endp, 10);

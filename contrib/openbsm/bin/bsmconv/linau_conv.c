@@ -2063,6 +2063,8 @@ field_name_from_field_name_id(int fieldnameid)
 		 * because it doesn't fit a single field name. This
 		 * field's name can be anything that fits the
 		 * a[[:digit:]+]\[*\] regex.
+		 * UPDATE: 2016.08.01 - An email has been sent to the Linux
+		 * Audit mailing list about this regex.
 		 */
 		PJDLOG_ABORT("LINAU_FIELD_NAME_A_EXECVE_SYSCALL is not "
 		    "implemented yet");
@@ -2540,11 +2542,7 @@ process_id_field(int aurd, const struct linau_record *record,
 {
 	const char *fieldvalue;
 
-	PJDLOG_ASSERT(aurd >= 0);
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(fieldname != NULL);
 	PJDLOG_ASSERT(lcfield != NULL);
-	PJDLOG_ASSERT(idp != NULL);
 	PJDLOG_ASSERT(fieldscountp != NULL);
 
 	if (!linau_record_exists_field(record, fieldname))
@@ -2552,7 +2550,7 @@ process_id_field(int aurd, const struct linau_record *record,
 
 	fieldvalue = linau_record_get_field(record, fieldname);
 
-	if (lcfield_auid.lcf_validate(fieldvalue)) {
+	if (lcfield->lcf_validate(fieldvalue)) {
 		PJDLOG_VERIFY(string_to_uint32(idp, fieldvalue));
 		*fieldscountp += 1;
 		return (true);
@@ -2563,13 +2561,15 @@ process_id_field(int aurd, const struct linau_record *record,
 }
 
 /*
- * The errno code is always set to 0 (undefined).
+ * TODO: The errno code of the return token is always set to 0 (undefined) for
+ * the time being.
  *
  * fieldname is expected to be either "res" or "result".
  *
- * Retuns NULL if:
- * - There is no field called fieldname in the record.
- * - The value of the field is neither success nor failed.
+ * Returns:
+ * - NULL if:
+ *  - There is no field called fieldname in the record;
+ *  - The value of the field is neither success nor failed.
  */
 static token_t *
 generate_proto_token_return(const struct linau_record *record,
@@ -2578,8 +2578,6 @@ generate_proto_token_return(const struct linau_record *record,
 	const char *fieldvalue;
 	token_t *tok;
 	int retvalue;
-
-	PJDLOG_ASSERT(record != NULL);
 
 	if (!linau_record_exists_field(record, fieldname))
 		return (NULL);
@@ -2595,7 +2593,11 @@ generate_proto_token_return(const struct linau_record *record,
 		return (NULL);
 
 	tok = au_to_return32(0, retvalue);
-	PJDLOG_VERIFY(tok != NULL);
+	/*
+	 * STYLE: (NOTE) au_token(3) functions fail rarely so let's use
+	 * PJDLOG_ASSERT instead of PJDLOG_VERIFY.
+	 */
+	PJDLOG_ASSERT(tok != NULL);
 
 	return (tok);
 }
@@ -2611,14 +2613,13 @@ generate_proto_token_text_from_field(const struct linau_record *record,
 	const char *msg;
 	token_t *tok;
 
-	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(fieldname != NULL);
 
 	if (!linau_record_exists_field(record, fieldname))
 		return (NULL);
 
 	buf = sbuf_new_auto();
-	PJDLOG_VERIFY(buf != NULL);
+	PJDLOG_ASSERT(buf != NULL);
 
 	msg = linau_record_get_field(record, fieldname);
 	sbuf_printf(buf, "%s=%s", fieldname, msg);
@@ -2626,7 +2627,7 @@ generate_proto_token_text_from_field(const struct linau_record *record,
 	PJDLOG_VERIFY(sbuf_finish(buf) == 0);
 
 	tok = au_to_text(sbuf_data(buf));
-	PJDLOG_VERIFY(tok != NULL);
+	PJDLOG_ASSERT(tok != NULL);
 
 	sbuf_delete(buf);
 
@@ -2700,16 +2701,13 @@ linau_conv_is_valid_field_res(const char *field)
 /*
  * Validates whether a field is a a legal pid_t typedef (uint32_t).
  *
- * pid_t is an alias to int32_t this is why this function differs from
+ * pid_t is an alias of int32_t; this is why this function differs from
  * linau_conv_is_valid_uid.
  */
 static int
 linau_conv_is_valid_pid(const char *field)
 {
 	uint32_t num;
-
-	PJDLOG_ASSERT(field != NULL);
-	PJDLOG_ASSERT(strchr(field, '\0') != NULL);
 
 	if (string_to_uint32(&num, field) && 0 <= (int32_t)num &&
 	    (int32_t)num <= INT32_MAX)
@@ -2726,9 +2724,6 @@ linau_conv_is_valid_uid(const char *field)
 {
 	uint32_t num;
 
-	PJDLOG_ASSERT(field != NULL);
-	PJDLOG_ASSERT(strchr(field, '\0') != NULL);
-
 	if (string_to_uint32(&num, field))
 		return (1);
 	else
@@ -2738,14 +2733,13 @@ linau_conv_is_valid_uid(const char *field)
 
 /*
  * Returns:
- * NULL, if the token would be written without any fields.  It might happen
+ * - NULL if the token would be written without any fields.  It might happen
  * if all the expected fields are missing (for example no there is no uid)
  * or invalid (for example pid=NONE).
  */
 static void
 write_token_process32(int aurd, const struct linau_record *record)
 {
-	/* STYLE: Sort the variables in the correct order. */
 	token_t *tok;
 	au_tid_t *tid;
 	size_t fieldscount;
@@ -2757,14 +2751,15 @@ write_token_process32(int aurd, const struct linau_record *record)
 	uid_t ruid;
 	au_asid_t sid;
 
-	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(aurd >= 0);
 
 	pjdlog_debug(3, "%s", __func__);
 
 	fieldscount = 0;
 
 	/* Audit ID.
-	 * XXX: It is NOT lcfield_auid. See auid definition.
+	 * XXX: It is NOT lcfield_auid. See auid definition in the Linux Audit
+	 * field dictionary.
 	 */
 	/* if (!process_id_field(aurd, record,  */
 	/*     LINAU_FIELD_NAME_AUID_STR, &lcfield_auid, &auid,  */
@@ -2828,9 +2823,9 @@ write_token_process32(int aurd, const struct linau_record *record)
 	 */
 	tid = calloc(1, sizeof(*tid));
 
-	if (fieldscount == 0)
+	if (fieldscount == 0) {
 		tok = NULL;
-	else {
+	} else {
 		tok = au_to_process32(auid, euid, egid, ruid, rgid, pid, sid,
 		    tid);
 		PJDLOG_VERIFY(tok != NULL);
@@ -2847,7 +2842,7 @@ write_token_return_from_res(int aurd, const struct linau_record *record)
 {
 	token_t *tok;
 
-	PJDLOG_ASSERT(record != NULL);
+	PJDLOG_ASSERT(aurd >= 0);
 
 	tok = generate_proto_token_return(record, LINAU_FIELD_NAME_RES_STR);
 
@@ -2865,12 +2860,9 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	const struct linau_conv_field *lcfield;
 	const struct linau_conv_token *lctoken;
 	const char *name;
-	size_t fi;
-	size_t ti;
+	size_t fi, ti;
 	int type;
 
-	PJDLOG_ASSERT(aurd >= 0);
-	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(lcrectype != NULL);
 	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
 
@@ -2880,8 +2872,8 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	fields = linau_record_clone_fields(record);
 
 	/*
-	 * Remove fields declared by tokens. This way it is possible to extract
-	 * unprocessed fields.
+	 * Remove the fields declared by tokens.  This way it is possible to
+	 * extract all the unprocessed fields.
 	 */
 	for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++) {
 		lctoken = lcrectype->lcrt_tokens[ti];
@@ -2894,7 +2886,7 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 		}
 	}
 
-	/* Iterate over unprocessed fields and write them as text tokens. */
+	/* Iterate over the unprocessed fields and write them as text tokens. */
 	cookie = NULL;
 	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
 		PJDLOG_ASSERT(type == NV_TYPE_STRING);
@@ -2914,8 +2906,6 @@ linau_conv_write_token_text(int aurd, const struct linau_record *record,
 	token_t *tok;
 
 	PJDLOG_ASSERT(aurd >= 0);
-	PJDLOG_ASSERT(record != NULL);
-	PJDLOG_ASSERT(name != NULL);
 
 	tok = generate_proto_token_text_from_field(record, name);
 
@@ -2929,8 +2919,6 @@ linau_conv_process_record(int aurd, const struct linau_record *record,
 {
 	size_t ti;
 
-	PJDLOG_ASSERT(aurd >= 0);
-	PJDLOG_ASSERT(record != NULL);
 	PJDLOG_ASSERT(lcrectype != NULL);
 	PJDLOG_ASSERT(lcrectype->lcrt_tokens != NULL);
 
@@ -2954,9 +2942,6 @@ linau_conv_process_record(int aurd, const struct linau_record *record,
 void
 linau_conv_to_au(int aurd, const struct linau_record *record, int typenum)
 {
-
-	PJDLOG_ASSERT(aurd >= 0);
-	PJDLOG_ASSERT(record != NULL);
 
 	switch (typenum) {
 	case LINAU_TYPE_UNDEFINED:
