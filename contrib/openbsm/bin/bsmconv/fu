@@ -116,7 +116,35 @@ fu_generate_linau_test_cases() {
         while [ -f "${DEST_DIR}${TYPE}-${NUM}.input" ]; do
             NUM=$((NUM+1))
         done
-        echo "$RECORD" > "${DEST_DIR}${TYPE}-${NUM}.input"
+        local TEST_CASE_NAME="$(printf "${DEST_DIR}${TYPE}-%06d.input" ${NUM})"
+        echo "$RECORD" > "${TEST_CASE_NAME}"
+    done < "$LOG_FILE"
+}
+
+# Parameters:
+# $1 - The Linux Audit log file to be splitted into files containing one
+#      record at a time.
+# $2 - The output directory. Must have a trailing
+#      slash ('/').
+fu_generate_unique_linau_test_cases() {
+    local LOG_FILE="$1"
+    local DEST_DIR="$2"
+    local RECORD
+
+    mkdir "${DEST_DIR}"
+    if [ $? -ne 0 ]; then
+        echo "Choose another directory"
+        exit 1
+    fi
+    if [ "$(echo -n "$DEST_DIR" | tail -c 1)" != '/' ]; then
+        echo "Provided directory doesn't have a trailing slash"
+        exit 1
+    fi
+    while read RECORD; do
+        local TYPE=$(echo "$RECORD" | cut -d' ' -f1 | cut -c 6-)
+        if [ ! -f "${DEST_DIR}${TYPE}.input" ]; then
+            echo "$RECORD" > "${DEST_DIR}${TYPE}.input"
+        fi
     done < "$LOG_FILE"
 }
 
@@ -125,6 +153,8 @@ cat <<-EOF >&1
 Usage: ${0##*/} <options>...
 
   gen <logfile> <dir> Generate a test set based on a provided log file
+  genuniq <logfile> <dir> Generate a test set of at most one record per a type
+                      based on a provided log file
   h                   Show this usage and exit
   m                   Make
   rp <test>           Run the test and pipe the output to praudit
@@ -148,6 +178,10 @@ while [ "$#" -gt 0 ]; do
         ;;
     gen)
         fu_generate_linau_test_cases "$1" "$2"
+        shift 2
+        ;;
+    genuniq)
+        fu_generate_unique_linau_test_cases "$1" "$2"
         shift 2
         ;;
     m|make)
