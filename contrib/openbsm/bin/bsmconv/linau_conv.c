@@ -523,10 +523,10 @@ const static struct linau_conv_field lcfield_msg = {
 /*         LINAU_FIELD_NAME_NARGS, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_name = { */
-/*         LINAU_FIELD_NAME_NAME, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_name = {
+	LINAU_FIELD_NAME_NAME,
+	linau_conv_is_encoded
+};
 /* const static struct linau_conv_field lcfield_nametype = { */
 /*         LINAU_FIELD_NAME_NAMETYPE, */
 /*         NULL */
@@ -1024,12 +1024,16 @@ const static struct linau_conv_field lcfield_ses = {
  *   (see au_token(3)).
  */
 /*
- * This token is dedicated to the CWD records at the moment.
+ * This token is assuming that cwd and name fields does not come in one record.
+ * See the write_token_path function to see which token is treated as the
+ * primary source of the path in case there are both the cwd and the name
+ * fields.
  */
 const static struct linau_conv_token lctoken_path = {
 	write_token_path,
 	{
 		&lcfield_cwd,
+		&lcfield_name,
 		NULL
 	}
 };
@@ -2746,19 +2750,51 @@ linau_conv_is_valid_uid(const char *field)
 static void
 write_token_path(int aurd, const struct linau_record *record)
 {
-	const char *fieldval;
+	const char *cwdfieldval;
+	const char *namefieldval;
 	token_t *tok;
 
 	PJDLOG_ASSERT(aurd >= 0);
 
-	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_CWD_STR))
-		return;
-	fieldval = linau_record_get_field(record, LINAU_FIELD_NAME_CWD_STR);
-	if (!lcfield_cwd.lcf_validate(fieldval))
-		return;
-	tok = au_to_path(fieldval);
-	PJDLOG_ASSERT(tok != NULL);
-	PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+	if (linau_record_exists_field(record, LINAU_FIELD_NAME_CWD_STR)) {
+		cwdfieldval = linau_record_get_field(record,
+		    LINAU_FIELD_NAME_CWD_STR);
+	} else {
+		cwdfieldval = NULL;
+	}
+	if (linau_record_exists_field(record, LINAU_FIELD_NAME_NAME_STR)) {
+		namefieldval = linau_record_get_field(record,
+		    LINAU_FIELD_NAME_NAME_STR);
+	} else {
+		namefieldval = NULL;
+	}
+
+	if (cwdfieldval != NULL) {
+		if (lcfield_cwd.lcf_validate(cwdfieldval)) {
+			tok = au_to_path(cwdfieldval);
+			PJDLOG_ASSERT(tok != NULL);
+			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+			if (namefieldval != NULL) {
+				tok = generate_proto_token_text_from_field(
+				    record, LINAU_FIELD_NAME_NAME_STR);
+				PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+			}
+		} else if (namefieldval != NULL &&
+		    lcfield_name.lcf_validate(namefieldval)) {
+			tok = au_to_path(namefieldval);
+			PJDLOG_ASSERT(tok != NULL);
+			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+
+			tok = generate_proto_token_text_from_field(record,
+			    LINAU_FIELD_NAME_CWD_STR);
+			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+		}
+	} else if (namefieldval != NULL &&
+	    lcfield_name.lcf_validate(namefieldval)) {
+		tok = au_to_path(namefieldval);
+		PJDLOG_ASSERT(tok != NULL);
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+	}
 }
 
 /*
