@@ -36,6 +36,15 @@ statements.  Here an example of the desired style:
         h();
     }
 
+    if (!fun_returning_bool) {
+        f();
+    } else if (fun_returning_bool2) {
+        this_is_a_really_long_function_name(withsolongparameters,
+	    thatthelinehastobebroken);
+    } else {
+	g();
+    }
+
     if (f() == 0)
         return (1);
     else
