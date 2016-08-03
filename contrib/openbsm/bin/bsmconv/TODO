@@ -12,3 +12,5 @@ cases.
 
 - [ ] Improve the conversion of the LOGIN type record. See an example
 in tests/fields.centos.v265/LOGIN.input.
+- [ ] Improve the cwd field value validation. At the moment it checks if
+the value is _encoded_. Should it check if the path is actually a valid path?

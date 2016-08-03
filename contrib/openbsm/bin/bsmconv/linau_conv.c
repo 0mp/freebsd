@@ -67,6 +67,7 @@ static int linau_conv_is_valid_uid(const char *field);
 /*
  * The lct_write functions for the linau_conv_token structure.
  */
+static void write_token_path(int aurd, const struct linau_record *record);
 static void write_token_process32(int aurd, const struct linau_record *record);
 static void write_token_return_from_res(int aurd,
     const struct linau_record *record);
@@ -242,10 +243,10 @@ const static struct linau_conv_field lcfield_auid = {
 /*         LINAU_FIELD_NAME_COMPAT, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_cwd = { */
-/*         LINAU_FIELD_NAME_CWD, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_cwd = {
+	LINAU_FIELD_NAME_CWD,
+	linau_conv_is_encoded
+};
 /* const static struct linau_conv_field lcfield_daddr = { */
 /*         LINAU_FIELD_NAME_DADDR, */
 /*         NULL */
@@ -1023,6 +1024,16 @@ const static struct linau_conv_field lcfield_ses = {
  *   (see au_token(3)).
  */
 /*
+ * This token is dedicated to the CWD records at the moment.
+ */
+const static struct linau_conv_token lctoken_path = {
+	write_token_path,
+	{
+		&lcfield_cwd,
+		NULL
+	}
+};
+/*
  * XXX: I cannot distinguish when it is better to use the process token
  * and when the subject token.  I'll use the process token whenever I hesitate.
  */
@@ -1386,7 +1397,10 @@ const static struct linau_conv_record_type lcrectype_daemon_start = {
 const static struct linau_conv_record_type lcrectype_daemon_end = {
 	LINAU_TYPE_DAEMON_END,
 	LINAU_TYPE_DAEMON_END_STR,
-	{ NULL }
+	{
+		&lctoken_process32,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_daemon_abort = {
 	LINAU_TYPE_DAEMON_ABORT,
@@ -1470,7 +1484,10 @@ const static struct linau_conv_record_type lcrectype_sockaddr = {
 const static struct linau_conv_record_type lcrectype_cwd = {
 	LINAU_TYPE_CWD,
 	LINAU_TYPE_CWD_STR,
-	{ NULL }
+	{
+		&lctoken_path,
+		NULL
+	}
 };
 /* const static struct linau_conv_record_type lcrectype_fs_inode = { */
 /*         LINAU_TYPE_FS_INODE, */
@@ -2726,6 +2743,23 @@ linau_conv_is_valid_uid(const char *field)
 		return (0);
 }
 
+static void
+write_token_path(int aurd, const struct linau_record *record)
+{
+	const char *fieldval;
+	token_t *tok;
+
+	PJDLOG_ASSERT(aurd >= 0);
+
+	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_CWD_STR))
+		return;
+	fieldval = linau_record_get_field(record, LINAU_FIELD_NAME_CWD_STR);
+	if (!lcfield_cwd.lcf_validate(fieldval))
+		return;
+	tok = au_to_path(fieldval);
+	PJDLOG_ASSERT(tok != NULL);
+	PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+}
 
 /*
  * Returns:
