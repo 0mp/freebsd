@@ -2769,24 +2769,14 @@ write_token_path(int aurd, const struct linau_record *record)
 		namefieldval = NULL;
 	}
 
-	if (cwdfieldval != NULL) {
-		if (lcfield_cwd.lcf_validate(cwdfieldval)) {
-			tok = au_to_path(cwdfieldval);
-			PJDLOG_ASSERT(tok != NULL);
-			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
-			if (namefieldval != NULL) {
-				tok = generate_proto_token_text_from_field(
-				    record, LINAU_FIELD_NAME_NAME_STR);
-				PJDLOG_VERIFY(au_write(aurd, tok) == 0);
-			}
-		} else if (namefieldval != NULL &&
-		    lcfield_name.lcf_validate(namefieldval)) {
-			tok = au_to_path(namefieldval);
-			PJDLOG_ASSERT(tok != NULL);
-			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+	if (cwdfieldval != NULL && lcfield_cwd.lcf_validate(cwdfieldval)) {
+		tok = au_to_path(cwdfieldval);
+		PJDLOG_ASSERT(tok != NULL);
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 
+		if (namefieldval != NULL) {
 			tok = generate_proto_token_text_from_field(record,
-			    LINAU_FIELD_NAME_CWD_STR);
+			    LINAU_FIELD_NAME_NAME_STR);
 			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 		}
 	} else if (namefieldval != NULL &&
@@ -2794,6 +2784,12 @@ write_token_path(int aurd, const struct linau_record *record)
 		tok = au_to_path(namefieldval);
 		PJDLOG_ASSERT(tok != NULL);
 		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+
+		if (cwdfieldval != NULL) {
+			tok = generate_proto_token_text_from_field(record,
+					LINAU_FIELD_NAME_CWD_STR);
+			PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+		}
 	}
 }
 
