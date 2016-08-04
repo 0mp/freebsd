@@ -7,6 +7,10 @@ cases.
 
 - [x] Refactor the while loop in process_events() in bsmconv.c.
 - [ ] Standardize the naming convention of static functions.
+- [ ] Allign the protypes of static functions (as in style(9)).
+- [ ] Should I use protected names (see style(9))?
+- [ ] Find out if you should treat int* as an integer or as a pointer as you
+sort the variable declarations in functions (see style(9)).
 
 # Conversion
 
