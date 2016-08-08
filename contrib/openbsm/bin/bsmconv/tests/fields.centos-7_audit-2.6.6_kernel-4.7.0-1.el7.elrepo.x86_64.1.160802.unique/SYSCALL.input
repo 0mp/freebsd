@@ -1,0 +1,1 @@
+type=SYSCALL msg=audit(1470138233.091:7627): arch=c000003e syscall=2 success=yes exit=3 a0=7f98c5c1a5b0 a1=80000 a2=7f98c5e55768 a3=21000 items=1 ppid=16400 pid=16407 auid=1000 uid=0 gid=0 euid=0 suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=pts1 ses=6 comm="gawk" exe="/usr/bin/gawk" subj=unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 key="0mp_watch_files_in_usr"
