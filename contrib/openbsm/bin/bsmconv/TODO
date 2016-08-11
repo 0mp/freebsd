@@ -10,6 +10,10 @@ the value is _encoded_. Should it check if the path is actually a valid path?
 - [ ] Update the `au_token(3)` man page since it is super outdated.
  - `au_to_attr` has invalid arguements.
  - `man au_to_attr` doesn't open `au_token(3)`.
+- [ ] Why isn't the pointer parameters of the au_to_* functions const? See
+`sys/security/audit/bsm_token.c:au_to_exec_args` for example.
+ For example `au_to_exec_args` does not modify the parameters; as the function
+ uses `memcpy(3)` it does not _consume_ the parameters.
 
 # Style & refactoring
 
