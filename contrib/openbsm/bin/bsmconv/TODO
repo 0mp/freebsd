@@ -28,4 +28,3 @@ sort the variable declarations in functions (see style(9)).
 
 - [ ] Test if the library properly converts pid fields and uid fields for edge
 cases.
-

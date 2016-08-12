@@ -485,9 +485,9 @@ linau_record_parse_type(const char *buf)
 struct linau_record *
 linau_record_fetch(FILE *fp)
 {
+	char rawbuf[BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE];
 	char *data;
 	struct sbuf *inbuf;
-	char rawbuf[BSMCONV_LINAU_RECORD_INPUT_BUFFER_SIZE];
 	struct linau_record *record;
 	size_t buflen;
 
