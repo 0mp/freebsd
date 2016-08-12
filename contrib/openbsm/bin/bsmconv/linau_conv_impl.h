@@ -1,5 +1,15 @@
 #ifndef _LINAU_CONV_IMPL_H_
 #define _LINAU_CONV_IMPL_H_
+
+/*
+ * The types of linau_conv_field objects.  TYPE_STANDARD is reserved for those
+ * fields which have a predefined name like "msg", "uid" or "a0".  TYPE_REGEX
+ * on the other hand is dedicated to those rare fields which name is defined
+ * by a regex like "a[[:digit:]]+]_len".
+ */
+#define LINAU_CONV_FIELD_TYPE_STANDARD	1
+#define	LINAU_CONV_FIELD_TYPE_REGEX	2
+
 #define LINAU_TYPE_UNDEFINED_STR		""
 /* #define	LINAU_TYPE_GET_STR			"GET" */
 /* #define	LINAU_TYPE_SET_STR			"SET" */

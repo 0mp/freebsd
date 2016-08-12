@@ -22,7 +22,10 @@
 
 struct linau_conv_field {
 	int	lcf_id;
-	int	(*lcf_validate)(const char *);
+	union {
+		int (*lcf_validate)(const char *);
+		nvlist_t *(*lcf_match)(const struct linau_record *);
+	};
 };
 
 struct linau_conv_token {
@@ -63,7 +66,12 @@ static int linau_conv_is_valid_field_res(const char *field);
 /* The validators of the whole groups of fields. */
 static int linau_conv_is_valid_pid(const char *field);
 static int linau_conv_is_valid_uid(const char *field);
-
+/*
+ * The lcf_match regex matchers for regex-defined fields like
+ * "a[:digit:+](\[[:digit:]+\])?".
+ */
+static nvlist_t *linau_conv_match_a_execve_syscall(
+    const struct linau_record *record);
 /*
  * The lct_write functions for the linau_conv_token structure.
  */
@@ -106,11 +114,10 @@ static void linau_conv_write_token_text(int aurd,
 /*         LINAU_FIELD_NAME_A3, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_a_execve_syscall = { */
-/*         [> TODO: This one needs special attention. <] */
-/*         LINAU_FIELD_NAME_A_EXECVE_SYSCALL, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_a_execve_syscall = {
+	LINAU_FIELD_NAME_A_EXECVE_SYSCALL,
+	.lcf_match = linau_conv_match_a_execve_syscall
+};
 /* const static struct linau_conv_field lcfield_acct = { */
 /*         LINAU_FIELD_NAME_ACCT, */
 /*         NULL */
@@ -161,7 +168,7 @@ static void linau_conv_write_token_text(int aurd,
 /* }; */
 const static struct linau_conv_field lcfield_auid = {
 	LINAU_FIELD_NAME_AUID,
-	linau_conv_is_valid_uid
+	.lcf_validate = linau_conv_is_valid_uid
 };
 /* const static struct linau_conv_field lcfield_banners = { */
 /*         LINAU_FIELD_NAME_BANNERS, */
@@ -245,7 +252,7 @@ const static struct linau_conv_field lcfield_auid = {
 /* }; */
 const static struct linau_conv_field lcfield_cwd = {
 	LINAU_FIELD_NAME_CWD,
-	linau_conv_is_encoded
+	.lcf_validate = linau_conv_is_encoded
 };
 /* const static struct linau_conv_field lcfield_daddr = { */
 /*         LINAU_FIELD_NAME_DADDR, */
@@ -289,7 +296,7 @@ const static struct linau_conv_field lcfield_cwd = {
 /* }; */
 const static struct linau_conv_field lcfield_egid = {
 	LINAU_FIELD_NAME_EGID,
-	linau_conv_is_valid_uid
+	.lcf_validate = linau_conv_is_valid_uid
 };
 /* const static struct linau_conv_field lcfield_enforcing = { */
 /*         LINAU_FIELD_NAME_ENFORCING, */
@@ -301,7 +308,7 @@ const static struct linau_conv_field lcfield_egid = {
 /* }; */
 const static struct linau_conv_field lcfield_euid = {
 	LINAU_FIELD_NAME_EUID,
-	linau_conv_is_valid_uid
+	.lcf_validate = linau_conv_is_valid_uid
 };
 /* const static struct linau_conv_field lcfield_exe = { */
 /*         LINAU_FIELD_NAME_EXE, */
@@ -461,7 +468,7 @@ const static struct linau_conv_field lcfield_euid = {
 /* }; */
 const static struct linau_conv_field lcfield_key = {
 	LINAU_FIELD_NAME_KEY,
-	linau_conv_is_encoded
+	.lcf_validate = linau_conv_is_encoded
 };
 /* const static struct linau_conv_field lcfield_kind = { */
 /*         LINAU_FIELD_NAME_KIND, */
@@ -485,7 +492,7 @@ const static struct linau_conv_field lcfield_key = {
 /* }; */
 const static struct linau_conv_field lcfield_list = {
 	LINAU_FIELD_NAME_LIST,
-	linau_conv_is_numeric
+	.lcf_validate = linau_conv_is_numeric
 };
 /* const static struct linau_conv_field lcfield_mac = { */
 /*         LINAU_FIELD_NAME_MAC, */
@@ -517,7 +524,7 @@ const static struct linau_conv_field lcfield_list = {
 /* }; */
 const static struct linau_conv_field lcfield_msg = {
 	LINAU_FIELD_NAME_MSG,
-	linau_conv_is_alphanumeric
+	.lcf_validate = linau_conv_is_alphanumeric
 };
 /* const static struct linau_conv_field lcfield_nargs = { */
 /*         LINAU_FIELD_NAME_NARGS, */
@@ -525,7 +532,7 @@ const static struct linau_conv_field lcfield_msg = {
 /* }; */
 const static struct linau_conv_field lcfield_name = {
 	LINAU_FIELD_NAME_NAME,
-	linau_conv_is_encoded
+	.lcf_validate = linau_conv_is_encoded
 };
 /* const static struct linau_conv_field lcfield_nametype = { */
 /*         LINAU_FIELD_NAME_NAMETYPE, */
@@ -749,7 +756,7 @@ const static struct linau_conv_field lcfield_name = {
 /* }; */
 const static struct linau_conv_field lcfield_op = {
 	LINAU_FIELD_NAME_OP,
-	linau_conv_is_alphanumeric
+	.lcf_validate = linau_conv_is_alphanumeric
 };
 /* const static struct linau_conv_field lcfield_opid = { */
 /*         LINAU_FIELD_NAME_OPID, */
@@ -797,7 +804,7 @@ const static struct linau_conv_field lcfield_op = {
 /* }; */
 const static struct linau_conv_field lcfield_pid = {
 	LINAU_FIELD_NAME_PID,
-	linau_conv_is_valid_pid
+	.lcf_validate = linau_conv_is_valid_pid
 };
 /* const static struct linau_conv_field lcfield_ppid = { */
 /*         LINAU_FIELD_NAME_PPID, */
@@ -841,7 +848,7 @@ const static struct linau_conv_field lcfield_pid = {
 /* }; */
 const static struct linau_conv_field lcfield_res = {
 	LINAU_FIELD_NAME_RES,
-	linau_conv_is_valid_field_res
+	.lcf_validate = linau_conv_is_valid_field_res
 };
 /* const static struct linau_conv_field lcfield_resrc = { */
 /*         LINAU_FIELD_NAME_RESRC, */
@@ -893,7 +900,7 @@ const static struct linau_conv_field lcfield_res = {
 /* }; */
 const static struct linau_conv_field lcfield_ses = {
 	LINAU_FIELD_NAME_SES,
-	linau_conv_is_valid_pid
+	.lcf_validate = linau_conv_is_valid_pid
 };
 /* const static struct linau_conv_field lcfield_seuser = { */
 /*         LINAU_FIELD_NAME_SEUSER, */
@@ -2079,16 +2086,9 @@ field_name_from_field_name_id(int fieldnameid)
 	case LINAU_FIELD_NAME_A3:
 		return (LINAU_FIELD_NAME_A3_STR);
 	case LINAU_FIELD_NAME_A_EXECVE_SYSCALL:
-		/*
-		 * TODO: This case should be taken care of separately
-		 * because it doesn't fit a single field name. This
-		 * field's name can be anything that fits the
-		 * a[[:digit:]+]\[*\] regex.
-		 * UPDATE: 2016.08.01 - An email has been sent to the Linux
-		 * Audit mailing list about this regex.
-		 */
-		PJDLOG_ABORT("LINAU_FIELD_NAME_A_EXECVE_SYSCALL is not "
-		    "implemented yet");
+		PJDLOG_ABORT("Requesting the value of the "
+		    "LINAU_FIELD_NAME_A_EXECVE_SYSCALL field is not allowed "
+		    "because this is a regex field");
 	case LINAU_FIELD_NAME_ACCT:
 		return (LINAU_FIELD_NAME_ACCT_STR);
 	case LINAU_FIELD_NAME_ACL:
@@ -2542,9 +2542,487 @@ field_name_from_field_name_id(int fieldnameid)
 	case LINAU_FIELD_NAME_WATCH:
 		return (LINAU_FIELD_NAME_WATCH_STR);
 	default:
+		/* NOTREACHED */
 		PJDLOG_ABORT("Field name should be marked as "
-		    "LINAU_FIELD_NAME_UNDEFINED if "
-		    "it is not a standard name");
+		    "LINAU_FIELD_NAME_UNDEFINED if it is not a standard name");
+	}
+}
+
+static int
+field_type_from_field_name_id(int fieldnameid)
+{
+
+	switch(fieldnameid) {
+	case LINAU_FIELD_NAME_UNDEFINED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_A0:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_A1:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_A2:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_A3:
+		return (LINAU_CONV_FIELD_TYPE_STANDARD);
+	case LINAU_FIELD_NAME_A_EXECVE_SYSCALL:
+		return (LINAU_CONV_FIELD_TYPE_REGEX);
+	case LINAU_FIELD_NAME_ACCT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ACL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ACTION:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ADDED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ADDR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_APPARMOR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ARCH:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ARGC:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_AUDIT_BACKLOG_WAIT_TIME:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_AUDIT_ENABLED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_AUDIT_FAILURE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_AUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_BANNERS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_BOOL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_BUS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAPABILITY:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_FE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_FI:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_FP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_FVER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_PE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_PI:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CAP_PP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CATEGORY:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CGROUP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CHANGED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CIPHER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CLASS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CMD:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CODE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_COMM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_COMPAT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_CWD:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DADDR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DATA:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DEFAULT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DEV:
+		/* FALLTHROUGH */
+	/* case LINAU_FIELD_NAME2_DEV: */
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DEVICE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DIR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DIRECTION:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DMAC:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_DPORT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_EGID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ENFORCING:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ENTRIES:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_EUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_EXE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_EXIT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FAM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FAMILY:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FD:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FILE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FLAGS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FEATURE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FI:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FP:
+		/* FALLTHROUGH */
+	/* case LINAU_FIELD_NAME_FP2: */
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FORMAT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FSGID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FSUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_FVER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_GID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_GRANTORS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_GRP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_HOOK:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_HOSTNAME:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ICMP_TYPE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IGID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IMG:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_INIF:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IPID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_INO:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_INODE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_INODE_GID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_INODE_UID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_INVALID_CONTEXT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IOCTLCMD:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IPX:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ITEM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ITEMS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_IUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_KERNEL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_KEY:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_KIND:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_KSIZE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_LADDR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_LEN:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_LPORT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_LIST:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MAC:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MACPROTO:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MAJ:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MAJOR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MINOR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MODE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MODEL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_MSG:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NARGS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NAME:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NAMETYPE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NET:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_CHARDEV:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_DISK:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_ENABLED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_FS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_GID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_LEVEL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_LOCK:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_LOG_PASSWD:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_MEM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_NET:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_PE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_PI:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_PP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_RANGE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_RNG:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_ROLE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_SEUSER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NEW_VCPU:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NLNK_FAM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NLNK_GRP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_NLNK_PID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OAUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OBJ:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OBJ_GID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OBJ_UID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OFLAG:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OGID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OCOMM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD:
+		/* FALLTHROUGH */
+	/* case LINAU_FIELD_NAME2_OLD: */
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_AUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_CHARDEV:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_DISK:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_ENABLED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_ENFORCING:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_FS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_LEVEL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_LOCK:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_LOG_PASSWD:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_MEM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_NET:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_PE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_PI:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_PP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_PROM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_RANGE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_RNG:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_ROLE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_SES:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_SEUSER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_VAL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OLD_VCPU:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OP:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OPID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OSES:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_OUTIF:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PARENT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PATH:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PERM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PERM_MASK:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PERMISSIVE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PFS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PPID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PRINTER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PROM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PROCTITLE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_PROTO:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_QBYTES:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_RANGE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_RDEV:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_REASON:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_REMOVED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_RES:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_RESRC:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_RESULT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_ROLE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_RPORT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SADDR:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SAUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SCONTEXT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SELECTED:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SEPERM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SEQNO:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SEPERMS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SERESULT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SES:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SEUSER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SGID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SIG:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SIGEV_SIGNO:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SMAC:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SPID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SPORT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_STATE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SUBJ:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SUCCESS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_SYSCALL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_TABLE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_TCLASS:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_TCONTEXT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_TERMINAL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_TTY:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_TYPE:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_UID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_UNIT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_URI:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_USER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_UUID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_VAL:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_VER:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_VIRT:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_VM:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_VM_CTX:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_VM_PID:
+		/* FALLTHROUGH */
+	case LINAU_FIELD_NAME_WATCH:
+		return (LINAU_CONV_FIELD_TYPE_STANDARD);
+	default:
+		/* NOTREACHED */
+		PJDLOG_ABORT("Field name should be marked as "
+		    "LINAU_FIELD_NAME_UNDEFINED if it is not a standard name; "
+		    "otherwise it is impossible to determine the type of "
+		    "its linau_conv_field structure");
 	}
 }
 
@@ -2698,6 +3176,31 @@ linau_conv_is_numeric(const char *field)
 	return (1);
 }
 
+/*
+ * An example of a valid mode is 0100644. Assume that the length of this
+ * field is always 7.
+ *
+ * STYLE: I don't know how to initialize the len variable after the declaration.
+ */
+static int
+linau_conv_is_valid_field_mode(const char *field)
+{
+	const size_t len = 7;
+	size_t ii;
+
+	PJDLOG_ASSERT(field != NULL);
+	PJDLOG_ASSERT(strchr(field, '\0') != NULL);
+
+	if (strlen(field) != len)
+		return (0);
+
+	for (ii = 0; ii < len; ii++)
+		if (!isdigit(field[ii]))
+			return (0);
+
+	return (1);
+}
+
 static int
 linau_conv_is_valid_field_res(const char *field)
 {
@@ -2745,6 +3248,126 @@ linau_conv_is_valid_uid(const char *field)
 		return (0);
 }
 
+/*
+ * Returns all the fields which match "a[[:digit:]+](\[[:digit:]+\])?" as
+ * an nvlist. Returns an empty nvlist if there are no such fields.
+ */
+static nvlist_t *
+linau_conv_match_a_execve_syscall(const struct linau_record *record)
+{
+	void *cookie;
+	nvlist_t *fields;
+	const char *name;
+	size_t ii;
+	int type;
+
+	pjdlog_debug(5, "%s", __func__);
+
+	fields = linau_record_clone_fields(record);
+
+	cookie = NULL;
+	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
+		PJDLOG_ASSERT(type == NV_TYPE_STRING);
+		pjdlog_debug(5, "Inside the loop with name (%s)", name);
+		if (name[0] == 'a') {
+			ii = 1;
+			while (isdigit(name[ii]))
+				ii++;
+			if (name[ii] == '\0') {
+				continue;
+			} else if (ii != 1 && name[ii] == '[') {
+				while (isdigit(name[ii]))
+					ii++;
+				if (name[ii] == ']' && strlen(name) == ii)
+					continue;
+			}
+		}
+		pjdlog_debug(5, "Fail name (%s) ", name);
+		/* nvlist_free_string(fields, name); */
+	}
+	pjdlog_debug(5, "After the loop", __func__);
+
+	name = LINAU_FIELD_NAME_A0_STR;
+	if (nvlist_exists_string(fields, name))
+		nvlist_free_string(fields, name);
+	name = LINAU_FIELD_NAME_A1_STR;
+	if (nvlist_exists_string(fields, name))
+		nvlist_free_string(fields, name);
+	name = LINAU_FIELD_NAME_A2_STR;
+	if (nvlist_exists_string(fields, name))
+		nvlist_free_string(fields, name);
+	name = LINAU_FIELD_NAME_A3_STR;
+	if (nvlist_exists_string(fields, name))
+		nvlist_free_string(fields, name);
+
+	pjdlog_debug(5, "End %s", __func__);
+
+	return (fields);
+}
+
+/*
+ * Current fields: mode, ouid, ogid.
+ */
+static void
+write_token_attribute(int aurd, const struct linau_record *record)
+{
+	(void)aurd;
+	(void)record;
+	/* const char *fieldval; */
+	/* const char *fieldname; */
+	/* token_t *tok; */
+	/* struct vnode_au_info *vni; */
+	/* token_t *tok; */
+	/* size_t fieldscount; */
+	/* uint32_t num; */
+
+	/* PJDLOG_ASSERT(aurd >= 0); */
+
+	/* pjdlog_debug(3, "%s", __func__); */
+
+	/* vni = calloc(1, sizeof(*vni)); */
+	/* PJDLOG_ASSERT(vni != NULL); */
+	/* fieldscount = 0; */
+
+	/* fieldname = LINAU_FIELD_NAME_MODE_STR; */
+	/* if (linau_record_exists_field(record, fieldname)) { */
+	/*         fieldval = linau_record_get_field(record, fieldname); */
+	/*         if (lcfield_mode.lcf_validate(fieldval)) { */
+	/*                 PJDLOG_VERIFY(string_to_uint32(&num, fieldval[3])); */
+	/*                 vni->vn_mode = (mode_t)num; */
+	/*                 pjdlog_debug(3, "vn_mode (%u)", vni->vn_mode); */
+	/*                 fieldscount++; */
+	/*         } */
+	/* } */
+
+	/* if (fieldscount > 0) { */
+	/*         tok = au_to_attr32(vni); */
+	/*         PJDLOG_ASSERT(tok != NULL); */
+	/*         PJDLOG_VERIFY(au_write(aurd, tok) == 0); */
+	/* } */
+
+	/* pjdlog_debug(3, "End %s", __func__); */
+}
+
+static void
+write_token_exec_args(int aurd, const struct linau_record *record)
+{
+	/* token_t *tok; */
+
+	PJDLOG_ASSERT(aurd >= 0);
+	(void)record;
+
+	/* If there is no argc field then something must be broken. */
+	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_ARGC_STR)) {
+		return;
+	}
+}
+
+/*
+ * STYLE: It is worth reconsidering if the name of this function should be
+ * write_token_path. That is because it does not write a path token only but
+ * a text token as well in some cases.
+ */
 static void
 write_token_path(int aurd, const struct linau_record *record)
 {
@@ -2920,7 +3543,9 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	const struct linau_conv_field *lcfield;
 	const struct linau_conv_token *lctoken;
 	const char *name;
+	nvlist_t *regexfields;
 	size_t fi, ti;
+	int fieldid;
 	int type;
 
 	PJDLOG_ASSERT(lcrectype != NULL);
@@ -2939,13 +3564,36 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 		lctoken = lcrectype->lcrt_tokens[ti];
 		for (fi = 0; lctoken->lct_fields[fi] != NULL; fi++) {
 			lcfield = lctoken->lct_fields[fi];
-			fieldname = field_name_from_field_name_id(
-			    lcfield->lcf_id);
-			if (!nvlist_exists_string(fields, fieldname))
-				continue;
-			fieldval = nvlist_get_string(fields, fieldname);
-			if (lcfield->lcf_validate(fieldval))
-				free(nvlist_take_string(fields, fieldname));
+			fieldid = lcfield->lcf_id;
+			switch (field_type_from_field_name_id(fieldid)) {
+			case LINAU_CONV_FIELD_TYPE_STANDARD:
+				fieldname = field_name_from_field_name_id(
+				    fieldid);
+				if (!nvlist_exists_string(fields, fieldname))
+					continue;
+				fieldval = nvlist_get_string(fields, fieldname);
+				if (lcfield->lcf_validate(fieldval))
+					nvlist_free_string(fields, fieldname);
+				break;
+			case LINAU_CONV_FIELD_TYPE_REGEX:
+				pjdlog_debug(4, "Processing a regex field");
+				regexfields = lcfield->lcf_match(record);
+				/*
+				 * XXX: There is no validation of the values
+				 * of the regex fields.
+				 */
+				cookie = NULL;
+				while ((name = nvlist_next(regexfields, &type,
+				    &cookie)) != NULL) {
+					PJDLOG_ASSERT(type == NV_TYPE_STRING);
+					/*
+					 * TODO: Free this string.
+					 * 0mphere
+					 */
+					/* nvlist_free_string(regexfields, name); */
+				}
+				break;
+			}
 		}
 	}
 
