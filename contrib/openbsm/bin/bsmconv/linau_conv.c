@@ -20,11 +20,17 @@
 #include "linau.h"
 #include "pjdlog.h"
 
+#define	LINAU_CONV_FIELD_A_BUFFER_SIZE	64
+
+/*
+ * STYLE: How to break the line in the union declaration below?
+ */
 struct linau_conv_field {
 	int	lcf_id;
 	union {
 		int (*lcf_validate)(const char *);
-		nvlist_t *(*lcf_match)(const struct linau_record *);
+		struct linau_string_queue *(*lcf_match)(const struct
+		    linau_record *);
 	};
 };
 
@@ -39,55 +45,97 @@ struct linau_conv_record_type {
 	const struct linau_conv_token	*lcrt_tokens[];
 };
 
+struct linau_string_queue_entry {
+	char					*lsqe_str;
+	STAILQ_ENTRY(linau_string_queue_entry)	 lsqe_entries;
+};
+
+struct linau_string_queue {
+	STAILQ_HEAD(, linau_string_queue_entry)	lsq_head;
+};
+
+/*
+ * The linau_string_queue interface.
+ */
+static struct linau_string_queue	*linau_string_queue_init(void);
+static void				 linau_string_queue_add(
+					    struct linau_string_queue *queue,
+					    const char *str);
+
 /*
  * Helper functions.
  */
-static const char *field_name_from_field_name_id(int fieldnameid);
-static bool process_id_field(const struct linau_record *record,
-    const char *fieldname, const struct linau_conv_field *lcfield,
-    uint32_t *idp, size_t *fieldscountp);
+static size_t		 add_regex_field_a(const struct linau_record *record,
+			    size_t anum, struct linau_string_queue *queue);
+static size_t		 add_regex_field_a_ex(const struct linau_record *record,
+			    size_t anum, struct linau_string_queue *queue);
+static const char	*field_name_from_field_name_id(int fieldnameid);
+static int		 field_type_from_field_name_id(int fieldnameid);
 /*
  * STYLE: This function might belong to the token generating functions' section.
  */
-static token_t *generate_proto_token_text_from_field(
-    const struct linau_record *record, const char *fieldname);
-static token_t *generate_proto_token_return(const struct linau_record *record,
-    const char *fieldname);
+static token_t		*generate_proto_token_return(
+			    const struct linau_record *record,
+			    const char *fieldname);
+static token_t		*generate_proto_token_text_from_field(
+			    const struct linau_record *record,
+			    const char *fieldname);
+static size_t		 match_regex_field_a(const struct linau_record *record,
+			    size_t anum, struct linau_string_queue *queue);
+static size_t		 match_regex_field_a_ex(
+			    const struct linau_record *record, size_t anum,
+			    struct linau_string_queue *queue);
+static bool		 process_a_field(const struct linau_record *record,
+			    const char *fieldname,
+			    const struct linau_conv_field *lcfield,
+			    struct linau_string_queue *queue);
+static bool		 process_id_field(const struct linau_record *record,
+			    const char *fieldname,
+			    const struct linau_conv_field *lcfield,
+			    uint32_t *idp, size_t *fieldscountp);
+
 
 /*
  * The lcf_validate validators for the linau_conv_field structure.
  */
 /* The standard validators. */
-static int linau_conv_is_alphanumeric(const char *field);
-static int linau_conv_is_encoded(const char *field);
-static int linau_conv_is_numeric(const char *field);
+static int	linau_conv_is_alphanumeric(const char *field);
+static int	linau_conv_is_encoded(const char *field);
+static int	linau_conv_is_numeric(const char *field);
 /* The field specific validators. */
-static int linau_conv_is_valid_field_res(const char *field);
+static int	linau_conv_is_valid_field_mode(const char *field);
+static int	linau_conv_is_valid_field_res(const char *field);
 /* The validators of the whole groups of fields. */
-static int linau_conv_is_valid_pid(const char *field);
-static int linau_conv_is_valid_uid(const char *field);
+static int	linau_conv_is_valid_pid(const char *field);
+static int	linau_conv_is_valid_uid(const char *field);
 /*
  * The lcf_match regex matchers for regex-defined fields like
  * "a[:digit:+](\[[:digit:]+\])?".
  */
-static nvlist_t *linau_conv_match_a_execve_syscall(
-    const struct linau_record *record);
+static struct linau_string_queue	*linau_conv_match_a_execve_syscall(
+					    const struct linau_record *record);
+
 /*
  * The lct_write functions for the linau_conv_token structure.
  */
-static void write_token_path(int aurd, const struct linau_record *record);
-static void write_token_process32(int aurd, const struct linau_record *record);
-static void write_token_return_from_res(int aurd,
-    const struct linau_record *record);
+static void	write_token_attribute(int aurd,
+		    const struct linau_record *record);
+static void	write_token_exec_args(int aurd,
+		    const struct linau_record *record);
+static void	write_token_path(int aurd, const struct linau_record *record);
+static void	write_token_process32(int aurd,
+		    const struct linau_record *record);
+static void	write_token_return_from_res(int aurd,
+		    const struct linau_record *record);
 
-static void linau_conv_process_record(int aurd,
-    const struct linau_record *record,
-    const struct linau_conv_record_type *lcrectype);
-static void linau_conv_write_unprocessed_fields(int aurd,
-    const struct linau_record *record,
-    const struct linau_conv_record_type *lcrectype);
-static void linau_conv_write_token_text(int aurd,
-    const struct linau_record *record, const char *name);
+static void	linau_conv_process_record(int aurd,
+		    const struct linau_record *record,
+		    const struct linau_conv_record_type *lcrectype);
+static void	linau_conv_write_unprocessed_fields(int aurd,
+		    const struct linau_record *record,
+		    const struct linau_conv_record_type *lcrectype);
+static void	linau_conv_write_token_text(int aurd,
+		    const struct linau_record *record, const char *name);
 
 /*
  * Fields definitions.
@@ -98,22 +146,36 @@ static void linau_conv_write_token_text(int aurd,
 /*         LINAU_FIELD_NAME_UNDEFINED, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_a0 = { */
-/*         LINAU_FIELD_NAME_A0, */
-/*         NULL */
-/* }; */
-/* const static struct linau_conv_field lcfield_a1 = { */
-/*         LINAU_FIELD_NAME_A1, */
-/*         NULL */
-/* }; */
-/* const static struct linau_conv_field lcfield_a2 = { */
-/*         LINAU_FIELD_NAME_A2, */
-/*         NULL */
-/* }; */
-/* const static struct linau_conv_field lcfield_a3 = { */
-/*         LINAU_FIELD_NAME_A3, */
-/*         NULL */
-/* }; */
+/*
+ * XXX: The validation of lcfields from a0 to a3 can be probably improved.
+ * That is because the source code of Linux Audit shows that a0, a1, a2 and a3
+ * can take only a very narrow set of arguments.
+ */
+const static struct linau_conv_field lcfield_a0 = {
+	LINAU_FIELD_NAME_A0,
+	.lcf_validate = linau_conv_is_encoded
+};
+/*
+ * See lcfield_a0 for comments.
+ */
+const static struct linau_conv_field lcfield_a1 = {
+	LINAU_FIELD_NAME_A1,
+	.lcf_validate = linau_conv_is_encoded
+};
+/*
+ * See lcfield_a0 for comments.
+ */
+const static struct linau_conv_field lcfield_a2 = {
+	LINAU_FIELD_NAME_A2,
+	.lcf_validate = linau_conv_is_encoded
+};
+/*
+ * See lcfield_a0 for comments.
+ */
+const static struct linau_conv_field lcfield_a3 = {
+	LINAU_FIELD_NAME_A3,
+	.lcf_validate = linau_conv_is_encoded
+};
 const static struct linau_conv_field lcfield_a_execve_syscall = {
 	LINAU_FIELD_NAME_A_EXECVE_SYSCALL,
 	.lcf_match = linau_conv_match_a_execve_syscall
@@ -146,10 +208,10 @@ const static struct linau_conv_field lcfield_a_execve_syscall = {
 /*         LINAU_FIELD_NAME_ARCH, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_argc = { */
-/*         LINAU_FIELD_NAME_ARGC, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_argc = {
+	LINAU_FIELD_NAME_ARGC,
+	.lcf_validate = linau_conv_is_numeric
+};
 /* const static struct linau_conv_field lcfield_audit_backlog_limit = { */
 /*         LINAU_FIELD_NAME_AUDIT_BACKLOG_LIMIT, */
 /*         NULL */
@@ -1026,10 +1088,27 @@ const static struct linau_conv_field lcfield_ses = {
 /*
  * Tokens definitions.
  *
- * Rules for putting fields in linau_conv_token structures:
- * - Fields are required by the functions generating tokens, like au_to_text(3)
- *   (see au_token(3)).
+ * Rules for putting fields in the linau_conv_token structures:
+ * - Fields are required by the functions generating tokens, like
+ *   au_to_exec_args(3) (see au_token(3)).
+ * - Fields are not going to be written to the audit record descriptor (aurd) as
+ *   text tokens.  Every trivial example of a token which is to be converted to
+ *   a text token should be handled by linau_conv_write_unprocessed_fields().
  */
+/*
+ * See write_token_exec_args to learn which fields are covered by this lctoken.
+ */
+const static struct linau_conv_token lctoken_exec_args = {
+	write_token_exec_args,
+	{
+		&lcfield_a0,
+		&lcfield_a1,
+		&lcfield_a2,
+		&lcfield_a3,
+		&lcfield_a_execve_syscall,
+		NULL
+	}
+};
 /*
  * This token is assuming that cwd and name fields does not come in one record.
  * See the write_token_path function to see which token is treated as the
@@ -1077,7 +1156,8 @@ const static struct linau_conv_token lctoken_return_from_res = {
 
 /*
  * Record types definitions.
- * STYLE: How about a define to add & before every object and a NULL at the end?
+ * STYLE: How about a define to add & before every linau_conv_record_type
+ * object and a NULL at the end?
  */
 const static struct linau_conv_record_type lcrectype_undefined = {
 	LINAU_TYPE_UNDEFINED,
@@ -1508,7 +1588,10 @@ const static struct linau_conv_record_type lcrectype_cwd = {
 const static struct linau_conv_record_type lcrectype_execve = {
 	LINAU_TYPE_EXECVE,
 	LINAU_TYPE_EXECVE_STR,
-	{ NULL }
+	{
+		&lctoken_exec_args,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_ipc_set_perm = {
 	LINAU_TYPE_IPC_SET_PERM,
@@ -2069,6 +2152,101 @@ const static struct linau_conv_record_type lcrectype_virt_machine_id = {
 	LINAU_TYPE_VIRT_MACHINE_ID_STR,
 	{ NULL }
 };
+
+static struct linau_string_queue *
+linau_string_queue_init(void)
+{
+	struct linau_string_queue *q;
+
+	q = malloc(sizeof(*q));
+	PJDLOG_ASSERT(q != NULL);
+	STAILQ_INIT(&q->lsq_head);
+
+	return (q);
+}
+
+/*
+ * Copy the str and push it into the queue.
+ */
+static void
+linau_string_queue_add(struct linau_string_queue *queue, const char *str)
+{
+	struct linau_string_queue_entry *e;
+
+	PJDLOG_ASSERT(queue != NULL);
+	PJDLOG_ASSERT(str != NULL);
+
+	e = malloc(sizeof(*queue));
+	PJDLOG_ASSERT(e != NULL);
+	e->lsqe_str = strdup(str);
+	PJDLOG_ASSERT(e->lsqe_str != NULL);
+	STAILQ_INSERT_TAIL(&queue->lsq_head, e, lsqe_entries);
+}
+
+/*
+ * XXX: Copy-paste code!
+ * TODO: Create a proto function for this function and the similarly looking
+ * match_regex_field_a...
+ */
+static size_t
+add_regex_field_a(const struct linau_record *record, size_t anum,
+    struct linau_string_queue *queue)
+{
+	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
+	char *namecopy;
+
+	PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u", anum) > 0);
+
+	if (!linau_record_exists_field(record, name))
+		return (0);
+
+	namecopy = strdup(linau_record_get_field(record, name));
+	PJDLOG_ASSERT(namecopy != NULL);
+	linau_string_queue_add(queue, namecopy);
+
+	return (1);
+}
+
+/*
+ * XXX: Copy-paste code!
+ * TODO: Create a proto function for this function and the similarly looking
+ * match_regex_field_a...
+ */
+static size_t
+add_regex_field_a_ex(const struct linau_record *record, size_t anum,
+    struct linau_string_queue *queue)
+{
+	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
+	char *namecopy;
+	size_t acount;
+	size_t alen;
+	size_t ii;
+
+	acount = 0;
+
+	PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u_len", anum) > 0);
+
+	if (!linau_record_exists_field(record, name))
+		return (0);
+
+	PJDLOG_VERIFY(string_to_uint32(&alen, linau_record_get_field(record,
+	    name)));
+
+	for (ii = 0; ii < alen; ii++) {
+		PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u[%u]",
+		    anum, ii) > 0);
+		if (linau_record_exists_field(record, name)) {
+			namecopy = strdup(linau_record_get_field(record,
+			    name));
+			PJDLOG_ASSERT(namecopy != NULL);
+			linau_string_queue_add(queue, namecopy);
+			acount++;
+		}
+	}
+
+	return (acount);
+
+}
 
 static const char *
 field_name_from_field_name_id(int fieldnameid)
@@ -3027,37 +3205,6 @@ field_type_from_field_name_id(int fieldnameid)
 }
 
 /*
- * This is an abstraction for processing the *id fields from both
- * pid_t (int32_t) and uid_t (uint32_t) families.
- *
- * Returns:
- * - true if the field is valid and was processed;
- * - false if there is no field like this in the record or it is invalid.
- */
-static bool
-process_id_field(const struct linau_record *record, const char *fieldname,
-    const struct linau_conv_field *lcfield, uint32_t *idp, size_t *fieldscountp)
-{
-	const char *fieldvalue;
-
-	PJDLOG_ASSERT(lcfield != NULL);
-	PJDLOG_ASSERT(fieldscountp != NULL);
-
-	if (!linau_record_exists_field(record, fieldname))
-		return (false);
-
-	fieldvalue = linau_record_get_field(record, fieldname);
-
-	if (lcfield->lcf_validate(fieldvalue)) {
-		PJDLOG_VERIFY(string_to_uint32(idp, fieldvalue));
-		*fieldscountp += 1;
-		return (true);
-	} else {
-		return (false);
-	}
-}
-
-/*
  * TODO: The errno code of the return token is always set to 0 (undefined) for
  * the time being.
  *
@@ -3125,6 +3272,113 @@ generate_proto_token_text_from_field(const struct linau_record *record,
 	sbuf_delete(buf);
 
 	return (tok);
+}
+
+static size_t
+match_regex_field_a(const struct linau_record *record, size_t anum,
+    struct linau_string_queue *queue)
+{
+	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
+	char *namecopy;
+
+	PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u", anum) > 0);
+
+	if (!linau_record_exists_field(record, name))
+		return (0);
+
+	namecopy = strdup(name);
+	PJDLOG_ASSERT(namecopy != NULL);
+	linau_string_queue_add(queue, namecopy);
+
+	return (1);
+}
+
+static size_t
+match_regex_field_a_ex(const struct linau_record *record, size_t anum,
+    struct linau_string_queue *queue)
+{
+	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
+	char *namecopy;
+	size_t acount;
+	size_t alen;
+	size_t ii;
+
+	acount = 0;
+
+	PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u_len", anum) > 0);
+
+	if (!linau_record_exists_field(record, name))
+		return (0);
+
+	PJDLOG_VERIFY(string_to_uint32(&alen, linau_record_get_field(record,
+	    name)));
+
+	for (ii = 0; ii < alen; ii++) {
+		PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u[%u]",
+		    anum, ii) > 0);
+		if (linau_record_exists_field(record, name)) {
+			namecopy = strdup(name);
+			PJDLOG_ASSERT(namecopy != NULL);
+			linau_string_queue_add(queue, namecopy);
+			acount++;
+		}
+	}
+
+	return (acount);
+}
+
+static bool
+process_a_field(const struct linau_record *record, const char *fieldname,
+    const struct linau_conv_field *lcfield, struct linau_string_queue *queue)
+{
+	const char *fieldval;
+
+	PJDLOG_ASSERT(lcfield != NULL);
+	PJDLOG_ASSERT(field_type_from_field_name_id(lcfield->lcf_id) ==
+	    LINAU_CONV_FIELD_TYPE_STANDARD);
+
+	if (!linau_record_exists_field(record, fieldname))
+		return (false);
+
+	fieldval = linau_record_get_field(record, fieldname);
+
+	if (!lcfield->lcf_validate(fieldval))
+		return (false);
+
+	linau_string_queue_add(queue, fieldval);
+
+	return (true);
+}
+
+/*
+ * This is an abstraction for processing the *id fields from both
+ * pid_t (int32_t) and uid_t (uint32_t) families.
+ *
+ * Returns:
+ * - true if the field is valid and was processed;
+ * - false if there is no field like this in the record or it is invalid.
+ */
+static bool
+process_id_field(const struct linau_record *record, const char *fieldname,
+    const struct linau_conv_field *lcfield, uint32_t *idp, size_t *fieldscountp)
+{
+	const char *fieldvalue;
+
+	PJDLOG_ASSERT(lcfield != NULL);
+	PJDLOG_ASSERT(fieldscountp != NULL);
+
+	if (!linau_record_exists_field(record, fieldname))
+		return (false);
+
+	fieldvalue = linau_record_get_field(record, fieldname);
+
+	if (lcfield->lcf_validate(fieldvalue)) {
+		PJDLOG_VERIFY(string_to_uint32(idp, fieldvalue));
+		*fieldscountp += 1;
+		return (true);
+	} else {
+		return (false);
+	}
 }
 
 /*
@@ -3249,60 +3503,46 @@ linau_conv_is_valid_uid(const char *field)
 }
 
 /*
- * Returns all the fields which match "a[[:digit:]+](\[[:digit:]+\])?" as
- * an nvlist. Returns an empty nvlist if there are no such fields.
+ * Assume that a_execve_syscall fields always come together with the argc field
+ * and the corresponding a5_len fields.
+ *
+ * Return all the fields which match "a[[:digit:]+](\[[:digit:]+\])?". Return
+ * an empty list if there are no such fields. Return NULL if a list of fields
+ * cannot be returned.
+ *
+ * STYLE: This function looks ugly.
  */
-static nvlist_t *
+static struct linau_string_queue *
 linau_conv_match_a_execve_syscall(const struct linau_record *record)
 {
-	void *cookie;
-	nvlist_t *fields;
-	const char *name;
-	size_t ii;
-	int type;
+	const nvlist_t *fields;
+	struct linau_string_queue *queue;
+	size_t ai;
+	size_t argc;
+	size_t acount;
 
 	pjdlog_debug(5, "%s", __func__);
 
-	fields = linau_record_clone_fields(record);
+	fields = linau_record_get_fields(record);
 
-	cookie = NULL;
-	while ((name = nvlist_next(fields, &type, &cookie)) != NULL) {
-		PJDLOG_ASSERT(type == NV_TYPE_STRING);
-		pjdlog_debug(5, "Inside the loop with name (%s)", name);
-		if (name[0] == 'a') {
-			ii = 1;
-			while (isdigit(name[ii]))
-				ii++;
-			if (name[ii] == '\0') {
-				continue;
-			} else if (ii != 1 && name[ii] == '[') {
-				while (isdigit(name[ii]))
-					ii++;
-				if (name[ii] == ']' && strlen(name) == ii)
-					continue;
-			}
-		}
-		pjdlog_debug(5, "Fail name (%s) ", name);
-		/* nvlist_free_string(fields, name); */
+	queue = linau_string_queue_init();
+
+	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_ARGC_STR))
+		return (NULL);
+
+	PJDLOG_VERIFY(string_to_uint32(&argc, linau_record_get_field(record,
+	    LINAU_FIELD_NAME_ARGC_STR)));
+
+	acount = 0;
+
+	for (ai = 4; ai < argc; ai++) {
+		match_regex_field_a(record, ai, queue);
+		match_regex_field_a_ex(record, ai, queue);
 	}
-	pjdlog_debug(5, "After the loop", __func__);
-
-	name = LINAU_FIELD_NAME_A0_STR;
-	if (nvlist_exists_string(fields, name))
-		nvlist_free_string(fields, name);
-	name = LINAU_FIELD_NAME_A1_STR;
-	if (nvlist_exists_string(fields, name))
-		nvlist_free_string(fields, name);
-	name = LINAU_FIELD_NAME_A2_STR;
-	if (nvlist_exists_string(fields, name))
-		nvlist_free_string(fields, name);
-	name = LINAU_FIELD_NAME_A3_STR;
-	if (nvlist_exists_string(fields, name))
-		nvlist_free_string(fields, name);
 
 	pjdlog_debug(5, "End %s", __func__);
 
-	return (fields);
+	return (queue);
 }
 
 /*
@@ -3349,18 +3589,89 @@ write_token_attribute(int aurd, const struct linau_record *record)
 	/* pjdlog_debug(3, "End %s", __func__); */
 }
 
+/*
+ * This function covers only "a0"-, "a4"- and "a5[2]"-like fields.  It does not
+ * attempt to write neither "a5_len"-like nor argc fields to aurd.
+ *
+ * argc and "a5_len"-like fields are written as text tokens by the
+ * linau_conv_write_unprocessed_fields function.
+ */
 static void
 write_token_exec_args(int aurd, const struct linau_record *record)
 {
-	/* token_t *tok; */
+	char **args;
+	const char *fieldname;
+	token_t *tok;
+	struct linau_string_queue_entry *qe;
+	struct linau_string_queue *queue;
+	size_t argc;
+	size_t ai;
+	size_t fieldscount;
+	size_t acount;
 
 	PJDLOG_ASSERT(aurd >= 0);
-	(void)record;
 
-	/* If there is no argc field then something must be broken. */
-	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_ARGC_STR)) {
+	fieldscount = 0;
+	acount = 0;
+
+	/*
+	 * argc
+	 *
+	 * If there is no argc field then something must be broken.
+	 */
+	fieldname = LINAU_FIELD_NAME_ARGC_STR;
+	if (linau_record_exists_field(record, fieldname) &&
+	    lcfield_argc.lcf_validate(linau_record_get_field(record,
+	    fieldname)))
+		fieldscount++;
+	else
 		return;
+
+	PJDLOG_VERIFY(string_to_uint32(&argc, linau_record_get_field(record,
+	    LINAU_FIELD_NAME_ARGC_STR)));
+
+	queue = linau_string_queue_init();
+
+	/* a0 */
+	if (process_a_field(record, LINAU_FIELD_NAME_A0_STR, &lcfield_a0,
+	    queue))
+		acount++;
+	/* a1 */
+	if (process_a_field(record, LINAU_FIELD_NAME_A1_STR, &lcfield_a1,
+	    queue))
+		acount++;
+	/* a2 */
+	if (process_a_field(record, LINAU_FIELD_NAME_A2_STR, &lcfield_a2,
+	    queue))
+		acount++;
+	/* a3 */
+	if (process_a_field(record, LINAU_FIELD_NAME_A3_STR, &lcfield_a3,
+	    queue))
+		acount++;
+
+	/*
+	 * Regex fields: "a4"-like and "a5[1]"-like.
+	 */
+	for (ai = 4; ai < argc; ai++) {
+		acount += add_regex_field_a(record, ai, queue);
+		acount += add_regex_field_a_ex(record, ai, queue);
 	}
+
+	args = malloc((acount + 1) * sizeof(*args));
+	args[acount] = NULL;
+	for (ai = 0, qe = STAILQ_FIRST(&queue->lsq_head); qe != NULL; ai++,
+	    qe = STAILQ_NEXT(qe, lsqe_entries))
+		args[ai] = qe->lsqe_str;
+
+	free(queue);
+
+	tok = au_to_exec_args(args);
+	PJDLOG_ASSERT(tok != NULL);
+	PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+
+	for (; *args != NULL; args += 1)
+		free(*args);
+	free(args);
 }
 
 /*
@@ -3543,7 +3854,8 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	const struct linau_conv_field *lcfield;
 	const struct linau_conv_token *lctoken;
 	const char *name;
-	nvlist_t *regexfields;
+	struct linau_string_queue *queue;
+	struct linau_string_queue_entry *qcookie, *qentry;
 	size_t fi, ti;
 	int fieldid;
 	int type;
@@ -3577,21 +3889,23 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 				break;
 			case LINAU_CONV_FIELD_TYPE_REGEX:
 				pjdlog_debug(4, "Processing a regex field");
-				regexfields = lcfield->lcf_match(record);
+				queue = lcfield->lcf_match(record);
 				/*
 				 * XXX: There is no validation of the values
 				 * of the regex fields.
 				 */
-				cookie = NULL;
-				while ((name = nvlist_next(regexfields, &type,
-				    &cookie)) != NULL) {
-					PJDLOG_ASSERT(type == NV_TYPE_STRING);
-					/*
-					 * TODO: Free this string.
-					 * 0mphere
-					 */
-					/* nvlist_free_string(regexfields, name); */
+				STAILQ_FOREACH_SAFE(qentry, &queue->lsq_head,
+				    lsqe_entries, qcookie) {
+					nvlist_free_string(fields,
+					    qentry->lsqe_str);
+					STAILQ_REMOVE(&queue->lsq_head, qentry,
+					    linau_string_queue_entry,
+					    lsqe_entries);
+					free(qentry->lsqe_str);
+					free(qentry);
 				}
+				/* XXX: Is this free() needed here? */
+				free(queue);
 				break;
 			}
 		}
