@@ -6,6 +6,7 @@
 #include <sys/types.h>
 
 #include <sys/sbuf.h>
+#include <sys/vnode.h>
 
 #include <ctype.h>
 #include <stdarg.h>
@@ -576,10 +577,10 @@ const static struct linau_conv_field lcfield_list = {
 /*         LINAU_FIELD_NAME_MINOR, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_mode = { */
-/*         LINAU_FIELD_NAME_MODE, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_mode = {
+	LINAU_FIELD_NAME_MODE,
+	.lcf_validate = linau_conv_is_valid_field_mode
+};
 /* const static struct linau_conv_field lcfield_model = { */
 /*         LINAU_FIELD_NAME_MODEL, */
 /*         NULL */
@@ -712,10 +713,10 @@ const static struct linau_conv_field lcfield_name = {
 /*         LINAU_FIELD_NAME_OFLAG, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_ogid = { */
-/*         LINAU_FIELD_NAME_OGID, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_ogid = {
+	LINAU_FIELD_NAME_OGID,
+	.lcf_validate = linau_conv_is_numeric
+};
 /* const static struct linau_conv_field lcfield_ocomm = { */
 /*         LINAU_FIELD_NAME_OCOMM, */
 /*         NULL */
@@ -828,10 +829,10 @@ const static struct linau_conv_field lcfield_op = {
 /*         LINAU_FIELD_NAME_OSES, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_ouid = { */
-/*         LINAU_FIELD_NAME_OUID, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_ouid = {
+	LINAU_FIELD_NAME_OUID,
+	.lcf_validate = linau_conv_is_numeric
+};
 /* const static struct linau_conv_field lcfield_outif = { */
 /*         LINAU_FIELD_NAME_OUTIF, */
 /*         NULL */
@@ -1095,6 +1096,15 @@ const static struct linau_conv_field lcfield_ses = {
  *   text tokens.  Every trivial example of a token which is to be converted to
  *   a text token should be handled by linau_conv_write_unprocessed_fields().
  */
+const static struct linau_conv_token lctoken_attribute = {
+	write_token_attribute,
+	{
+		&lcfield_mode,
+		&lcfield_ouid,
+		&lcfield_ogid,
+		NULL
+	}
+};
 /*
  * See write_token_exec_args to learn which fields are covered by this lctoken.
  */
@@ -1546,7 +1556,11 @@ const static struct linau_conv_record_type lcrectype_syscall = {
 const static struct linau_conv_record_type lcrectype_path = {
 	LINAU_TYPE_PATH,
 	LINAU_TYPE_PATH_STR,
-	{ NULL }
+	{
+		&lctoken_attribute,
+		&lctoken_path,
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_ipc = {
 	LINAU_TYPE_IPC,
