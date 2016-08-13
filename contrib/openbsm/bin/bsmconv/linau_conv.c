@@ -1690,7 +1690,9 @@ const static struct linau_conv_record_type lcrectype_seccomp = {
 const static struct linau_conv_record_type lcrectype_proctitle = {
 	LINAU_TYPE_PROCTITLE,
 	LINAU_TYPE_PROCTITLE_STR,
-	{ NULL }
+	{
+		NULL
+	}
 };
 const static struct linau_conv_record_type lcrectype_feature_change = {
 	LINAU_TYPE_FEATURE_CHANGE,
