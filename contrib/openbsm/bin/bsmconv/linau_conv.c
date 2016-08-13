@@ -93,31 +93,35 @@ static size_t		 match_regex_field_a_execve_syscall(
 static size_t		 match_regex_field_a_execve_syscall_ex(
 			    const struct linau_record *record, size_t anum,
 			    struct linau_string_queue *queue);
+/* static bool		 process_a_field(const struct linau_record *record, */
+/*                             const char *fieldname, */
+/*                             const struct linau_conv_field *lcfield, */
+/*                             struct linau_string_queue *queue); */
 static bool		 process_id_field(const struct linau_record *record,
 			    const char *fieldname,
 			    const struct linau_conv_field *lcfield,
 			    uint32_t *idp, size_t *fieldscountp);
 
-
 /*
  * The lcf_validate validators for the linau_conv_field structure.
  */
 /* The standard validators. */
-static int	linau_conv_is_alphanumeric(const char *field);
-static int	linau_conv_is_encoded(const char *field);
-static int	linau_conv_is_numeric(const char *field);
+static int	 linau_conv_is_alphanumeric(const char *field);
+static int	 linau_conv_is_encoded(const char *field);
+static int	 linau_conv_is_numeric(const char *field);
 /* The field specific validators. */
-static int	linau_conv_is_valid_field_mode(const char *field);
-static int	linau_conv_is_valid_field_res(const char *field);
+static int	 linau_conv_is_valid_field_mode(const char *field);
+static int	 linau_conv_is_valid_field_res(const char *field);
 /* The validators of the whole groups of fields. */
-static int	linau_conv_is_valid_pid(const char *field);
-static int	linau_conv_is_valid_uid(const char *field);
+static int	 linau_conv_is_valid_pid(const char *field);
+static int	 linau_conv_is_valid_uid(const char *field);
 /*
  * The lcf_match regex matchers for regex-defined fields like
  * "a[:digit:+](\[[:digit:]+\])?".
  */
-static struct linau_string_queue	*linau_conv_match_a_execve_syscall(
-					    const struct linau_record *record);
+static struct linau_string_queue
+		*linau_conv_match_a_execve_syscall(
+		    const struct linau_record *record);
 
 /*
  * The lct_write functions for the linau_conv_token structure.
@@ -3362,28 +3366,28 @@ match_regex_field_a_execve_syscall_ex(const struct linau_record *record,
 	return (acount);
 }
 
-static bool
-process_a_field(const struct linau_record *record, const char *fieldname,
-    const struct linau_conv_field *lcfield, struct linau_string_queue *queue)
-{
-	const char *fieldval;
+/* static bool */
+/* process_a_field(const struct linau_record *record, const char *fieldname, */
+/*     const struct linau_conv_field *lcfield, struct linau_string_queue *queue) */
+/* { */
+/*         const char *fieldval; */
 
-	PJDLOG_ASSERT(lcfield != NULL);
-	PJDLOG_ASSERT(field_type_from_field_name_id(lcfield->lcf_id) ==
-	    LINAU_CONV_FIELD_TYPE_STANDARD);
+/*         PJDLOG_ASSERT(lcfield != NULL); */
+/*         PJDLOG_ASSERT(field_type_from_field_name_id(lcfield->lcf_id) == */
+/*             LINAU_CONV_FIELD_TYPE_STANDARD); */
 
-	if (!linau_record_exists_field(record, fieldname))
-		return (false);
+/*         if (!linau_record_exists_field(record, fieldname)) */
+/*                 return (false); */
 
-	fieldval = linau_record_get_field(record, fieldname);
+/*         fieldval = linau_record_get_field(record, fieldname); */
 
-	if (!lcfield->lcf_validate(fieldval))
-		return (false);
+/*         if (!lcfield->lcf_validate(fieldval)) */
+/*                 return (false); */
 
-	linau_string_queue_add(queue, fieldval);
+/*         linau_string_queue_add(queue, fieldval); */
 
-	return (true);
-}
+/*         return (true); */
+/* } */
 
 /*
  * This is an abstraction for processing the *id fields from both
@@ -3552,9 +3556,10 @@ linau_conv_match_a_execve_syscall(const struct linau_record *record)
 {
 	const nvlist_t *fields;
 	struct linau_string_queue *queue;
+	struct linau_string_queue_entry *cookie, *entry;
+	size_t acount;
 	size_t ai;
 	size_t argc;
-	size_t acount;
 
 	pjdlog_debug(5, "%s", __func__);
 
