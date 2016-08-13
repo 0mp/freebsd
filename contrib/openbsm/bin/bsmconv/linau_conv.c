@@ -2243,8 +2243,8 @@ add_regex_field_a_ex(const struct linau_record *record, size_t anum,
 	if (!linau_record_exists_field(record, name))
 		return (0);
 
-	PJDLOG_VERIFY(string_to_uint32(&alen, linau_record_get_field(record,
-	    name)));
+	PJDLOG_VERIFY(linau_str_to_u(&alen, linau_record_get_field(record,
+	    name), sizeof(alen)));
 
 	for (ii = 0; ii < alen; ii++) {
 		PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u[%u]",
@@ -3324,8 +3324,8 @@ match_regex_field_a_ex(const struct linau_record *record, size_t anum,
 	if (!linau_record_exists_field(record, name))
 		return (0);
 
-	PJDLOG_VERIFY(string_to_uint32(&alen, linau_record_get_field(record,
-	    name)));
+	PJDLOG_VERIFY(linau_str_to_u(&alen, linau_record_get_field(record,
+	    name), sizeof(alen)));
 
 	for (ii = 0; ii < alen; ii++) {
 		PJDLOG_VERIFY(snprintf(name, sizeof(name), "a%u[%u]",
@@ -3387,7 +3387,7 @@ process_id_field(const struct linau_record *record, const char *fieldname,
 	fieldvalue = linau_record_get_field(record, fieldname);
 
 	if (lcfield->lcf_validate(fieldvalue)) {
-		PJDLOG_VERIFY(string_to_uint32(idp, fieldvalue));
+		PJDLOG_VERIFY(linau_str_to_u(idp, fieldvalue, sizeof(*idp)));
 		*fieldscountp += 1;
 		return (true);
 	} else {
@@ -3495,7 +3495,7 @@ linau_conv_is_valid_pid(const char *field)
 {
 	uint32_t num;
 
-	if (string_to_uint32(&num, field) && 0 <= (int32_t)num &&
+	if (linau_str_to_u(&num, field, sizeof(num)) && 0 <= (int32_t)num &&
 	    (int32_t)num <= INT32_MAX)
 		return (1);
 	else
@@ -3510,7 +3510,7 @@ linau_conv_is_valid_uid(const char *field)
 {
 	uint32_t num;
 
-	if (string_to_uint32(&num, field))
+	if (linau_str_to_u(&num, field, sizeof(num)))
 		return (1);
 	else
 		return (0);
@@ -3544,8 +3544,8 @@ linau_conv_match_a_execve_syscall(const struct linau_record *record)
 	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_ARGC_STR))
 		return (NULL);
 
-	PJDLOG_VERIFY(string_to_uint32(&argc, linau_record_get_field(record,
-	    LINAU_FIELD_NAME_ARGC_STR)));
+	PJDLOG_VERIFY(linau_str_to_u(&argc, linau_record_get_field(record,
+	    LINAU_FIELD_NAME_ARGC_STR), sizeof(argc)));
 
 	acount = 0;
 
@@ -3641,8 +3641,8 @@ write_token_exec_args(int aurd, const struct linau_record *record)
 	else
 		return;
 
-	PJDLOG_VERIFY(string_to_uint32(&argc, linau_record_get_field(record,
-	    LINAU_FIELD_NAME_ARGC_STR)));
+	PJDLOG_VERIFY(linau_str_to_u(&argc, linau_record_get_field(record,
+	    LINAU_FIELD_NAME_ARGC_STR), sizeof(argc)));
 
 	queue = linau_string_queue_init();
 

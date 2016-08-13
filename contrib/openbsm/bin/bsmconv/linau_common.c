@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <errno.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -150,18 +151,47 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
  * - false otherwise.
  */
 bool
-string_to_uint32(uint32_t *num, const char *str)
+linau_str_to_u(void *nump, const char *str, size_t numsize)
 {
+	uintmax_t num;
+	uintmax_t maxnum;
 	char *endp;
 
-	PJDLOG_ASSERT(num != NULL);
+	PJDLOG_ASSERT(nump != NULL);
 	PJDLOG_ASSERT(str != NULL);
+	PJDLOG_ASSERT(numsize > 0);
+
+	maxnum = (1ULL >> numsize * 8) - 1;
 
 	errno = 0;
-	*num = (uint32_t)strtoul(str, &endp, 10);
+	num = strtoumax(str, &endp, 10);
 
-	if ((str != endp) && (*endp == '\0') && (*num != 0 || errno == 0))
-		return (true);
-	else
+	if (str == endp) {
 		return (false);
+	} else if (*endp != '\0') {
+		return (false);
+	} else if (num == 0 && errno != 0) {
+		return (false);
+	} else if (num > maxnum) {
+		return (false);
+	}
+
+	switch (numsize) {
+	case sizeof(uint8_t):
+		*(uint8_t *)nump = (uint8_t)num;
+		break;
+	case sizeof(uint16_t):
+		*(uint16_t *)nump = (uint16_t)num;
+		break;
+	case sizeof(uint32_t):
+		*(uint32_t *)nump = (uint32_t)num;
+		break;
+	case sizeof(uint64_t):
+		*(uint64_t *)nump = (uint64_t)num;
+		break;
+	default:
+		PJDLOG_ABORT("The numsize value is not a power of 2");
+	}
+
+	return (true);
 }

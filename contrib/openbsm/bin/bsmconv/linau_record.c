@@ -37,7 +37,7 @@ extract_uint32(const char *buf, size_t start, size_t end)
 
 	len = end - start + 1;
 	numstr = extract_substring(buf, start, len);
-	PJDLOG_VERIFY(string_to_uint32(&num, numstr));
+	PJDLOG_VERIFY(linau_str_to_u(&num, numstr, sizeof(num)));
 
 	return (num);
 }
