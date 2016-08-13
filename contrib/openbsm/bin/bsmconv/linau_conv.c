@@ -70,10 +70,12 @@ static void	 linau_string_queue_entry_free(
 /*
  * Helper functions.
  */
-static size_t		 add_regex_field_a(const struct linau_record *record,
-			    size_t anum, struct linau_string_queue *queue);
-static size_t		 add_regex_field_a_ex(const struct linau_record *record,
-			    size_t anum, struct linau_string_queue *queue);
+static size_t		 add_regex_field_a_execve_sycall(
+			    const struct linau_record *record, size_t anum,
+			    struct linau_string_queue *queue);
+static size_t		 add_regex_field_a_execve_sycall_ex(
+			    const struct linau_record *record, size_t anum,
+			    struct linau_string_queue *queue);
 static const char	*field_name_from_field_name_id(int fieldnameid);
 static int		 field_type_from_field_name_id(int fieldnameid);
 /*
@@ -85,14 +87,11 @@ static token_t		*generate_proto_token_return(
 static token_t		*generate_proto_token_text_from_field(
 			    const struct linau_record *record,
 			    const char *fieldname);
-static size_t		 match_regex_field_a(const struct linau_record *record,
-			    size_t anum, struct linau_string_queue *queue);
-static size_t		 match_regex_field_a_ex(
+static size_t		 match_regex_field_a_execve_syscall(
 			    const struct linau_record *record, size_t anum,
 			    struct linau_string_queue *queue);
-static bool		 process_a_field(const struct linau_record *record,
-			    const char *fieldname,
-			    const struct linau_conv_field *lcfield,
+static size_t		 match_regex_field_a_execve_syscall_ex(
+			    const struct linau_record *record, size_t anum,
 			    struct linau_string_queue *queue);
 static bool		 process_id_field(const struct linau_record *record,
 			    const char *fieldname,
@@ -1115,10 +1114,6 @@ const static struct linau_conv_token lctoken_attribute = {
 const static struct linau_conv_token lctoken_exec_args = {
 	write_token_exec_args,
 	{
-		&lcfield_a0,
-		&lcfield_a1,
-		&lcfield_a2,
-		&lcfield_a3,
 		&lcfield_a_execve_syscall,
 		NULL
 	}
@@ -2203,9 +2198,6 @@ linau_string_queue_init(void)
 	return (q);
 }
 
-/*
- * Copy the str and push it into the queue.
- */
 static void
 linau_string_queue_remove(struct linau_string_queue *queue,
     const struct linau_string_queue_entry *entry)
@@ -2229,11 +2221,11 @@ linau_string_queue_entry_free(struct linau_string_queue_entry *entry)
 /*
  * XXX: Copy-paste code!
  * TODO: Create a proto function for this function and the similarly looking
- * match_regex_field_a...
+ * match_regex_field_a_execve_syscall...
  */
 static size_t
-add_regex_field_a(const struct linau_record *record, size_t anum,
-    struct linau_string_queue *queue)
+add_regex_field_a_execve_sycall(const struct linau_record *record,
+    size_t anum, struct linau_string_queue *queue)
 {
 	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
 	char *namecopy;
@@ -2253,11 +2245,11 @@ add_regex_field_a(const struct linau_record *record, size_t anum,
 /*
  * XXX: Copy-paste code!
  * TODO: Create a proto function for this function and the similarly looking
- * match_regex_field_a...
+ * match_regex_field_a_execve_syscall...
  */
 static size_t
-add_regex_field_a_ex(const struct linau_record *record, size_t anum,
-    struct linau_string_queue *queue)
+add_regex_field_a_execve_sycall_ex(const struct linau_record *record,
+    size_t anum, struct linau_string_queue *queue)
 {
 	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
 	char *namecopy;
@@ -3318,8 +3310,8 @@ generate_proto_token_text_from_field(const struct linau_record *record,
 }
 
 static size_t
-match_regex_field_a(const struct linau_record *record, size_t anum,
-    struct linau_string_queue *queue)
+match_regex_field_a_execve_syscall(const struct linau_record *record,
+    size_t anum, struct linau_string_queue *queue)
 {
 	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
 	char *namecopy;
@@ -3337,8 +3329,8 @@ match_regex_field_a(const struct linau_record *record, size_t anum,
 }
 
 static size_t
-match_regex_field_a_ex(const struct linau_record *record, size_t anum,
-    struct linau_string_queue *queue)
+match_regex_field_a_execve_syscall_ex(const struct linau_record *record,
+    size_t anum, struct linau_string_queue *queue)
 {
 	char name[LINAU_CONV_FIELD_A_BUFFER_SIZE];
 	char *namecopy;
@@ -3578,9 +3570,16 @@ linau_conv_match_a_execve_syscall(const struct linau_record *record)
 
 	acount = 0;
 
-	for (ai = 4; ai < argc; ai++) {
-		match_regex_field_a(record, ai, queue);
-		match_regex_field_a_ex(record, ai, queue);
+	for (ai = 0; ai < argc; ai++) {
+		match_regex_field_a_execve_syscall(record, ai, queue);
+		match_regex_field_a_execve_syscall_ex(record, ai, queue);
+	}
+
+	STAILQ_FOREACH_SAFE(entry, &queue->lsq_head, lsqe_entries, cookie) {
+		if (!linau_conv_is_encoded(entry->lsqe_str)) {
+			linau_string_queue_remove(queue, entry);
+			linau_string_queue_entry_free(entry);
+		}
 	}
 
 	pjdlog_debug(5, "End %s", __func__);
@@ -3647,8 +3646,8 @@ write_token_exec_args(int aurd, const struct linau_record *record)
 	token_t *tok;
 	struct linau_string_queue_entry *qe;
 	struct linau_string_queue *queue;
-	size_t argc;
 	size_t ai;
+	size_t argc;
 	size_t fieldscount;
 	size_t acount;
 
@@ -3674,23 +3673,6 @@ write_token_exec_args(int aurd, const struct linau_record *record)
 	    LINAU_FIELD_NAME_ARGC_STR), sizeof(argc)));
 
 	queue = linau_string_queue_init();
-
-	/* a0 */
-	if (process_a_field(record, LINAU_FIELD_NAME_A0_STR, &lcfield_a0,
-	    queue))
-		acount++;
-	/* a1 */
-	if (process_a_field(record, LINAU_FIELD_NAME_A1_STR, &lcfield_a1,
-	    queue))
-		acount++;
-	/* a2 */
-	if (process_a_field(record, LINAU_FIELD_NAME_A2_STR, &lcfield_a2,
-	    queue))
-		acount++;
-	/* a3 */
-	if (process_a_field(record, LINAU_FIELD_NAME_A3_STR, &lcfield_a3,
-	    queue))
-		acount++;
 
 	for (ai = 0; ai < argc; ai++) {
 		acount += add_regex_field_a_execve_sycall(record, ai, queue);
