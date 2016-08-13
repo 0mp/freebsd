@@ -4,6 +4,11 @@
 in tests/fields.centos.v265/LOGIN.input.
 - [ ] Improve the cwd field value validation. At the moment it checks if
 the value is _encoded_. Should it check if the path is actually a valid path?
+- [ ] Find out what does the _user_ thing mean in a Linux Audit record. Does it
+indicate that the user is the subject of the _action_?
+- [ ] Some fields like `ses` use the value of `-1` and some others like `auid`
+use `?`. What's the rule?
+- [ ] Regex fields validators should return only valid fields.
 
 # FreeBSD improvements.
 
@@ -19,12 +24,22 @@ the value is _encoded_. Should it check if the path is actually a valid path?
 
 - [x] Refactor the while loop in process_events() in bsmconv.c.
 - [ ] Standardize the naming convention of static functions.
+ - May all the interface functions be prefixed with `linau_`.
 - [ ] Allign the protypes of static functions (as in style(9)).
 - [ ] Should I use protected names (see style(9))?
 - [ ] Find out if you should treat int* as an integer or as a pointer as you
 sort the variable declarations in functions (see style(9)).
+- [ ] Unify the lctokens for the _res_ and _result_ fields.
+- [ ] Use pjdlog.h instead of `printf` in `linau_event_dump` (pjdlog.h is said
+to be troublesome when used together with `printf`).
 
 # Tests
 
 - [ ] Test if the library properly converts pid fields and uid fields for edge
 cases.
+- [ ] `argc="text"`
+
+# Maintainability.
+
+- [ ] Add a script which validates that every lcrt_tokens list has a termianting
+NULL.
