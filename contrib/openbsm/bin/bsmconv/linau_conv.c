@@ -58,10 +58,14 @@ struct linau_string_queue {
 /*
  * The linau_string_queue interface.
  */
-static struct linau_string_queue	*linau_string_queue_init(void);
-static void				 linau_string_queue_add(
-					    struct linau_string_queue *queue,
-					    const char *str);
+static void	 linau_string_queue_add(struct linau_string_queue *queue,
+		    const char *str);
+static struct linau_string_queue
+		*linau_string_queue_init(void);
+static void	 linau_string_queue_remove(struct linau_string_queue *queue,
+		    const struct linau_string_queue_entry *entry);
+static void	 linau_string_queue_entry_free(
+		    struct linau_string_queue_entry *entry);
 
 /*
  * Helper functions.
@@ -2169,18 +2173,6 @@ const static struct linau_conv_record_type lcrectype_virt_machine_id = {
 	{ NULL }
 };
 
-static struct linau_string_queue *
-linau_string_queue_init(void)
-{
-	struct linau_string_queue *q;
-
-	q = malloc(sizeof(*q));
-	PJDLOG_ASSERT(q != NULL);
-	STAILQ_INIT(&q->lsq_head);
-
-	return (q);
-}
-
 /*
  * Copy the str and push it into the queue.
  */
@@ -2197,6 +2189,41 @@ linau_string_queue_add(struct linau_string_queue *queue, const char *str)
 	e->lsqe_str = strdup(str);
 	PJDLOG_ASSERT(e->lsqe_str != NULL);
 	STAILQ_INSERT_TAIL(&queue->lsq_head, e, lsqe_entries);
+}
+
+static struct linau_string_queue *
+linau_string_queue_init(void)
+{
+	struct linau_string_queue *q;
+
+	q = malloc(sizeof(*q));
+	PJDLOG_ASSERT(q != NULL);
+	STAILQ_INIT(&q->lsq_head);
+
+	return (q);
+}
+
+/*
+ * Copy the str and push it into the queue.
+ */
+static void
+linau_string_queue_remove(struct linau_string_queue *queue,
+    const struct linau_string_queue_entry *entry)
+{
+
+	PJDLOG_ASSERT(queue != NULL);
+	PJDLOG_ASSERT(entry != NULL);
+
+	STAILQ_REMOVE(&queue->lsq_head, entry, linau_string_queue_entry,
+	    lsqe_entries);
+}
+
+static void
+linau_string_queue_entry_free(struct linau_string_queue_entry *entry)
+{
+
+	free(entry->lsqe_str);
+	free(entry);
 }
 
 /*
@@ -3665,12 +3692,10 @@ write_token_exec_args(int aurd, const struct linau_record *record)
 	    queue))
 		acount++;
 
-	/*
-	 * Regex fields: "a4"-like and "a5[1]"-like.
-	 */
-	for (ai = 4; ai < argc; ai++) {
-		acount += add_regex_field_a(record, ai, queue);
-		acount += add_regex_field_a_ex(record, ai, queue);
+	for (ai = 0; ai < argc; ai++) {
+		acount += add_regex_field_a_execve_sycall(record, ai, queue);
+		acount += add_regex_field_a_execve_sycall_ex(record, ai,
+		    queue);
 	}
 
 	args = malloc((acount + 1) * sizeof(*args));
@@ -3871,7 +3896,7 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 	const struct linau_conv_token *lctoken;
 	const char *name;
 	struct linau_string_queue *queue;
-	struct linau_string_queue_entry *qcookie, *qentry;
+	struct linau_string_queue_entry *qcookie, *entry;
 	size_t fi, ti;
 	int fieldid;
 	int type;
@@ -3910,15 +3935,12 @@ linau_conv_write_unprocessed_fields(int aurd, const struct linau_record *record,
 				 * XXX: There is no validation of the values
 				 * of the regex fields.
 				 */
-				STAILQ_FOREACH_SAFE(qentry, &queue->lsq_head,
+				STAILQ_FOREACH_SAFE(entry, &queue->lsq_head,
 				    lsqe_entries, qcookie) {
 					nvlist_free_string(fields,
-					    qentry->lsqe_str);
-					STAILQ_REMOVE(&queue->lsq_head, qentry,
-					    linau_string_queue_entry,
-					    lsqe_entries);
-					free(qentry->lsqe_str);
-					free(qentry);
+					    entry->lsqe_str);
+					linau_string_queue_remove(queue, entry);
+					linau_string_queue_entry_free(entry);
 				}
 				/* XXX: Is this free() needed here? */
 				free(queue);
