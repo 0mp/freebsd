@@ -1551,6 +1551,7 @@ const static struct linau_conv_record_type lcrectype_daemon_end = {
 	LINAU_TYPE_DAEMON_END_STR,
 	{
 		&lctoken_process32,
+		&lctoken_return_from_res,
 		NULL
 	}
 };
@@ -1607,6 +1608,7 @@ const static struct linau_conv_record_type lcrectype_syscall = {
 		&lctoken_arg_from_a2,
 		&lctoken_arg_from_a3,
 		&lctoken_exit,
+		&lctoken_process32,
 		NULL
 	}
 };
@@ -4159,7 +4161,24 @@ linau_conv_process_record(int aurd, const struct linau_record *record,
 void
 linau_conv_to_au(int aurd, const struct linau_record *record, int typenum)
 {
+	token_t *tok;
+	long recid;
 
+	PJDLOG_ASSERT(aurd >= 0);
+
+	/*
+	 * Add a sequence number (the seq token) based on the Linux Audit
+	 * record id.
+	 */
+	recid = linau_record_get_id(record);
+	PJDLOG_ASSERT(recid <= LONG_MAX);
+	tok = au_to_seq(recid);
+	PJDLOG_ASSERT(tok != NULL);
+	PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+
+	/*
+	 * Proceed to a suitable conversion scheme.
+	 */
 	switch (typenum) {
 	case LINAU_TYPE_UNDEFINED:
 		linau_conv_process_record(aurd, record,

@@ -32,8 +32,17 @@ get_any_record(const struct linau_event *event)
 /*
  * TODO: This is a temporary solution.
  *
- * XXX If this function goes public one day it should return short instead of
+ * XXX: If this function goes public one day it should return short instead of
  * unsigned short.
+ *
+ * As system calls in FreeBSD and Linux differ significantly we should not use
+ * the FreeBSD system call numbers from /etc/security/audit_event as mapping
+ * values for Linux Audit events.  Instead, we should add new identifiers.
+ *
+ * Another idea is to ignore the /etc/security/audit_event file entirely and just
+ * map every Linux Audit event to 0.  The event's type would be passed as
+ * an extra text token instead.  This approach is less aggressive towards
+ * FreeBSD.
  */
 static unsigned short
 au_event_type_from_linau_event(const struct linau_event *event)
