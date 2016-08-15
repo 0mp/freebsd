@@ -7,6 +7,60 @@
 #include "linau_common.h"
 #include "pjdlog.h"
 
+static bool	linau_proto_str_to_u(void *nump, const char *str,
+		    size_t numsize, int base);
+
+/*
+ * Returns:
+ * - true on a successful conversion;
+ * - false otherwise.
+ */
+static bool
+linau_proto_str_to_u(void *nump, const char *str, size_t numsize, int base)
+{
+	uintmax_t num;
+	uintmax_t maxnum;
+	char *endp;
+
+	PJDLOG_ASSERT(nump != NULL);
+	PJDLOG_ASSERT(str != NULL);
+	PJDLOG_ASSERT(numsize > 0);
+
+	maxnum = (1ULL >> numsize * 8) - 1;
+
+	errno = 0;
+	num = strtoumax(str, &endp, base);
+
+	if (str == endp) {
+		return (false);
+	} else if (*endp != '\0') {
+		return (false);
+	} else if (num == 0 && errno != 0) {
+		return (false);
+	} else if (num > maxnum) {
+		return (false);
+	}
+
+	switch (numsize) {
+	case sizeof(uint8_t):
+		*(uint8_t *)nump = (uint8_t)num;
+		break;
+	case sizeof(uint16_t):
+		*(uint16_t *)nump = (uint16_t)num;
+		break;
+	case sizeof(uint32_t):
+		*(uint32_t *)nump = (uint32_t)num;
+		break;
+	case sizeof(uint64_t):
+		*(uint64_t *)nump = (uint64_t)num;
+		break;
+	default:
+		PJDLOG_ABORT("The numsize value is not a power of 2");
+	}
+
+	return (true);
+}
+
 int
 linau_proto_compare_origin(uint32_t id1, uint64_t time1, uint32_t id2,
     uint64_t time2)
@@ -145,53 +199,16 @@ locate_msg(const char *buf, size_t *msgstartp, size_t *secsposp,
 	    msgstart, *msgendp);
 }
 
-/*
- * Returns:
- * - true on a successful conversion;
- * - false otherwise.
- */
 bool
 linau_str_to_u(void *nump, const char *str, size_t numsize)
 {
-	uintmax_t num;
-	uintmax_t maxnum;
-	char *endp;
 
-	PJDLOG_ASSERT(nump != NULL);
-	PJDLOG_ASSERT(str != NULL);
-	PJDLOG_ASSERT(numsize > 0);
+	return (linau_proto_str_to_u(nump, str, numsize, 10));
+}
 
-	maxnum = (1ULL >> numsize * 8) - 1;
+bool
+linau_stroct_to_u(void *nump, const char *str, size_t numsize)
+{
 
-	errno = 0;
-	num = strtoumax(str, &endp, 10);
-
-	if (str == endp) {
-		return (false);
-	} else if (*endp != '\0') {
-		return (false);
-	} else if (num == 0 && errno != 0) {
-		return (false);
-	} else if (num > maxnum) {
-		return (false);
-	}
-
-	switch (numsize) {
-	case sizeof(uint8_t):
-		*(uint8_t *)nump = (uint8_t)num;
-		break;
-	case sizeof(uint16_t):
-		*(uint16_t *)nump = (uint16_t)num;
-		break;
-	case sizeof(uint32_t):
-		*(uint32_t *)nump = (uint32_t)num;
-		break;
-	case sizeof(uint64_t):
-		*(uint64_t *)nump = (uint64_t)num;
-		break;
-	default:
-		PJDLOG_ABORT("The numsize value is not a power of 2");
-	}
-
-	return (true);
+	return (linau_proto_str_to_u(nump, str, numsize, 8));
 }
