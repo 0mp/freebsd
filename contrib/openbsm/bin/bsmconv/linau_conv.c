@@ -141,6 +141,7 @@ static void	write_token_attribute(int aurd,
 		    const struct linau_record *record);
 static void	write_token_exec_args(int aurd,
 		    const struct linau_record *record);
+static void	write_token_exit(int aurd, const struct linau_record *record);
 static void	write_token_path(int aurd, const struct linau_record *record);
 static void	write_token_process32(int aurd,
 		    const struct linau_record *record);
@@ -395,10 +396,10 @@ const static struct linau_conv_field lcfield_euid = {
 /*         LINAU_FIELD_NAME_EXE, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_exit = { */
-/*         LINAU_FIELD_NAME_EXIT, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_exit = {
+	LINAU_FIELD_NAME_EXIT,
+	.lcf_validate = linau_conv_is_numeric
+};
 /* const static struct linau_conv_field lcfield_fam = { */
 /*         LINAU_FIELD_NAME_FAM, */
 /*         NULL */
@@ -1019,10 +1020,10 @@ const static struct linau_conv_field lcfield_ses = {
 /*         LINAU_FIELD_NAME_SUBJ, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_success = { */
-/*         LINAU_FIELD_NAME_SUCCESS, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_success = {
+	LINAU_FIELD_NAME_SUCCESS,
+	.lcf_validate = linau_conv_is_alphanumeric
+};
 /* const static struct linau_conv_field lcfield_suid = { */
 /*         LINAU_FIELD_NAME_SUID, */
 /*         NULL */
@@ -1158,6 +1159,14 @@ const static struct linau_conv_token lctoken_exec_args = {
 	write_token_exec_args,
 	{
 		&lcfield_a_execve_syscall,
+		NULL
+	}
+};
+const static struct linau_conv_token lctoken_exit = {
+	write_token_exit,
+	{
+		&lcfield_exit,
+		&lcfield_success,
 		NULL
 	}
 };
@@ -1597,6 +1606,7 @@ const static struct linau_conv_record_type lcrectype_syscall = {
 		&lctoken_arg_from_a1,
 		&lctoken_arg_from_a2,
 		&lctoken_arg_from_a3,
+		&lctoken_exit,
 		NULL
 	}
 };
@@ -3819,6 +3829,44 @@ write_token_exec_args(int aurd, const struct linau_record *record)
 	for (; *args != NULL; args += 1)
 		free(*args);
 	free(args);
+}
+
+/*
+ * XXX: The err argument passed to au_to_exit is always set to 0.
+ */
+static void
+write_token_exit(int aurd, const struct linau_record *record)
+{
+	token_t *tok;
+	const char *exitfval;
+	const char *succfval;	/* The value of the success field. */
+	uint32_t retval;
+	int err;
+
+	PJDLOG_ASSERT(aurd >= 0);
+
+	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_EXIT_STR))
+		return;
+	if (!linau_record_exists_field(record, LINAU_FIELD_NAME_SUCCESS_STR))
+		return;
+
+	exitfval = linau_record_get_field(record, LINAU_FIELD_NAME_EXIT_STR);
+	succfval = linau_record_get_field(record, LINAU_FIELD_NAME_SUCCESS_STR);
+
+	if (!lcfield_exit.lcf_validate(exitfval))
+		return;
+	if (!lcfield_success.lcf_validate(succfval))
+		return;
+
+	PJDLOG_ASSERT(linau_str_to_u(&retval, exitfval, sizeof(retval)));
+	/*
+	 * XXX: The succval is always set to zero assuming there are no errors.
+	 */
+	err = 0;
+
+	tok = au_to_exit(retval, err);
+	PJDLOG_ASSERT(tok != NULL);
+	PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 }
 
 /*
