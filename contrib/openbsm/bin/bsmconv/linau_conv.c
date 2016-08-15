@@ -104,6 +104,10 @@ static bool		 process_id_field(const struct linau_record *record,
 			    const char *fieldname,
 			    const struct linau_conv_field *lcfield,
 			    uint32_t *idp, size_t *fieldscountp);
+static bool		 process_number_field(const struct linau_record *record,
+			    const char *fieldname,
+			    const struct linau_conv_field *lcfield, void *nump,
+			    size_t numsize, size_t *fieldscountp);
 
 /*
  * The lcf_validate validators for the linau_conv_field structure.
@@ -508,10 +512,10 @@ const static struct linau_conv_field lcfield_exit = {
 /*         LINAU_FIELD_NAME_INO, */
 /*         NULL */
 /* }; */
-/* const static struct linau_conv_field lcfield_inode = { */
-/*         LINAU_FIELD_NAME_INODE, */
-/*         NULL */
-/* }; */
+const static struct linau_conv_field lcfield_inode = {
+	LINAU_FIELD_NAME_INODE,
+	.lcf_validate = linau_conv_is_numeric
+};
 /* const static struct linau_conv_field lcfield_inode_gid = { */
 /*         LINAU_FIELD_NAME_INODE_GID, */
 /*         NULL */
@@ -1146,6 +1150,7 @@ const static struct linau_conv_token lctoken_arg_from_a3 = {
 const static struct linau_conv_token lctoken_attribute = {
 	write_token_attribute,
 	{
+		&lcfield_inode,
 		&lcfield_mode,
 		&lcfield_ouid,
 		&lcfield_ogid,
@@ -3503,6 +3508,29 @@ process_id_field(const struct linau_record *record, const char *fieldname,
 	}
 }
 
+static bool
+process_number_field(const struct linau_record *record, const char *fieldname,
+    const struct linau_conv_field *lcfield, void *nump, size_t numsize,
+    size_t *fieldscountp)
+{
+	const char *fieldval;
+
+	PJDLOG_ASSERT(lcfield != NULL);
+
+	if (!linau_record_exists_field(record, fieldname))
+		return (false);
+
+	fieldval = linau_record_get_field(record, fieldname);
+
+	if (!lcfield->lcf_validate(fieldval))
+		return (false);
+
+	PJDLOG_VERIFY(linau_str_to_u(nump, fieldval, numsize));
+	*fieldscountp += 1;
+
+	return (true);
+}
+
 /*
  * TODO: Implement it.
  *
@@ -3723,48 +3751,70 @@ write_token_arg_from_a3(int aurd, const struct linau_record *record)
 		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 }
 
-/*
- * Current fields: mode, ouid, ogid.
- */
 static void
 write_token_attribute(int aurd, const struct linau_record *record)
 {
-	(void)aurd;
-	(void)record;
-	/* const char *fieldval; */
-	/* const char *fieldname; */
-	/* token_t *tok; */
-	/* struct vnode_au_info *vni; */
-	/* token_t *tok; */
-	/* size_t fieldscount; */
-	/* uint32_t num; */
+	const char *fieldval;
+	token_t *tok;
+	size_t fieldscount;
 
-	/* PJDLOG_ASSERT(aurd >= 0); */
+	mode_t mode;
+	uid_t uid;
+	gid_t gid;
+	dev_t dev;
+	long fsid;
+	long fileid;
 
-	/* pjdlog_debug(3, "%s", __func__); */
+	PJDLOG_ASSERT(aurd >= 0);
 
-	/* vni = calloc(1, sizeof(*vni)); */
-	/* PJDLOG_ASSERT(vni != NULL); */
-	/* fieldscount = 0; */
+	pjdlog_debug(1, "%s", __func__);
 
-	/* fieldname = LINAU_FIELD_NAME_MODE_STR; */
-	/* if (linau_record_exists_field(record, fieldname)) { */
-	/*         fieldval = linau_record_get_field(record, fieldname); */
-	/*         if (lcfield_mode.lcf_validate(fieldval)) { */
-	/*                 PJDLOG_VERIFY(string_to_uint32(&num, fieldval[3])); */
-	/*                 vni->vn_mode = (mode_t)num; */
-	/*                 pjdlog_debug(3, "vn_mode (%u)", vni->vn_mode); */
-	/*                 fieldscount++; */
-	/*         } */
-	/* } */
+	fieldscount = 0;
 
-	/* if (fieldscount > 0) { */
-	/*         tok = au_to_attr32(vni); */
-	/*         PJDLOG_ASSERT(tok != NULL); */
-	/*         PJDLOG_VERIFY(au_write(aurd, tok) == 0); */
-	/* } */
+	mode = 0;
+	if (linau_record_exists_field(record, LINAU_FIELD_NAME_MODE_STR)) {
+		fieldval = linau_record_get_field(record,
+		    LINAU_FIELD_NAME_MODE_STR);
+		if (lcfield_mode.lcf_validate(fieldval)) {
+			PJDLOG_VERIFY(linau_stroct_to_u(&mode, fieldval,
+			    sizeof(mode)));
+			fieldscount++;
+		}
+	}
 
-	/* pjdlog_debug(3, "End %s", __func__); */
+	pjdlog_debug(1, "mode (%d)", mode);
+
+	if (!process_number_field(record, LINAU_FIELD_NAME_OUID_STR,
+	    &lcfield_ouid, &uid, sizeof(mode), &fieldscount))
+		uid = -1;
+
+	if (!process_number_field(record, LINAU_FIELD_NAME_OGID_STR,
+	    &lcfield_ogid, &gid, sizeof(mode), &fieldscount))
+		gid = -1;
+
+	/*
+	 * XXX: The dev field of Linux Audit has a syntax I do not
+	 * understand yet.
+	 */
+	dev = 0;
+
+	/*
+	 * XXX: It is unclear if fsid on FreeBSD has similar information as
+	 * fsuid/fsgid.
+	 */
+	fsid = 0;
+
+	if (!process_number_field(record, LINAU_FIELD_NAME_INODE_STR,
+	    &lcfield_inode, &fileid, sizeof(fileid), &fieldscount))
+		fileid = 0;
+
+	if (fieldscount > 0) {
+		tok = au_to_attr32(0100644, uid, gid, dev, fsid, fileid);
+		PJDLOG_ASSERT(tok != NULL);
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+	}
+
+	pjdlog_debug(1, "End %s", __func__);
 }
 
 /*
