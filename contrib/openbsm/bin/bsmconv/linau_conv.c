@@ -81,6 +81,9 @@ static int		 field_type_from_field_name_id(int fieldnameid);
 /*
  * STYLE: This function might belong to the token generating functions' section.
  */
+static token_t		*generate_proto_token_arg(
+			    const struct linau_record *record,
+			    const char *argname);
 static token_t		*generate_proto_token_return(
 			    const struct linau_record *record,
 			    const char *fieldname);
@@ -126,6 +129,14 @@ static struct linau_string_queue
 /*
  * The lct_write functions for the linau_conv_token structure.
  */
+static void	write_token_arg_from_a0(int aurd,
+		    const struct linau_record *record);
+static void	write_token_arg_from_a1(int aurd,
+		    const struct linau_record *record);
+static void	write_token_arg_from_a2(int aurd,
+		    const struct linau_record *record);
+static void	write_token_arg_from_a3(int aurd,
+		    const struct linau_record *record);
 static void	write_token_attribute(int aurd,
 		    const struct linau_record *record);
 static void	write_token_exec_args(int aurd,
@@ -1103,6 +1114,34 @@ const static struct linau_conv_field lcfield_ses = {
  *   text tokens.  Every trivial example of a token which is to be converted to
  *   a text token should be handled by linau_conv_write_unprocessed_fields().
  */
+const static struct linau_conv_token lctoken_arg_from_a0 = {
+	write_token_arg_from_a0,
+	{
+		&lcfield_a0,
+		NULL
+	}
+};
+const static struct linau_conv_token lctoken_arg_from_a1 = {
+	write_token_arg_from_a1,
+	{
+		&lcfield_a1,
+		NULL
+	}
+};
+const static struct linau_conv_token lctoken_arg_from_a2 = {
+	write_token_arg_from_a2,
+	{
+		&lcfield_a2,
+		NULL
+	}
+};
+const static struct linau_conv_token lctoken_arg_from_a3 = {
+	write_token_arg_from_a3,
+	{
+		&lcfield_a3,
+		NULL
+	}
+};
 const static struct linau_conv_token lctoken_attribute = {
 	write_token_attribute,
 	{
@@ -1546,10 +1585,20 @@ const static struct linau_conv_record_type lcrectype_daemon_err = {
 	LINAU_TYPE_DAEMON_ERR_STR,
 	{ NULL }
 };
+/*
+ * XXX: Maybe the fields: tty, comm, exe and key are environmental arguments
+ * and should be passed to au_to_exec_env or something similar.
+ */
 const static struct linau_conv_record_type lcrectype_syscall = {
 	LINAU_TYPE_SYSCALL,
 	LINAU_TYPE_SYSCALL_STR,
-	{ NULL }
+	{
+		&lctoken_arg_from_a0,
+		&lctoken_arg_from_a1,
+		&lctoken_arg_from_a2,
+		&lctoken_arg_from_a3,
+		NULL
+	}
 };
 /* const static struct linau_conv_record_type lcrectype_fs_watch = { */
 /*         LINAU_TYPE_FS_WATCH, */
@@ -3244,6 +3293,28 @@ field_type_from_field_name_id(int fieldnameid)
 }
 
 /*
+ * XXX: This function creates an arg token the argument id of which is set to 0.
+ * XXX: It is unclear to me what should the text argument to au_to_arg64() be.
+ */
+static token_t *
+generate_proto_token_arg(const struct linau_record *record,
+    const char *argname)
+{
+	char *endptr;
+	const char *argval;
+	token_t *tok;
+
+	if (!linau_record_exists_field(record, argname))
+		return (NULL);
+
+	argval = linau_record_get_field(record, argname);
+	tok = au_to_arg64(0, argname, strtoull(argval, &endptr, 16));
+	PJDLOG_ASSERT(tok != NULL);
+
+	return (tok);
+}
+
+/*
  * TODO: The errno code of the return token is always set to 0 (undefined) for
  * the time being.
  *
@@ -3590,6 +3661,54 @@ linau_conv_match_a_execve_syscall(const struct linau_record *record)
 	pjdlog_debug(5, "End %s", __func__);
 
 	return (queue);
+}
+
+static void
+write_token_arg_from_a0(int aurd, const struct linau_record *record)
+{
+	token_t *tok;
+
+	PJDLOG_ASSERT(aurd >= 0);
+
+	tok = generate_proto_token_arg(record, LINAU_FIELD_NAME_A0_STR);
+	if (tok != NULL)
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+}
+
+static void
+write_token_arg_from_a1(int aurd, const struct linau_record *record)
+{
+	token_t *tok;
+
+	PJDLOG_ASSERT(aurd >= 0);
+
+	tok = generate_proto_token_arg(record, LINAU_FIELD_NAME_A1_STR);
+	if (tok != NULL)
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+}
+
+static void
+write_token_arg_from_a2(int aurd, const struct linau_record *record)
+{
+	token_t *tok;
+
+	PJDLOG_ASSERT(aurd >= 0);
+
+	tok = generate_proto_token_arg(record, LINAU_FIELD_NAME_A2_STR);
+	if (tok != NULL)
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
+}
+
+static void
+write_token_arg_from_a3(int aurd, const struct linau_record *record)
+{
+	token_t *tok;
+
+	PJDLOG_ASSERT(aurd >= 0);
+
+	tok = generate_proto_token_arg(record, LINAU_FIELD_NAME_A3_STR);
+	if (tok != NULL)
+		PJDLOG_VERIFY(au_write(aurd, tok) == 0);
 }
 
 /*
