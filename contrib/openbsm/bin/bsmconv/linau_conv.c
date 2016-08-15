@@ -96,10 +96,6 @@ static size_t		 match_regex_field_a_execve_syscall(
 static size_t		 match_regex_field_a_execve_syscall_ex(
 			    const struct linau_record *record, size_t anum,
 			    struct linau_string_queue *queue);
-/* static bool		 process_a_field(const struct linau_record *record, */
-/*                             const char *fieldname, */
-/*                             const struct linau_conv_field *lcfield, */
-/*                             struct linau_string_queue *queue); */
 static bool		 process_id_field(const struct linau_record *record,
 			    const char *fieldname,
 			    const struct linau_conv_field *lcfield,
@@ -3453,29 +3449,6 @@ match_regex_field_a_execve_syscall_ex(const struct linau_record *record,
 
 	return (acount);
 }
-
-/* static bool */
-/* process_a_field(const struct linau_record *record, const char *fieldname, */
-/*     const struct linau_conv_field *lcfield, struct linau_string_queue *queue) */
-/* { */
-/*         const char *fieldval; */
-
-/*         PJDLOG_ASSERT(lcfield != NULL); */
-/*         PJDLOG_ASSERT(field_type_from_field_name_id(lcfield->lcf_id) == */
-/*             LINAU_CONV_FIELD_TYPE_STANDARD); */
-
-/*         if (!linau_record_exists_field(record, fieldname)) */
-/*                 return (false); */
-
-/*         fieldval = linau_record_get_field(record, fieldname); */
-
-/*         if (!lcfield->lcf_validate(fieldval)) */
-/*                 return (false); */
-
-/*         linau_string_queue_add(queue, fieldval); */
-
-/*         return (true); */
-/* } */
 
 /*
  * This is an abstraction for processing the *id fields from both
