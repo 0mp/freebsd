@@ -218,6 +218,13 @@ token_t	*au_to_arg64(char n, const char *text, uint64_t v);
 token_t	*au_to_attr(struct vnode_au_info *vni);
 token_t	*au_to_attr32(struct vnode_au_info *vni);
 token_t	*au_to_attr64(struct vnode_au_info *vni);
+#else
+token_t	*au_to_attr(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+	    long fileid);
+token_t	*au_to_attr32(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+	    long fileid);
+token_t	*au_to_attr64(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+	    long fileid);
 #endif
 
 token_t	*au_to_data(char unit_print, char unit_type, char unit_count,

@@ -319,6 +319,119 @@ au_to_attr(struct vnode_au_info *vni)
 
 	return (au_to_attr32(vni));
 }
+#else
+/*
+ * token ID                1 byte
+ * file access mode        4 bytes
+ * owner user ID           4 bytes
+ * owner group ID          4 bytes
+ * file system ID          4 bytes
+ * node ID                 8 bytes
+ * device                  4 bytes/8 bytes (32-bit/64-bit)
+ */
+token_t *
+au_to_attr32(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+    long fileid)
+{
+	token_t *t;
+	u_char *dptr = NULL;
+	u_int16_t pad0_16 = 0;
+	u_int32_t pad0_32 = 0;
+
+	GET_TOKEN_AREA(t, dptr, sizeof(u_char) + 2 * sizeof(u_int16_t) +
+	    3 * sizeof(u_int32_t) + sizeof(u_int64_t) + sizeof(u_int32_t));
+
+	ADD_U_CHAR(dptr, AUT_ATTR32);
+
+	/*
+	 * BSD defines the size for the file mode as 2 bytes; BSM defines 4
+	 * so pad with 0.
+	 *
+	 * XXXRW: Possibly should be conditionally compiled.
+	 *
+	 * XXXRW: Should any conversions take place on the mode?
+	 */
+	ADD_U_INT16(dptr, pad0_16);
+	ADD_U_INT16(dptr, mode);
+
+	ADD_U_INT32(dptr, uid);
+	ADD_U_INT32(dptr, gid);
+	ADD_U_INT32(dptr, fsid);
+
+	/*
+	 * Some systems use 32-bit file ID's, others use 64-bit file IDs.
+	 * Attempt to handle both, and let the compiler sort it out.  If we
+	 * could pick this out at compile-time, it would be better, so as to
+	 * avoid the else case below.
+	 */
+	if (sizeof(fileid) == sizeof(uint32_t)) {
+		ADD_U_INT32(dptr, pad0_32);
+		ADD_U_INT32(dptr, fileid);
+	} else if (sizeof(fileid) == sizeof(uint64_t))
+		ADD_U_INT64(dptr, fileid);
+	else
+		ADD_U_INT64(dptr, 0LL);
+
+	ADD_U_INT32(dptr, dev);
+
+	return (t);
+}
+
+token_t *
+au_to_attr64(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+    long fileid)
+{
+	token_t *t;
+	u_char *dptr = NULL;
+	u_int16_t pad0_16 = 0;
+	u_int32_t pad0_32 = 0;
+
+	GET_TOKEN_AREA(t, dptr, sizeof(u_char) + 2 * sizeof(u_int16_t) +
+	    3 * sizeof(u_int32_t) + sizeof(u_int64_t) * 2);
+
+	ADD_U_CHAR(dptr, AUT_ATTR64);
+
+	/*
+	 * BSD defines the size for the file mode as 2 bytes; BSM defines 4
+	 * so pad with 0.
+	 *
+	 * XXXRW: Possibly should be conditionally compiled.
+	 *
+	 * XXXRW: Should any conversions take place on the mode?
+	 */
+	ADD_U_INT16(dptr, pad0_16);
+	ADD_U_INT16(dptr, mode);
+
+	ADD_U_INT32(dptr, uid);
+	ADD_U_INT32(dptr, gid);
+	ADD_U_INT32(dptr, fsid);
+
+	/*
+	 * Some systems use 32-bit file ID's, others use 64-bit file IDs.
+	 * Attempt to handle both, and let the compiler sort it out.  If we
+	 * could pick this out at compile-time, it would be better, so as to
+	 * avoid the else case below.
+	 */
+	if (sizeof(fileid) == sizeof(uint32_t)) {
+		ADD_U_INT32(dptr, pad0_32);
+		ADD_U_INT32(dptr, fileid);
+	} else if (sizeof(fileid) == sizeof(uint64_t))
+		ADD_U_INT64(dptr, fileid);
+	else
+		ADD_U_INT64(dptr, 0LL);
+
+	ADD_U_INT64(dptr, dev);
+
+	return (t);
+}
+
+token_t *
+au_to_attr(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+    long fileid)
+{
+
+	return (au_to_attr32(mode, uid, gid, dev, fsid, fileid));
+}
 #endif /* !(defined(_KERNEL) || defined(KERNEL) */
 
 /*
