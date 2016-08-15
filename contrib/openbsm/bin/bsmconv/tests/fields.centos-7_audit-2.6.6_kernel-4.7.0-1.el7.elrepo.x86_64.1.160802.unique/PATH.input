@@ -1,0 +1,1 @@
+type=PATH msg=audit(1470138233.091:7627): item=0 name="/usr/lib/locale/locale-archive" inode=33618602 dev=fd:00 mode=0100644 ouid=0 ogid=0 rdev=00:00 obj=unconfined_u:object_r:locale_t:s0 nametype=NORMAL

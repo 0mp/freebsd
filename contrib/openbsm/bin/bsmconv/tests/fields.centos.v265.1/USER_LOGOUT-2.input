@@ -1,0 +1,1 @@
+type=USER_LOGOUT msg=audit(1468854231.443:91): user pid=1297 uid=0 auid=0 ses=3 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=login id=0 exe="/usr/sbin/sshd" hostname=? addr=? terminal=/dev/pts/1 res=success'

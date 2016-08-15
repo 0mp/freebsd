@@ -1,0 +1,1 @@
+type=DAEMON_START msg=audit(1468854321.958:1545): op=start ver=2.6.5 format=raw kernel=2.6.32-642.3.1.el6.i686 auid=4294967295 pid=969 subj=system_u:system_r:auditd_t:s0 res=success

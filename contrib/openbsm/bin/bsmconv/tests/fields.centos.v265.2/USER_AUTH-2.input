@@ -1,0 +1,1 @@
+type=USER_AUTH msg=audit(1468854350.076:10): user pid=1164 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='op=PAM:authentication acct="root" exe="/bin/login" hostname=? addr=? terminal=tty1 res=success'

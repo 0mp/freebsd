@@ -15,6 +15,7 @@ bool		 find_position(size_t *posp, const char *buf, size_t start,
 void		 locate_msg(const char *buf, size_t *msgstartp,
 		    size_t *secsposp, size_t *nsecsposp, size_t *idposp,
 		    size_t *msgendp);
-uint32_t	 string_to_uint32(const char *str);
+bool		 linau_str_to_u(void *nump, const char *str, size_t numsize);
+bool		 linau_stroct_to_u(void *nump, const char *str, size_t numsize);
 
 #endif

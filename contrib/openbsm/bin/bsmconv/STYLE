@@ -1,0 +1,59 @@
+See the "man: style(99)" file on the project's Wiki on GitHub.
+
+Assertions
+==========
+
+General Guidelines
+------------------
+
+Use assertions on a parameter of a function when:
+- The function is using the parameter directly (like passing the parameter
+to strcpy);
+- <strike>It calls a function which requires the parameter to be for example
+non-NULL.  It means that the assertions are supposed to fetch a possible error
+as soon as possible.</strike>
+
+`PJDLOG_ASSERT()` vs `PJDLOG_VERIFY()`
+--------------------------------------
+
+- Use `PJDLOG_ASSERT()` to check the return value of functions like `malloc()`,
+`sbuf_new_auto()` and `au_to_text()` because they fail rarely and there is no
+need to use `PJDLOG_VERIFY()` instead.
+
+Brackets
+========
+
+The if statements
+-----------------
+
+Use a little bit more strict rules in terms of using brackets around the if
+statements.  Here an example of the desired style:
+
+    if (!fun_returning_bool) {
+        f();
+    } else {
+        g();
+        h();
+    }
+
+    if (!fun_returning_bool) {
+        f();
+    } else if (fun_returning_bool2) {
+        this_is_a_really_long_function_name(withsolongparameters,
+            thatthelinehastobebroken);
+    } else {
+        g();
+    }
+
+    if (f() == 0)
+        return (1);
+    else
+        return (2);
+
+    /* It is better to break on "&&" and "||" than on the function's "(". */
+    if (!very_long_fun(aaa, bbb, ccc) &&
+        another_very_long_fun(xxx, yyy, zzz)
+            f();
+    else if (this_breaking_style_is_not_that_good(xxx, yyy, zzz) && fun(
+        aaa, bbb, ccc)
+            f();

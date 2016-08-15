@@ -39,7 +39,10 @@ u_char			*linau_event_process(const struct linau_event *event,
 			    size_t *buflenp);
 
 /* linau_record. */
-struct			 linau_record *linau_record_create(void);
+struct linau_record	*linau_record_create(void);
+struct linau_record	*linau_record_construct(const char *type, uint32_t id,
+			    uint64_t time, const nvlist_t *fields,
+			    size_t fields_count, const char *buf);
 void			 linau_record_destroy(struct linau_record *record);
 nvlist_t		*linau_record_clone_fields(
 			    const struct linau_record *record);
@@ -63,23 +66,16 @@ uint64_t		 linau_record_get_time(
 const char		*linau_record_get_type(
 			    const struct linau_record *record);
 
-bool			 linau_record_try_get_uint32_field(
-			    const struct linau_record *record,
-			    const char *fieldname, uint32_t *fieldvalp);
-
-void			 linau_record_move_fields(struct linau_record *record,
-			    nvlist_t *fields);
-void			 linau_record_move_type(struct linau_record *record,
-			    char *type);
-
-void			 linau_record_set_fields_count(
-			    struct linau_record *record, size_t fields_count);
+void			 linau_record_set_fields(struct linau_record *record,
+			    const nvlist_t *fields, size_t fields_count);
 void			 linau_record_set_id(struct linau_record *record,
 			    uint32_t id);
 void			 linau_record_set_text(struct linau_record *record,
 			    const char *text);
 void			 linau_record_set_time(struct linau_record *record,
 			    uint64_t time);
+void			 linau_record_set_type(struct linau_record *record,
+			    const char *type);
 
 struct linau_record	*linau_record_parse(const char * buf);
 nvlist_t		*linau_record_parse_fields(const char *buf,
@@ -95,7 +91,7 @@ int			 linau_record_comapre_origin(
 			    const struct linau_record *recb);
 
 void			 linau_record_to_au(const struct linau_record *record,
-			    int aurecordd);
+			    int aurd);
 
 /* linau_field. */
 struct linau_field	*linau_field_create(void);
@@ -105,10 +101,10 @@ void			 linau_field_shallow_destroy(struct linau_field *field);
 const char		*linau_field_get_name(const struct linau_field *field);
 const char		*linau_field_get_value(const struct linau_field *field);
 
-void			 linau_field_move_name(struct linau_field *field,
-			    char *name);
-void			 linau_field_move_value(struct linau_field *field,
-			    char *value);
+void			 linau_field_set_name(struct linau_field *field,
+			    const char *name);
+void			 linau_field_set_value(struct linau_field *field,
+			    const char *value);
 
 struct linau_field	*linau_field_parse(const char *buf, size_t *lastposp);
 char			*linau_field_parse_name(const char *buf, size_t start,

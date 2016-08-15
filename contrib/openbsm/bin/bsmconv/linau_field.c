@@ -31,6 +31,7 @@ find_string_value_end(const char *buf, size_t start, char stringtype)
 
 	do {
 		endchrp = strchr(buf + end, stringtype);
+		/* STYLE: PJDLOG_ASSERT or PJDLOG_VERIFY? */
 		PJDLOG_VERIFY(endchrp != NULL);
 		end = endchrp - buf;
 	} while (buf[end - 1] == '\\');
@@ -44,7 +45,7 @@ linau_field_create(void)
 	struct linau_field *field;
 
 	field = calloc(1, sizeof(*field));
-	PJDLOG_VERIFY(field != NULL);
+	PJDLOG_ASSERT(field != NULL);
 
 	return (field);
 }
@@ -55,8 +56,7 @@ linau_field_destroy(struct linau_field *field)
 
 	free(field->lf_name);
 	free(field->lf_value);
-	free(field);
-	/* XXX Should I change field to NULL now? */
+	linau_field_shallow_destroy(field);
 }
 
 void
@@ -87,25 +87,34 @@ linau_field_get_value(const struct linau_field *field)
 }
 
 void
-linau_field_move_name(struct linau_field *field, char *name)
+linau_field_set_name(struct linau_field *field, const char *name)
 {
 
 	PJDLOG_ASSERT(field != NULL);
 	PJDLOG_ASSERT(name != NULL);
+	PJDLOG_ASSERT(strchr(name, '\0') != NULL);
 
-	field->lf_name = name;
+	field->lf_name = strdup(name);
+	PJDLOG_ASSERT(field->lf_name != NULL);
 }
 
 void
-linau_field_move_value(struct linau_field *field, char *value)
+linau_field_set_value(struct linau_field *field, const char *value)
 {
 
 	PJDLOG_ASSERT(field != NULL);
 	PJDLOG_ASSERT(value != NULL);
+	PJDLOG_ASSERT(strchr(value, '\0') != NULL);
 
-	field->lf_value = value;
+	field->lf_value = strdup(value);
+	PJDLOG_ASSERT(field->lf_value != NULL);
 }
 
+/*
+ * XXX: This function allows the fileds to be separated by ",[ ]*" or "[ ]+".
+ * In the future, when the Linux Audit becomes more standardized, this function
+ * should allow "," and " " separators only.
+ */
 struct linau_field *
 linau_field_parse(const char *buf, size_t *lastposp)
 {
@@ -131,21 +140,25 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	pjdlog_debug(6, " . . . . . . namestart (%zu) points to (%c)",
 	    namestart, buf[namestart]);
 
-	/* Skip a comma or a whitespace. */
-	if (namestart + 1 < buflen && isspace(buf[namestart]))
+	/* Skip a comma or a space. */
+	if (namestart + 1 < buflen && buf[namestart] == ' ')
 		namestart++;
 	else if (namestart + 1 < buflen && buf[namestart] == ',')
 		namestart++;
 	else
 		PJDLOG_ABORT("The record fields should be separated by either "
-		    "a comma or a whitespace");
+		    "a comma or a space");
 
-	/* Skip any number of whitespaces. */
-	while (namestart + 1 < buflen && isspace(buf[namestart]))
+	/*
+	 * Skip any number of spaces.
+	 *
+	 * XXX: It is not within the Linux Audit 'standard' but it is quite
+	 * often to see a comma and a space afterwards.
+	 */
+	while (namestart + 1 < buflen && buf[namestart] == ' ')
 		namestart++;
 
-	PJDLOG_ASSERT(!isspace(buf[namestart]));
-	PJDLOG_ASSERT(buf[namestart] != ',');
+	PJDLOG_ASSERT(! buf[namestart] != ' ' && buf[namestart] != ',');
 
 	pjdlog_debug(6, " . . . . . . Nonspace namestart (%zu) points to (%c)",
 	    namestart, buf[namestart]);
@@ -159,13 +172,15 @@ linau_field_parse(const char *buf, size_t *lastposp)
 	PJDLOG_ASSERT(buf[nameend] != '=');
 
 	name = linau_field_parse_name(buf, namestart, nameend);
-	linau_field_move_name(field, name);
+	linau_field_set_name(field, name);
+	free(name);
 
 	valstart = equalpos + 1;
 	PJDLOG_ASSERT(valstart < buflen);
 
 	value = linau_field_parse_value(buf, valstart);
-	linau_field_move_value(field, value);
+	linau_field_set_value(field, value);
+	free(value);
 
 	*lastposp = valstart + strlen(value);
 
@@ -178,9 +193,6 @@ char *
 linau_field_parse_name(const char *buf, size_t start, size_t end)
 {
 
-	PJDLOG_ASSERT(buf != NULL);
-	PJDLOG_ASSERT(start <= end);
-
 	return (extract_substring(buf, start, end - start + 1));
 }
 
@@ -192,7 +204,7 @@ linau_field_parse_value(const char *buf, size_t start)
 	size_t spacepos;
 
 	PJDLOG_ASSERT(buf != NULL);
-	PJDLOG_ASSERT(strchr(buf, '\0') != NULL);
+
 	PJDLOG_ASSERT(start < strlen(buf));
 
 	switch (buf[start]) {

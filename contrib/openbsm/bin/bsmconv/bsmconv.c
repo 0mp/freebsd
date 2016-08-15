@@ -9,20 +9,18 @@
 #include "linau.h"
 #include "pjdlog.h"
 
-static void process_event(const struct linau_event *event, int debuglevel);
-static void process_events(FILE *fp, int debuglevel);
+static void process_event(const struct linau_event *event);
+static void process_events(FILE *fp);
 
 static void
-process_event(const struct linau_event *event, int debuglevel)
+process_event(const struct linau_event *event)
 {
 	size_t buflen;
 	u_char *buf;
 
-	PJDLOG_ASSERT(event != NULL);
-
 	buf = linau_event_process(event, &buflen);
 
-	if (debuglevel == 0)
+	if (pjdlog_debug_get() == 0)
 		write(1, buf, buflen);
 	else
 		linau_event_dump(event);
@@ -31,26 +29,30 @@ process_event(const struct linau_event *event, int debuglevel)
 }
 
 static void
-process_events(FILE *fp, int debuglevel)
+process_events(FILE *fp)
 {
 	struct linau_event *event;
 	struct linau_record *record;
 
-	PJDLOG_ASSERT(fp != NULL);
-
 	event = linau_event_create();
 	PJDLOG_ASSERT(event != NULL);
 
-	while ((record = linau_record_fetch(fp)) != NULL) {
-		if (linau_event_compare_origin(event, record) != 0) {
-			process_event(event, debuglevel);
+	/*
+	 * Style: Is this better than the previous while loop?
+	 */
+	for (;;) {
+		record = linau_record_fetch(fp);
+		if (record == NULL) {
+			process_event(event);
+			linau_event_destroy(event);
+			break;
+		}
+		else if (linau_event_compare_origin(event, record) != 0) {
+			process_event(event);
 			linau_event_clear(event);
 		}
 		linau_event_add_record(event, record);
 	}
-	process_event(event, debuglevel);
-
-	linau_event_destroy(event);
 }
 
 int
@@ -73,7 +75,7 @@ main(int argc, char **argv)
 
 	pjdlog_debug_set(debuglevel);
 
-	process_events(stdin, debuglevel);
+	process_events(stdin);
 
 	return (0);
 }

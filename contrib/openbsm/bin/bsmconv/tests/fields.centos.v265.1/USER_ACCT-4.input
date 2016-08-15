@@ -1,0 +1,1 @@
+type=USER_ACCT msg=audit(1468854061.807:62): user pid=1690 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='op=PAM:accounting acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'

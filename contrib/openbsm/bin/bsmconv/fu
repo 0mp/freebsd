@@ -1,26 +1,30 @@
 #!/bin/sh
 
+# fu - a swiss knife script to automate repetitive tasks.
+
 TEST_DIR=tests/
 POSITIVE_DIR=${TEST_DIR}positive/
 NEGATIVE_DIR=${TEST_DIR}negative/
+FIELDS_CENTOS_V265=${TEST_DIR}fields.centos.v265/
+FIELDS_V245=${TEST_DIR}v245/
+FIELDS_DEBIAN_V24=${TEST_DIR}fields.debian.v24/
+FIELDS_V265=${TEST_DIR}v265/
+FIELDS_EDGECASES=${TEST_DIR}edgecases/
+
 MAKEFILE_DIR=../../../../usr.bin/bsmconv/
-BIN=${MAKEFILE_DIR}bsmconv
-LA_DOCS_JS=NOTES_ON_LINUX_AUDIT.js
 MAKEFILE=${MAKEFILE_DIR}Makefile
+BIN=${MAKEFILE_DIR}bsmconv
+LA_DOCS_JS=docs/NOTES_ON_LINUX_AUDIT.js
 
 PROGRESS_PENDING_CHAR="\."
-update_progress_bar() {
-    UPDATE="$1"
-    PROGRESS="$(echo "$PROGRESS" | sed 's/'"$PROGRESS_PENDING_CHAR"'/'"$UPDATE"'/')"
-}
 
 fu_make() {
-    make -C "$MAKEFILE_DIR"|| exit 1
+    make -C "$MAKEFILE_DIR" || exit 1
 }
 
 fu_result() {
-    update_progress_bar "$2"
-    echo "[$1]"
+    fu_progress_update "$2"
+    echo -e "[$1]"
     printf "%s (%d) $PROGRESS\n" "$3" "$4"
 }
 
@@ -32,6 +36,22 @@ fu_failure() {
     fu_result "$1" "F" "FAIL" "$2"
 }
 
+# Parameters:
+# $1 - The test directory. The function will count the number of test files
+#      inside the given directory and initalize the progress bar accordingly.
+#      The directory will be traversed recursivelly.
+fu_progress_init() {
+    local TESTS_COUNT=$(find ${1} -type f | wc -l)
+    PROGRESS=$(printf "[%${TESTS_COUNT}s]" " " | \
+        sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
+}
+
+fu_progress_update() {
+    local UPDATE="$1"
+    PROGRESS="$(echo "$PROGRESS" | \
+        sed 's/'"$PROGRESS_PENDING_CHAR"'/'"$UPDATE"'/')"
+}
+
 fu_run_test_set() {
     trap 'exit 130' INT
     DIR="$1"
@@ -40,15 +60,21 @@ fu_run_test_set() {
     OPTS="$4"
     for TEST_FILE in "$DIR"*.input; do
         echo ======================================================
-        echo "[$TEST_FILE]"
+        echo -e "\e[1m[$TEST_FILE]\e[0m"
         echo ------------------------------------------------------
+    if [ "$OPTS" = "--" ]; then
+        "$BIN" "$OPTS" < "$TEST_FILE" > /tmp/fu.log
+        RETVAL="$?"
+        praudit /tmp/fu.log
+    else
         "$BIN" "$OPTS" < "$TEST_FILE"
         RETVAL="$?"
+    fi
         echo ------------------------------------------------------
         if [ "$RETVAL" -eq 0 ]; then
-            $ONSUCCESS $TEST_FILE $RETVAL
+            $ONSUCCESS "\e[1m\e[32m$TEST_FILE\e[0m" $RETVAL
         else
-            $ONFAILURE $TEST_FILE $RETVAL
+            $ONFAILURE "\e[1m\e[31m$TEST_FILE\e[0m" $RETVAL
         fi
     done
     echo ======================================================
@@ -57,49 +83,134 @@ fu_run_test_set() {
 fu_run_tests() {
     OPTS="$1"
     fu_run_test_set "$POSITIVE_DIR" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_DEBIAN_V24" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_V245" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_CENTOS_V265" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_V265" 'fu_success' 'fu_failure' "$OPTS"
+    fu_run_test_set "$FIELDS_EDGECASES" 'fu_success' 'fu_failure' "$OPTS"
     fu_run_test_set "$NEGATIVE_DIR" 'fu_failure' 'fu_success' "$OPTS"
 }
 
+# Parameters:
+# $1 - The Linux Audit log file to be splitted into files containing one
+#      record at a time.
+# $2 - The output directory. Must have a trailing
+#      slash ('/').
+fu_generate_linau_test_cases() {
+    local LOG_FILE="$1"
+    local DEST_DIR="$2"
+    local RECORD
+
+    mkdir "${DEST_DIR}"
+    if [ $? -ne 0 ]; then
+        echo "Choose another directory"
+        exit 1
+    fi
+    if [ "$(echo -n "$DEST_DIR" | tail -c 1)" != '/' ]; then
+        echo "Provided directory doesn't have a trailing slash"
+        exit 1
+    fi
+    while read RECORD; do
+        local TYPE=$(echo "$RECORD" | cut -d' ' -f1 | cut -c 6-)
+        local NUM=1
+        while [ -f "${DEST_DIR}${TYPE}-${NUM}.input" ]; do
+            NUM=$((NUM+1))
+        done
+        local TEST_CASE_NAME="$(printf "${DEST_DIR}${TYPE}-%06d.input" ${NUM})"
+        echo "$RECORD" > "${TEST_CASE_NAME}"
+    done < "$LOG_FILE"
+}
+
+# Parameters:
+# $1 - The Linux Audit log file to be splitted into files containing one
+#      record at a time.
+# $2 - The output directory. Must have a trailing
+#      slash ('/').
+fu_generate_unique_linau_test_cases() {
+    local LOG_FILE="$1"
+    local DEST_DIR="$2"
+    local RECORD
+
+    mkdir "${DEST_DIR}"
+    if [ $? -ne 0 ]; then
+        echo "Choose another directory"
+        exit 1
+    fi
+    if [ "$(echo -n "$DEST_DIR" | tail -c 1)" != '/' ]; then
+        echo "Provided directory doesn't have a trailing slash"
+        exit 1
+    fi
+    while read RECORD; do
+        local TYPE=$(echo "$RECORD" | cut -d' ' -f1 | cut -c 6-)
+        if [ ! -f "${DEST_DIR}${TYPE}.input" ]; then
+            echo "$RECORD" > "${DEST_DIR}${TYPE}.input"
+        fi
+    done < "$LOG_FILE"
+}
+
 fu_usage() {
-    echo "usage: $0 ACTION [ACTION ...]"
-    echo "ACTION is {m, t, tv -v. rv -v test, usage}."
-    printf "%s\n%s\n" \
-    "The game of chess is like a sword fight." \
-    "You must think first before you move."
+cat <<-EOF >&1
+Usage: ${0##*/} <options>...
+
+  gen <logfile> <dir> Generate a test set based on a provided log file
+  genuniq <logfile> <dir> Generate a test set of at most one record per a type
+                      based on a provided log file
+  h                   Show this usage and exit
+  m                   Make
+  rp <test>           Run the test and pipe the output to praudit
+  rv <args> <test>    Run the test with on the verbose mode
+  t                   Run all test sets
+  tsv <args> <set>    Run a test set on the verbose mode
+EOF
     exit 1
 }
 
-PROGRESS=$(printf "[%$(find ${TEST_DIR} -type f | wc -l)s]" " " | sed 's/\ /'"$PROGRESS_PENDING_CHAR"'/g')
-
+if [ "$#" -eq 0 ]; then
+    fu_usage
+fi
 
 while [ "$#" -gt 0 ]; do
-    case "$1" in
-    t|test|tests)
-        fu_run_tests
+    OPT="$1"
+    shift
+    case "$OPT" in
+    h|help|usage)
+        fu_usage
         ;;
-    tv)
-        fu_run_tests "$2"
-        shift
+    gen)
+        fu_generate_linau_test_cases "$1" "$2"
+        shift 2
+        ;;
+    genuniq)
+        fu_generate_unique_linau_test_cases "$1" "$2"
+        shift 2
         ;;
     m|make)
         fu_make
         ;;
-    rv)
-        "$BIN" "$2" < "$3"
-        shift
-        shift
-        ;;
     rp)
-        "$BIN" < "$2" | praudit
+        "$BIN" < "$1" | praudit
         shift
         ;;
-    docs)
-        node "$LA_DOCS_JS" | python -m json.tool
-	;;
-    usage|help|-h|*)
+    rv)
+        "$BIN" "$1" < "$2"
+        shift 2
+        ;;
+    t|test|tests)
+        fu_progress_init "$TEST_DIR"
+        fu_run_tests
+        ;;
+    tsv)
+        fu_progress_init "$2"
+        fu_run_test_set "$2" 'fu_success' 'fu_failure' "$1"
+        shift 2
+        ;;
+    tv)
+        fu_progress_init "$TEST_DIR"
+        fu_run_tests "$1"
+        shift
+        ;;
+    h|help|usage|*)
         fu_usage
         ;;
     esac
-    shift
 done
-

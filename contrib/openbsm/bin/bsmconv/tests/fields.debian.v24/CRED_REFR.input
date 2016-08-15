@@ -1,0 +1,1 @@
+type=CRED_REFR msg=audit(1464013671.521:404): pid=3569 uid=0 auid=1000 ses=7 msg='op=PAM:setcred acct="root" exe="/usr/bin/sudo" hostname=? addr=? terminal=/dev/pts/1 res=success'

@@ -1,0 +1,1 @@
+type=CRYPTO_KEY_USER msg=audit(1468855388.652:97): user pid=1195 uid=0 auid=0 ses=2 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=destroy kind=session fp=? direction=both spid=1195 suid=0 rport=58799 laddr=192.168.56.104 lport=22  exe="/usr/sbin/sshd" hostname=? addr=192.168.56.1 terminal=? res=success'

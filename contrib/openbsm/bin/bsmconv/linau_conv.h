@@ -3,7 +3,7 @@
 
 #include "linau.h"
 
-void	linau_conv_to_au(int aurecordd, const struct linau_record *record,
+void	linau_conv_to_au(int aurd, const struct linau_record *record,
 	    int typenum);
 int	linau_conv_get_type_number(const char *type);
 

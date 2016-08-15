@@ -1,0 +1,1 @@
+type=USER_AUTH msg=audit(1468855626.468:45): user pid=1220 uid=0 auid=4294967295 ses=4294967295 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=key algo=ssh-rsa size=2048 fp=1a:d9:5a:c3:02:87:34:4d:73:74:21:14:f5:49:a8:66 rport=40592 acct="root" exe="/usr/sbin/sshd" hostname=? addr=192.168.56.1 terminal=? res=success'
