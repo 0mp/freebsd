@@ -53,6 +53,7 @@ Style & Refactoring
 - [ ] Unify the lctokens for the _res_ and _result_ fields.
 - [ ] Use pjdlog.h instead of `printf` in `linau_event_dump` (pjdlog.h is said
       to cause problems when used together with `printf`).
+- [ ] Use pjdlog_set_prefix for pjdlog_debug messages.
 
 Tests
 =====
