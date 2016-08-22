@@ -28,7 +28,8 @@ FreeBSD Improvements
 
 - [ ] Update the `au_token(3)` man page since it is super outdated.
     - `au_to_attr` has invalid arguements.
-    - `man au_to_attr` doesn't open `au_token(3)`.
+    - `man au_to_attr` doesn't open `au_token(3)`. The same applies to
+      `au_to_attr32`.
 - [ ] Why isn't the pointer parameters of the au_to_* functions const? See
       `sys/security/audit/bsm_token.c:au_to_exec_args` for example.  For example
       `au_to_exec_args` does not modify the parameters; as the function uses
@@ -54,6 +55,7 @@ Style & Refactoring
 - [ ] Use pjdlog.h instead of `printf` in `linau_event_dump` (pjdlog.h is said
       to cause problems when used together with `printf`).
 - [ ] Use pjdlog_set_prefix for pjdlog_debug messages.
+- [ ] Use `errx(EX_USAGE, "<usage>");` for usage.
 
 Tests
 =====
