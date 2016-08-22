@@ -11,6 +11,9 @@ static bool	linau_proto_str_to_u(void *nump, const char *str,
 		    size_t numsize, int base);
 
 /*
+ * STYLE: See auditdistd code.  There is a similar function which looks way
+ * better.
+ *
  * Returns:
  * - true on a successful conversion;
  * - false otherwise.
@@ -85,6 +88,9 @@ combine_secs_with_nsecs(uint32_t secs, uint32_t nsecs)
 	return ((uint64_t)(secs) * (1000 * 1000 * 1000) + (uint64_t)nsecs);
 }
 
+/*
+ * STYLE: Use strstr.
+ */
 bool
 find_position(size_t *posp, const char *buf, size_t start, char chr)
 {

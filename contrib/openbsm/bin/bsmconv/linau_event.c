@@ -261,8 +261,7 @@ linau_event_process(const struct linau_event *event, size_t *buflenp)
 	aurd = linau_event_to_au(event, &aueventid);
 	tm = linau_event_get_timeval(event);
 
-	PJDLOG_VERIFY(au_close_buffer_tm(aurd, aueventid, buf,
-	    buflenp, tm) == 0);
+	PJDLOG_VERIFY(au_close_buffer_tm(aurd, aueventid, buf, buflenp, tm) == 0);
 
 	free(tm);
 
