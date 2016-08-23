@@ -12,7 +12,7 @@ Najważniejszym plikiem konfiguracyjnym jest `audit_control(5)`.
 
 Przykładowa zawartość `/etc/security/audit_control`:
 
-```
+```sh
 dir:/var/audit
 dist:off
 flags:all
@@ -23,22 +23,33 @@ filesz:2M
 expire-after:10M
 ```
 
-Najciekawszymi opcjami są `flags`, `naflags` oraz `policy`.
+- Powyższa konfiguracja pozwala monitorować i zapisuje wszystko, co tylko można wyciągnąć z FreeBSD.
+- Najciekawszymi opcjami są `flags`, `naflags` oraz `policy`.
 
-|Parametr|Znaczenie|
-|:-:|:-:|
-|`flags`|Deskrytory klasy monitorowanych zdarzeń.|
-|`naflags`|Deskrytory klasy monitorowanych zdarzeń, gdy nie znamy użytkownika.|
-|`policy`|Szczegóły śledzenia zdarzeń. |
+---
 
-Definicje `flags` oraz `naflags` znajdują się w `/etc/security/audit_user`
-(`audit_user(5)`).
+## Czym są `flags`, `naflags` oraz `policy`?
+
+
+|Parametr|Znaczenie|man|
+|:-:|-|:-:|
+|`flags`|Deskrytory klasy monitorowanych zdarzeń.|`audit_class(5)`|
+|`naflags`|Deskrytory klasy monitorowanych zdarzeń, gdy nie znamy użytkownika.|`audit_class(5)`|
+|`policy`|Szczegóły śledzenia zdarzeń. |`audit_control(5)`|
+
+---
 
 ## `flags` / `naflags`
 
-Domyślne klasy zdefiniowane w `/etc/security/audit_class`:
+Definicje `flags` oraz `naflags` znajdują się w `/etc/security/audit_user` (`audit_user(5)`).
 
-```
+
+
+---
+
+### Standardowe klasy (`/etc/security/audit_class`):
+
+```rust
 0x00000000:no:invalid class
 0x00000001:fr:file read
 0x00000002:fw:file write
@@ -61,9 +72,11 @@ Domyślne klasy zdefiniowane w `/etc/security/audit_class`:
 0xffffffff:all:all flags set
 ```
 
-Klasy są używane przez `/etc/security/audit_event` (fragment):
+---
 
-```
+Klasy są używane przez `/etc/security/audit_event`:
+
+```rust
 43001:AUE_GETFSSTAT:getfsstat(2):fa
 43002:AUE_PTRACE:ptrace(2):pc
 43003:AUE_CHFLAGS:chflags(2):fm
@@ -79,14 +92,11 @@ Klasy są używane przez `/etc/security/audit_event` (fragment):
 43013:AUE_FUTIMES:futimes(2):fm
 ```
 
-Mapowanie pomiędzy identyfikatorami zdarzeń a numerami zachodzi
-w `/usr/include/bsm/audit_kevent.h` oraz `/usr/include/bsm/audit_uevent.h`:
+---
 
-```
-#define	AUE_at_create		6144
-#define	AUE_at_delete		6145
-#define	AUE_at_perm		6146
-#define	AUE_cron_invoke		6147
+Mapowanie pomiędzy identyfikatorami zdarzeń a numerami zachodzi w `/usr/include/bsm/audit_kevent.h` oraz `/usr/include/bsm/audit_uevent.h`:
+
+```rust
 #define	AUE_crontab_create	6148
 #define	AUE_crontab_delete	6149
 #define	AUE_crontab_perm	6150
@@ -103,7 +113,4 @@ w `/usr/include/bsm/audit_kevent.h` oraz `/usr/include/bsm/audit_uevent.h`:
 #define	AUE_reboot		6161
 #define	AUE_rexecd		6162
 #define	AUE_passwd		6163
-#define	AUE_rexd		6164
-#define	AUE_ftpd		6165
 ```
-
