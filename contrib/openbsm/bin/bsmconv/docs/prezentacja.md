@@ -12,7 +12,7 @@
 2. Krótko o `auditdistd(8)`.
 3. Formatu BSM i biblioteka `libbsm(3)`.
 4. Środowskio Linux Audit.
-<!--4. Narzędzia do konwersji Linux Audit do BSM.-->
+5. Narzędzia do konwersji Linux Audit do BSM.
 
 ---
 
@@ -430,3 +430,115 @@ type=SYSCALL msg=audit(1470137689.354:166):\
     
     Które nie są opisane w żadnym dokumencie.
     
+---
+
+## 4.2. Narzędzia Linux Audit
+
+Omawiane na przykładzie systemu CentOS 7.
+
+### 4.2.1. `auditd(8)`
+
+Zasady monitorowania systemu umieszczamy w plikach w `/etc/audit/rules.d`. Na przykład:
+
+```ini
+-w /home -p waxr -k 0mp_watch_home
+```
+
+zapisuje informacje o wszystkim, co dzieje się w folderach domowych.
+
+### 4.2.2 `audispd(8)` oraz `audisp-remote(8)`
+
+`audispd(8)` pozwala na powielanie i przekazywanie logów do różnych narzędzi w czasie rzeczywistym. Mogą to być zarówno nasze skrypty, jak i standardowe wtyczki (np.: `audisp-remote(8)`).
+
+---
+
+## 4.3. Czy macie jakieś pytania odnośnie Linux Audit?
+
+---
+
+# 5. Narzędzia do konwersji Linux Audit do BSM.
+
+---
+
+## 5.1. Biblioteka `linau.h`
+
+Zastosowania:
+
+- Parsowanie logów w formacie Linux Audit;
+- Konwersja Linux Audit do BSM.
+
+---
+
+## 5.2. Jak działa konwersja?
+
+### 5.2.1. Struktury
+
+```c
+struct linau_conv_field {
+	int	lcf_id;
+	union {
+		int (*lcf_validate)(const char *);
+		struct linau_string_queue *(*lcf_match)
+		    (const struct linau_record *);
+	};
+};
+
+struct linau_conv_token {
+	void (*lct_write)(int aurd, 
+	    const struct linau_record *);
+	const struct linau_conv_field *lct_fields[];
+};
+
+struct linau_conv_record_type {
+	int				 lcrt_id;
+	const char			*lcrt_str;
+	const struct linau_conv_token	*lcrt_tokens[];
+};
+```
+
+---
+
+### 5.2.2. Schemat konwersji
+
+1. Odszukujemy odpowiednią dla konertowanego rekordu strukturę _lcrectype_.
+2. Iterujemy po wszystkich _lctokenach_ i próbujemy wygenerować symbole BSM używając funkcji i informacji zawartych w _lctokenie_.
+3. Wszystkie pola, które były niepoprawne lub nie dało się przypisać do żadnego symbolu zapisujemy do deskryptora jako _text token_.
+
+Fragment funkcji `linau_conv_process_record`:
+```c
+for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++)
+	lcrectype->lcrt_tokens[ti]->lct_write(aurd, 
+	    record);
+
+linau_conv_write_unprocessed_fields(aurd, record, 
+    lcrectype);
+```
+
+---
+
+## 5.3. Główne wady i braki aktualnej wersji biblioteki
+
+- Wartości pól nie jest są walidowane, tzn.: biblioteka nie jest przygotowana na pola typu `pid="foo"`;
+- Brak mapowania pomiędzy typami rekordów Linux Audit, a wartościami w `audit_event`.
+- Instnieją zdarzenia w Linux Audit, których rekord należałoby interpretować jako całość, a nie oddzielnie (np.: `type=SYSLOG`).
+
+---
+
+## 5.4. Narzędzie do konwersji logów (`bsmconv`)
+
+```sh
+./bsmconv < linux-audit.log
+```
+
+Na wyjściu otrzymamy przekonwertowane logi w formacie BSM.
+
+Opcja `-v` służy zwiększania poziomu debugu. Użycie `-v` skutkuje tym, że logi nie zostaną wypisane w formacie BSM; zamiast tego zostanie wypisana zawartość wewnętrznej struktury `linau_event`.
+
+---
+
+
+## 5.5. Czy macie jakieś pytania odnośnie mojego projektu _Non-BSM to BSM Conversion Tools_?
+
+---
+
+# 6. Dziękuję za uwagę.
