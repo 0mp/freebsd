@@ -6,7 +6,17 @@
 
 ---
 
-# Konfiguracja `auditd(8)`
+# 0. Plan prezentacji
+
+1. Konfiguracja `auditd(8)`.
+2. Krótko o `auditdistd(8)`.
+3. Formatu BSM i biblioteka `libbsm(3)`.
+4. Środowskio Linux Audit.
+<!--4. Narzędzia do konwersji Linux Audit do BSM.-->
+
+---
+
+# 1. Konfiguracja `auditd(8)`
 
 Najważniejszym plikiem konfiguracyjnym jest `audit_control(5)`.
 
@@ -28,7 +38,7 @@ expire-after:10M
 
 ---
 
-## Czym są `flags`, `naflags` oraz `policy`?
+## 1.1. Czym są `flags`, `naflags` oraz `policy`?
 
 
 |Parametr|Znaczenie|man|
@@ -39,15 +49,20 @@ expire-after:10M
 
 ---
 
-## `flags` / `naflags`
+## 1.2. `flags` / `naflags`
 
-Definicje `flags` oraz `naflags` znajdują się w `/etc/security/audit_user` (`audit_user(5)`).
+Definicje `flags` oraz `naflags` znajdują się w `/etc/security/audit_class` (`audit_class(5)`).
 
+Pełne ścieżkie do plików omawianych na kolejnych slajdach:
 
+- `/etc/security/audit_class`
+- `/etc/security/audit_event`
+- `/usr/include/bsm/audit_kevents.h`
+- `/usr/include/bsm/audit_uevents.h`
 
 ---
 
-### Standardowe klasy (`/etc/security/audit_class`):
+### 1.2.1. Standardowe klasy (`audit_class`)
 
 ```rust
 0x00000000:no:invalid class
@@ -74,7 +89,7 @@ Definicje `flags` oraz `naflags` znajdują się w `/etc/security/audit_user` (`a
 
 ---
 
-Klasy są używane przez `/etc/security/audit_event`:
+### 1.2.2. Klasy są używane przez `audit_event`
 
 ```rust
 43001:AUE_GETFSSTAT:getfsstat(2):fa
@@ -94,7 +109,7 @@ Klasy są używane przez `/etc/security/audit_event`:
 
 ---
 
-Mapowanie pomiędzy identyfikatorami zdarzeń a numerami zachodzi w `/usr/include/bsm/audit_kevent.h` oraz `/usr/include/bsm/audit_uevent.h`:
+### 1.2.3. Biblioteki z identyfikatorami zdarzeń, z których możemy korzystać, to w `audit_kevents.h` oraz `audit_uevents.h`
 
 ```rust
 #define	AUE_crontab_create	6148
@@ -114,3 +129,304 @@ Mapowanie pomiędzy identyfikatorami zdarzeń a numerami zachodzi w `/usr/includ
 #define	AUE_rexecd		6162
 #define	AUE_passwd		6163
 ```
+
+---
+
+### 1.2.4. Jak to wszystko się łączy?
+
+- `/etc/security/audit_control`:
+
+    ```rust
+    flags:pc
+    ```
+
+- `/etc/security/audit_class`:
+
+    ```rust
+    0x00000080:pc:process
+    ```
+
+- `/etc/security/audit_event`:
+  
+    ```rust
+    2:AUE_FORK:fork(2):pc
+    ```
+    
+- `/usr/include/bsm/audit_kevents.h`:
+
+    ```rust
+    #define	AUE_FORK		2
+    ```
+
+---
+
+## 1.3. `policy`
+
+FreeBSD oferuje następujące opcje:
+
+|Opcja|Znaczenie|
+|:-:|-|
+|cnt|Nie zatrzymuj systemu, jeżeli nie możesz go monitorować.|
+|ahlt|Zatrzymaj system, jeżeli nie możesz monitorować zdarzeń.|
+|argv|Monitoruj argumenty przekazywane do `execve(2)`.|
+|arge|Monitoruj zmienne środowiskowe przekazywane do `execve(2)`.|
+
+Standard OpenBSM definiuje dużo więcej opcji, ale nie są one jeszcze zaimplementowane we FreeBSD.
+
+---
+
+## 1.4. Włączanie `auditd(8)`
+
+1. Dodajemy do `auditd_enable="YES"` do `/etc/rc.conf`.
+2. Włączmy demon przy użyciu 
+
+    ```sh
+    service auditd start
+    ```
+3. Wygenerowane logi lądują domyślnie do `/var/audit/`.
+
+---
+
+## 1.5. Przeglądanie logów
+
+Logi możemy przeglądać przy użyciu `praudit(1)` - wyświetla on przystępną reprezentację binarnego formatu BSM. 
+
+Przykłady uzycia:
+- Wyświetlenie pliku z logami:
+
+    ```sh
+    praudit /var/audit/20160813110801.20160813110999
+    ```
+- Śledzenie bieżących logów:
+
+    ```sh
+    # Gorszy sposób.
+    tail -f /var/audit/current | praudit
+    # Lepszy sposób.
+    praudit /dev/auditpipe
+    ```
+---
+
+## 1.6. Czy macie jakieś pytania odnośnie `auditd(8)`?
+
+---
+
+# 2. `auditdistd(8)`
+
+Demon służący do bezpiecznej dystrybucji logów audytowych.
+
+---
+
+## 2.1. Konfiguracja `auditdistd(8)`
+
+Zwięzłą listę kroków można znaleźć na [stronie Wiki FreeBSD poświęconej auditdistd (link)]( https://wiki.freebsd.org/auditdistd).
+
+---
+
+# 3. Struktura formatu BSM
+
+```ini
+header,56,11,audit startup,0,Tue Jun  2 04:03:22 1970,\
+  + 0 msec
+text,auditd::Audit startup
+return,success,0
+trailer,56
+header,104,11,su(1),0,Sat Jun 27 15:02:34 1970, + 0 msec
+subject,-1,root,wheel,0mp,wheel,1650,1650,0,0.0.0.0
+text,bad su 0mp to root on /dev/pts/3
+return,failure : Operation not permitted,1
+trailer,104
+header,97,11,su(1),0,Sat Jun 27 15:02:34 1970, + 0 msec
+subject,-1,root,wheel,0mp,wheel,1651,1651,0,0.0.0.0
+text,successful authentication
+return,success,0
+trailer,97
+header,57,11,audit shutdown,0,Tue Jun  2 04:03:22 1970,\
+  + 0 msec
+text,auditd::Audit shutdown
+return,success,0
+trailer,57
+```
+
+---
+
+## 3.1. Struktura formatu BSM: plik
+
+- Opcjonalny _file token_;
+- Rekordy.
+
+Przykład (bez _file token_):
+```ini
+header,56,11,audit startup,0,Tue Jun  2 04:03:22 1970,\
+  + 0 msec
+(...)
+trailer,56
+header,104,11,su(1),0,Sat Jun 27 15:02:34 1970, + 0 msec
+(...)
+trailer,104
+header,97,11,su(1),0,Sat Jun 27 15:02:34 1970, + 0 msec
+(...)
+trailer,97
+header,57,11,audit shutdown,0,Tue Jun  2 04:03:22 1970,\
+  + 0 msec
+(...)
+trailer,57
+```
+
+---
+
+## 3.2. Struktura formatu BSM: rekord
+
+- _Header token_;
+- _Tokeny_ z informacjiami o zdarzeniu;
+- _Trailer token_.
+
+```ini
+header,88,11,recvfrom(2),0,Wed Aug 24 02:45:19 2016,\
+  + 778 msec
+argument,1,0x5,fd
+socket-unix,1,
+path,/
+subject,-1,root,wheel,root,wheel,427,0,0,0.0.0.0
+return,success,51
+trailer,88
+```
+
+---
+
+## 3.3. Struktura formatu BSM: format binarny
+
+Format BSM jest w zasadzie formatem binarnym (w przeciwieństwie do Linux Audit). Oto rekord z poprzedniego slajdu, ale tym razem w postaci binarnej:
+
+```ini
+20,88,11,191,0,1471999519,778
+45,1,0x5,fd
+130,1,
+35,/
+36,-1,0,0,0,0,427,0,0,0.0.0.0
+39,0,51
+19,88
+```
+---
+
+## 3.4. Biblioteka `libbsm(3)`. Jak tworzyć _tokeny_?
+
+W uproszczeniu tworzenie logów wygląda tak:
+
+```c
+char buf[MAX_RECORD_SIZE];
+token_t *tok;
+size_t buflen;
+int aurd;
+
+/* Pozyskaj deskryptor do nowego rekordu. */
+aurd = au_open(); 
+/* Stwórz 'text token'. */
+tok = au_to_text("bad su"); 
+/* Dodaj 'token' do rekordu. */
+au_write(aurd, tok); 
+/* Zamknij deskryptor i zakończ tworzenie rekordu. */
+au_close_buffer(aurd, AUE_SOME_EVENT_ID, buf, buflen);
+```
+
+Bufor `buf` zawiera teraz cały jeden rekord o długości `buflen` bajtów.
+
+---
+
+## 3.5. Czy macie jakieś pytania odnośnie BSM?
+
+---
+
+# 4. Linux Audit
+
+Linux Audit, to:
+
+- Narzędzia dla użytkowników: https://github.com/linux-audit/audit-userspace;
+- Część jądra Linux: https://github.com/linux-audit/audit-kernel
+
+---
+
+## 4.1. Struktura formatu Linux Audit
+
+### 4.1.1. Plik
+
+Plik zbudowany jest ze zdarzeń (_events_). 
+
+```
+type=DAEMON_START msg=audit(1470137689.319:9585):\
+ op=start ver=2.6.6 format=raw\
+ kernel=4.7.0-1.el7.elrepo.x86_64 auid=4294967295\
+ pid=15404 subj=system_u:system_r:auditd_t:s0\
+ res=success
+type=CONFIG_CHANGE msg=audit(1470137689.342:161):\
+  auid=4294967295 ses=4294967295\
+  subj=system_u:system_r:unconfined_service_t:s0\
+  op="add_rule" key="0mp_watch_files_in_home" list=4\
+  res=1
+type=SERVICE_START msg=audit(1470137689.348:165): pid=1\
+  uid=0 auid=4294967295 ses=4294967295\
+  subj=system_u:system_r:init_t:s0 msg='unit=auditd\
+  comm="systemd" exe="/usr/lib/systemd/systemd"\
+  hostname=? addr=? terminal=? res=success'
+```
+---
+
+### 4.1.2. Zdarzenie (_event_)
+
+Zdarzenie jest zbudowane z jednego lub kilku rekordów, które mają taki sam znacznik czasu (_timestamp_) i identyfikator zdarzenia, np. odpowiednio: `1470137689.354` i `166`.
+```
+type=SYSCALL msg=audit(1470137689.354:166):\
+  arch=c000003e syscall=2 success=yes exit=0\
+  a0=7f8876596ab2 a1=80000 a2=1 a3=7f887679d5b0 items=1\
+  ppid=2 pid=15426 auid=4294967295 uid=0 gid=0 euid=0\
+  suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none)\
+  ses=4294967295 comm="systemd-cgroups"\
+  exe="/usr/lib/systemd/systemd-cgroups-agent"\
+  subj=system_u:system_r:init_t:s0\
+  key="0mp_watch_files_in_etc"
+type=CWD msg=audit(1470137689.354:166):  cwd="/"
+type=PATH msg=audit(1470137689.354:166):\
+  item=0 name="/etc/ld.so.cache" inode=18047765\
+  dev=fd:00 mode=0100644 ouid=0 ogid=0 rdev=00:00\
+  obj=unconfined_u:object_r:ld_so_cache_t:s0\
+  nametype=NORMAL
+type=PROCTITLE msg=audit(1470137689.354:166):\
+  proctitle=2F7573722F6C69622F73797374656D...
+```
+
+---
+
+### 4.1.3. Rekord
+
+Rekord zbudowany jest z pola (_field_) `type`, `msg` oraz pewnej liczby charakterystycznych pól dla danego typu rekordu wypisanych po dwukropku.
+```ini
+type=SYSCALL msg=audit(1470137689.354:166):\
+  arch=c000003e syscall=2 success=yes exit=0\
+  a0=7f8876596ab2 a1=80000 a2=1 a3=7f887679d5b0 items=1\
+  ppid=2 pid=15426 auid=4294967295 uid=0 gid=0 euid=0\
+  suid=0 fsuid=0 egid=0 sgid=0 fsgid=0 tty=(none)\
+  ses=4294967295 comm="systemd-cgroups"\
+  exe="/usr/lib/systemd/systemd-cgroups-agent"\
+  subj=system_u:system_r:init_t:s0\
+  key="0mp_watch_files_in_etc"
+```
+
+---
+
+### 4.1.4. Pole
+
+- Pola powinny być zdefiniowane w [słowniku pól](https://github.com/linux-audit/audit-documentation/blob/master/specs/fields/field-dictionary.csv), ale w praktyce bywa różnie (standard Linux Audit wyznaczany jest przez zaimplementowane narzędzia i biblioteki, a nie na dokumentację).
+
+- Pola mają format:
+
+    ```
+    nazwa_pola=wartość
+    ```
+- Zdarzają się anomalie w rodzaju:
+
+    ```python
+    type=FOOBAR msg=audit(1470137689.354:1): user res=1
+    ```
+    
+    Które nie są opisane w żadnym dokumencie.
+    
