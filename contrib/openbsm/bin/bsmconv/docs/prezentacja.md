@@ -1,6 +1,6 @@
 <!-- page_number: true -->
 
-# Mechianizmy śledzenia zmian w systemach FreeBSD i Linux
+# Mechanizmy śledzenia zmian w systemach FreeBSD i Linux
 
 ## Mateusz Piotrowski <0mp@FreeBSD.org>
 
@@ -147,11 +147,11 @@ Pełne ścieżkie do plików omawianych na kolejnych slajdach:
     ```
 
 - `/etc/security/audit_event`:
-  
+
     ```rust
     2:AUE_FORK:fork(2):pc
     ```
-    
+
 - `/usr/include/bsm/audit_kevents.h`:
 
     ```rust
@@ -178,7 +178,7 @@ Standard OpenBSM definiuje dużo więcej opcji, ale nie są one jeszcze zaimplem
 ## 1.4. Włączanie `auditd(8)`
 
 1. Dodajemy do `auditd_enable="YES"` do `/etc/rc.conf`.
-2. Włączmy demon przy użyciu 
+2. Włączmy demon przy użyciu
 
     ```sh
     service auditd start
@@ -189,7 +189,7 @@ Standard OpenBSM definiuje dużo więcej opcji, ale nie są one jeszcze zaimplem
 
 ## 1.5. Przeglądanie logów
 
-Logi możemy przeglądać przy użyciu `praudit(1)` - wyświetla on przystępną reprezentację binarnego formatu BSM. 
+Logi możemy przeglądać przy użyciu `praudit(1)` - wyświetla on przystępną reprezentację binarnego formatu BSM.
 
 Przykłady uzycia:
 - Wyświetlenie pliku z logami:
@@ -320,11 +320,11 @@ size_t buflen;
 int aurd;
 
 /* Pozyskaj deskryptor do nowego rekordu. */
-aurd = au_open(); 
+aurd = au_open();
 /* Stwórz 'text token'. */
-tok = au_to_text("bad su"); 
+tok = au_to_text("bad su");
 /* Dodaj 'token' do rekordu. */
-au_write(aurd, tok); 
+au_write(aurd, tok);
 /* Zamknij deskryptor i zakończ tworzenie rekordu. */
 au_close_buffer(aurd, AUE_SOME_EVENT_ID, buf, buflen);
 ```
@@ -350,7 +350,7 @@ Linux Audit, to:
 
 ### 4.1.1. Plik
 
-Plik zbudowany jest ze zdarzeń (_events_). 
+Plik zbudowany jest ze zdarzeń (_events_).
 
 ```
 type=DAEMON_START msg=audit(1470137689.319:9585):\
@@ -427,9 +427,9 @@ type=SYSCALL msg=audit(1470137689.354:166):\
     ```python
     type=FOOBAR msg=audit(1470137689.354:1): user res=1
     ```
-    
+
     Które nie są opisane w żadnym dokumencie.
-    
+
 ---
 
 ## 4.2. Narzędzia Linux Audit
@@ -484,7 +484,7 @@ struct linau_conv_field {
 };
 
 struct linau_conv_token {
-	void (*lct_write)(int aurd, 
+	void (*lct_write)(int aurd,
 	    const struct linau_record *);
 	const struct linau_conv_field *lct_fields[];
 };
@@ -507,10 +507,10 @@ struct linau_conv_record_type {
 Fragment funkcji `linau_conv_process_record`:
 ```c
 for (ti = 0; lcrectype->lcrt_tokens[ti] != NULL; ti++)
-	lcrectype->lcrt_tokens[ti]->lct_write(aurd, 
+	lcrectype->lcrt_tokens[ti]->lct_write(aurd,
 	    record);
 
-linau_conv_write_unprocessed_fields(aurd, record, 
+linau_conv_write_unprocessed_fields(aurd, record,
     lcrectype);
 ```
 
