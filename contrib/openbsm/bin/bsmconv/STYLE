@@ -29,31 +29,33 @@ The if statements
 Use a little bit more strict rules in terms of using brackets around the if
 statements.  Here an example of the desired style:
 
-    if (!fun_returning_bool) {
-        f();
-    } else {
-        g();
-        h();
-    }
+```c
+if (!fun_returning_bool) {
+	f();
+} else {
+	g();
+	h();
+}
 
-    if (!fun_returning_bool) {
-        f();
-    } else if (fun_returning_bool2) {
-        this_is_a_really_long_function_name(withsolongparameters,
-            thatthelinehastobebroken);
-    } else {
-        g();
-    }
+if (!fun_returning_bool) {
+	f();
+} else if (fun_returning_bool2) {
+	this_is_a_really_long_function_name(withsolongparameters,
+	    thatthelinehastobebroken);
+} else {
+	g();
+}
 
-    if (f() == 0)
-        return (1);
-    else
-        return (2);
+if (f() == 0)
+	return (1);
+else
+	return (2);
 
-    /* It is better to break on "&&" and "||" than on the function's "(". */
-    if (!very_long_fun(aaa, bbb, ccc) &&
-        another_very_long_fun(xxx, yyy, zzz)
-            f();
-    else if (this_breaking_style_is_not_that_good(xxx, yyy, zzz) && fun(
-        aaa, bbb, ccc)
-            f();
+/* It is better to break on "&&" and "||" than on the function's "(". */
+if (!very_long_fun(aaa, bbb, ccc) &&
+    another_very_long_fun(xxx, yyy, zzz)
+	f();
+else if (this_breaking_style_is_not_that_good(xxx, yyy, zzz) && fun(
+    aaa, bbb, ccc)
+	f();
+```
