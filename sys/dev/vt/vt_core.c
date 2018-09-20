@@ -1374,6 +1374,10 @@ vtterm_done(struct terminal *tm)
 static void
 vtterm_splash(struct vt_device *vd)
 {
+	char tunable[32];
+	long colors[2];
+	long i;
+	long newcolor;
 	vt_axis_t top, left;
 
 	/* Display a nice boot splash. */
@@ -1383,10 +1387,24 @@ vtterm_splash(struct vt_device *vd)
 		left = (vd->vd_width - vt_logo_width) / 2;
 		switch (vt_logo_depth) {
 		case 1:
-			/* XXX: Unhardcode colors! */
+			colors[0] = TC_WHITE;
+			colors[1] = TC_BLACK;
+
+			for (i = 0; i < 2; i++) {
+				snprintf(tunable, sizeof(tunable),
+				    "kern.vt.splash.color.%l", i);
+				TUNABLE_LONG_FETCH(tunable, &newcolor);
+				/*
+				 * Only accept the default 8 colors listed in
+				 * teken.h.
+				 */
+				if (0 <= newcolor && newcolor < TC_NCOLORS)
+					colors[i] = newcolor;
+			}
+
 			vd->vd_driver->vd_bitblt_bmp(vd, vd->vd_curwindow,
 			    vt_logo_image, NULL, vt_logo_width, vt_logo_height,
-			    left, top, TC_WHITE, TC_BLACK);
+			    left, top, colors[0], colors[1]);
 		}
 		vd->vd_flags |= VDF_SPLASH;
 	}
