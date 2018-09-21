@@ -1392,7 +1392,7 @@ vtterm_splash(struct vt_device *vd)
 
 			for (i = 0; i < 2; i++) {
 				snprintf(tunable, sizeof(tunable),
-				    "kern.vt.splash.color.%l", i);
+				    "kern.vt.splash.color.%ld", i);
 				TUNABLE_LONG_FETCH(tunable, &newcolor);
 				/*
 				 * Only accept the default 8 colors listed in
