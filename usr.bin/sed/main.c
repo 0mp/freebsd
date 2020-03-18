@@ -242,8 +242,7 @@ again:
 		switch (script->type) {
 		case CU_FILE:
 			if (strcmp(script->s, "-") == 0) {
-				if ((f = fdopen(0, "r")) == NULL)
-				        err(1, "%s", "stdin");
+				f = stdin;
 				fname = "stdin";
 			} else {
 				if ((f = fopen(script->s, "r")) == NULL)
