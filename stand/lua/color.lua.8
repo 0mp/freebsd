@@ -26,7 +26,7 @@
 .\"
 .\" $FreeBSD$
 .\"
-.Dd August 19, 2018
+.Dd March 22, 2020
 .Dt COLOR.LUA 8
 .Os
 .Sh NAME
@@ -44,36 +44,54 @@ it must be included with a statement such as the following:
 .Pp
 The following color constants are exported from
 .Nm :
-.Bl -tag -width "Ic color.MAGENTA" -offset indent
-.It Ic color.BLACK
-.It Ic color.RED
-.It Ic color.GREEN
-.It Ic color.YELLOW
-.It Ic color.BLUE
-.It Ic color.MAGENTA
-.It Ic color.CYAN
-.It Ic color.WHITE
+.Pp
+.Bl -item -compact -offset indent
+.It
+.Dv color.BLACK
+.It
+.Dv color.RED
+.It
+.Dv color.GREEN
+.It
+.Dv color.YELLOW
+.It
+.Dv color.BLUE
+.It
+.Dv color.MAGENTA
+.It
+.Dv color.CYAN
+.It
+.Dv color.WHITE
 .El
 .Pp
 The following attribute constants are exported from
 .Nm :
-.Bl -tag -width "Ic color.DEFAULT" -offset indent
-.It Ic color.DEFAULT
-.It Ic color.BRIGHT
-.It Ic color.DIM
+.Pp
+.Bl -item -compact -offset indent
+.It
+.Dv color.DEFAULT
+.It
+.Dv color.BRIGHT
+.It
+.Dv color.DIM
 .El
 .Pp
 The following functions are exported from
 .Nm :
-.Bl -tag -width "Fn color.isEnabled" -offset indent
+.Bl -tag -offset indent -width "color.highlight(str)"
 .It Fn color.isEnabled
-Returns True if
+Returns
+.Dv True
+if
 .Xr loader 8
-has been configured to not allow color, False otherwise.
-This checks the
-.Ev loader_color
+has been configured to not allow color,
+.Dv False
+otherwise.
+This checks
+.Ev loader_color ,
+a
 .Xr loader.conf 5
-variable, along with
+environment variable, along with
 .Fn core.isSerialBoot .
 .It Fn color.escapefg color_value
 Returns the escape sequence that encodes
@@ -114,7 +132,7 @@ returns an empty string if color is disabled.
 Returns
 .Fa str
 with the
-.Ic color.BRIGHT
+.Dv color.BRIGHT
 attribute applied before it and reset after it.
 .Fn color.highlight
 returns
