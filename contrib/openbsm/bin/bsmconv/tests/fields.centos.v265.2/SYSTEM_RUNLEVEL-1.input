@@ -1,0 +1,1 @@
+type=SYSTEM_RUNLEVEL msg=audit(1468855386.218:85): user pid=1299 uid=0 auid=0 ses=1 subj=unconfined_u:unconfined_r:shutdown_t:s0-s0:c0.c1023 msg='old-level=3 new-level=6 exe="/sbin/shutdown" hostname=? addr=? terminal=tty1 res=success'

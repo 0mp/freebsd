@@ -1,0 +1,1 @@
+type=USER_AUTH msg=audit(1468853204.821:8): user pid=invalid uid=0 auid=invalid ses=invalid subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 msg='op=PAM:authentication acct="root" exe="/bin/login" hostname=? addr=? terminal=tty1 res=failed'

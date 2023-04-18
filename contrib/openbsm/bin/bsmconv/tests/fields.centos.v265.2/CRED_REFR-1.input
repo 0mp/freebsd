@@ -1,0 +1,1 @@
+type=CRED_REFR msg=audit(1468854373.108:34): user pid=1199 uid=0 auid=0 ses=2 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:setcred acct="root" exe="/usr/sbin/sshd" hostname=192.168.56.1 addr=192.168.56.1 terminal=ssh res=success'

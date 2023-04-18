@@ -1,0 +1,3 @@
+type=T1 msg=audit(1.001:1): name1=value1 name2=value2 name3=value3
+type=T2 msg=audit(1.001:1): name1=value1,name2=value2 name3=value3
+type=T3 msg=audit(1.001:1): name1=value1,name2=value2,name3=value3

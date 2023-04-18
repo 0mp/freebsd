@@ -196,6 +196,8 @@ int	 au_open(void);
 int	 au_write(int d, token_t *m);
 int	 au_close(int d, int keep, short event);
 int	 au_close_buffer(int d, short event, u_char *buffer, size_t *buflen);
+int	 au_close_buffer_tm(int d, short event, u_char *buffer,
+	    size_t *buflen, struct timeval *tm);
 int	 au_close_token(token_t *tok, u_char *buffer, size_t *buflen);
 
 token_t	*au_to_file(const char *file, struct timeval tm);
@@ -223,6 +225,13 @@ token_t	*au_to_arg64(char n, const char *text, uint64_t v);
 token_t	*au_to_attr(struct vnode_au_info *vni);
 token_t	*au_to_attr32(struct vnode_au_info *vni);
 token_t	*au_to_attr64(struct vnode_au_info *vni);
+#else
+token_t	*au_to_attr(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+	    long fileid);
+token_t	*au_to_attr32(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+	    long fileid);
+token_t	*au_to_attr64(mode_t mode, uid_t uid, gid_t gid, dev_t dev, long fsid,
+	    long fileid);
 #endif
 
 token_t	*au_to_data(char unit_print, char unit_type, char unit_count,

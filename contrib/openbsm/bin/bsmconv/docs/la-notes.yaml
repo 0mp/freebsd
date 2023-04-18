@@ -1,0 +1,111 @@
+---
+fields:
+  audit_backlog_limit:
+    name: audit_backlog_limit
+    type: numeric
+    notes:
+      - |
+        What is it?
+
+        https://www.redhat.com/archives/rhl-beta-list/2007-December/msg00449.html
+  auid:
+    name: auid
+    type: numeric
+    notes:
+      - meaning: login user id
+  cmd:
+    name: cmd
+    type: encoded
+  cwd:
+    name: cwd
+    type: encoded
+    notes:
+      - meaning: The current working directory.
+  egid:
+    name: egid
+    type: numeric
+  euid:
+    name: euid
+    type: numeric
+  msg:
+    name: msg
+    type: alphanumeric
+    fields:
+      - cwd
+      - cmd
+      - terminal
+      - res
+  notes:
+    - meaning: The payload of the audit record.
+    - It seems to store additional fields inside its value.
+  op:
+    name: op
+    type: alphanumeric
+    notes:
+      - meaning: The operation being performed that is audited.
+    values:
+      - open
+  pid:
+    name: pid
+    type: numeric
+  res:
+    name: res
+    type: alphanumeric
+    values:
+      - success
+      - failed
+  notes:
+    - |
+      Inconsistency
+
+      According to what was posted on the linux-audit redhat com mailing
+      list the only valid values are success and fail.
+  ses:
+    name: ses
+    type: numeric
+  terminal:
+    name: terminal
+    type: alphanumeric
+recordTypes:
+  LOGIN:
+    examples:
+      - |
+        type=LOGIN msg=audit(1468853208.803:12): pid=1166 uid=0 subj=system_u:system_r:local_login_t:s0-s0:c0.c1023 old auid=4294967295 new auid=0 old ses=4294967295 new ses=1
+    notes:
+      - |
+        This is somewhat weird to see the 'new' and the 'old' words between
+        fields.
+  USER_CMD:
+    obligatory_fields:
+      - auid
+      - egid
+      - euid
+      - pid
+      - ses
+  optional_fields:
+    tokens:
+      - function_name: au_to_process32
+  USER_AUTH:
+    obligatory_fields:
+      - auid
+      - msg
+      - pid
+      - ses
+      - subj:
+        example_values:
+          - text,subj=system_u:system_r:local_login_t:s0-s0:c0.c1023
+      - uid
+    tokens:
+      - function_name: au_to_process32
+tokens:
+  process32:
+    function_name: au_to_process32
+    notes:
+      - |
+        The IP address and the port number of the Linux Audit should be
+        placed in this token.
+standard:
+  notes:
+    - |
+      According to Steve Grubb fields can be separated by only a comma or
+      a space. There should be no exceptions.

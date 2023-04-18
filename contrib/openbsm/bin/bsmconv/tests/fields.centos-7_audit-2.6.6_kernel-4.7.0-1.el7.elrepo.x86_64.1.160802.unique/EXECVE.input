@@ -1,0 +1,1 @@
+type=EXECVE msg=audit(1470138233.093:7629): argc=7 a0="/bin/sh" a1="../../libtool" a2="--mode=install" a3="/usr/bin/install" a4="-c" a5="auvirt" a6="/usr/local/bin"

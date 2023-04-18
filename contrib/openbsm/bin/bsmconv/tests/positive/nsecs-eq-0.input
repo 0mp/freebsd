@@ -1,0 +1,7 @@
+type=TT msg=audit(1464612294.816:25): name1=value1 name2=value2 name3=value3
+type=TESTTYPE msg=audit(1464612294.816:25): name1=value1 name2=value2 name3=value3
+type=TESTTYPE2 msg=audit(1464612294.816:25): name3=value3 name4=value4 name5=value5
+type=TESTTYPE3 msg=audit(1464612294.816:25): name1=value1 name2=value2 name3=value3
+type=TESTTYPE4 msg=audit(1464612294.816:25): a=1
+type=TESTTYPE4 msg=audit(1800000000.000:3000): a=1
+type=TESTTYPE5 msg=audit(1800000000.000:3000): w=2

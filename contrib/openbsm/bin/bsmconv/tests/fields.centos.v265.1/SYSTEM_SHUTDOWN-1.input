@@ -1,0 +1,1 @@
+type=SYSTEM_SHUTDOWN msg=audit(1468854228.616:76): user pid=2478 uid=0 auid=0 ses=2 subj=unconfined_u:unconfined_r:shutdown_t:s0-s0:c0.c1023 msg='init exe="/sbin/shutdown" hostname=? addr=? terminal=pts/0 res=success'

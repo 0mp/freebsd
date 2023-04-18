@@ -1,0 +1,1 @@
+type=CRED_DISP msg=audit(1468854063.285:66): user pid=1690 uid=0 auid=0 ses=4 subj=system_u:system_r:crond_t:s0-s0:c0.c1023 msg='op=PAM:setcred acct="root" exe="/usr/sbin/crond" hostname=? addr=? terminal=cron res=success'

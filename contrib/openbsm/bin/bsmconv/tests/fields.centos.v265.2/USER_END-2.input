@@ -1,0 +1,1 @@
+type=USER_END msg=audit(1468854519.415:55): user pid=1216 uid=0 auid=0 ses=3 subj=system_u:system_r:sshd_t:s0-s0:c0.c1023 msg='op=PAM:session_close acct="root" exe="/usr/sbin/sshd" hostname=192.168.56.1 addr=192.168.56.1 terminal=ssh res=success'

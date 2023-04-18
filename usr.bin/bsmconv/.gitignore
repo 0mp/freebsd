@@ -1,0 +1,7 @@
+*.o
+*.core
+*.out
+*.depend
+*.full
+*.debug
+bsmconv

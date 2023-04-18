@@ -1,0 +1,4 @@
+type=TESTTYPE msg=audit(1464612294.816:25): NAME=FIELDVALUE
+type=TESTTYPE msg=audit(1800000000.123:3000): textfield0="youknowwhat?  ohbytheway!" textfield1="youknowwhat?  ohbytheway!" textfield2="youknowwhat?  ohbytheway!"
+type=TESTTYPE2 msg=audit(1800000000.123:3000): apostrophe='''
+type=TESTTYPE msg=audit(2464612294.000:3004): NAME=FIELDVALUE
