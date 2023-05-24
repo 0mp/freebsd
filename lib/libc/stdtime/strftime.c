@@ -85,6 +85,8 @@ static const char fmt_padding[][4][5] = {
 	{ "%03d",	"%d",	"%3d",	"%03d" },
 #define	PAD_FMT_YEAR		3
 	{ "%04d",	"%d",	"%4d",	"%04d" }
+#define	PAD_FMT_NANOSECONDS	9
+	{ "%09d",	"%d",	"%9d",	"%09d" }
 };
 
 size_t
@@ -294,6 +296,14 @@ label:
 			case 'm':
 				pt = _conv(t->tm_mon + 1,
 					fmt_padding[PAD_FMT_MONTH][PadIndex],
+					pt, ptlim, loc);
+				continue;
+			case 'N':
+				/*
+				 * XXX-0MP: We are passing long to as an int
+				 * here.
+				 */
+				pt = _conv(tp->tv_nsec, fmt_padding[PAD_FMT_NANOSECONDS][PadIndex],
 					pt, ptlim, loc);
 				continue;
 			case 'n':
