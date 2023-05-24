@@ -49,7 +49,7 @@ __FBSDID("$FreeBSD$");
 static char *	_add(const char *, char *, const char *);
 static char *	_conv(int, const char *, char *, const char *, locale_t);
 static char *	_fmt(const char *, const struct tm *, char *, const char *,
-			int *, locale_t);
+			int *, locale_t, const struct timespec *);
 static char *	_yconv(int, int, int, int, char *, const char *, locale_t);
 
 extern char *	tzname[];
@@ -91,13 +91,17 @@ size_t
 strftime_l(char * __restrict s, size_t maxsize, const char * __restrict format,
     const struct tm * __restrict t, locale_t loc)
 {
+	struct timespec tspec;
 	char *	p;
 	int	warn;
 	FIX_LOCALE(loc);
 
 	tzset();
 	warn = IN_NONE;
-	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn, loc);
+	tspec.tv_sec = 0;
+	tspec.tv_nsec = 20230524;
+	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn,
+	    loc, &tspec);
 #ifndef NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
 	if (warn != IN_NONE && getenv(YEAR_2000_NAME) != NULL) {
 		(void) fprintf_l(stderr, loc, "\n");
@@ -129,7 +133,8 @@ strftime(char * __restrict s, size_t maxsize, const char * __restrict format,
 
 static char *
 _fmt(const char *format, const struct tm * const t, char *pt,
-    const char * const ptlim, int *warnp, locale_t loc)
+    const char * const ptlim, int *warnp, locale_t loc,
+    const struct timespec *tp)
 {
 	int Ealternative, Oalternative, PadIndex;
 	struct lc_time_T *tptr = __get_current_time_locale(loc);
@@ -185,7 +190,7 @@ label:
 				{
 				int warn2 = IN_SOME;
 
-				pt = _fmt(tptr->c_fmt, t, pt, ptlim, &warn2, loc);
+				pt = _fmt(tptr->c_fmt, t, pt, ptlim, &warn2, loc, tp);
 				if (warn2 == IN_ALL)
 					warn2 = IN_THIS;
 				if (warn2 > *warnp)
@@ -193,7 +198,7 @@ label:
 				}
 				continue;
 			case 'D':
-				pt = _fmt("%m/%d/%y", t, pt, ptlim, warnp, loc);
+				pt = _fmt("%m/%d/%y", t, pt, ptlim, warnp, loc, tp);
 				continue;
 			case 'd':
 				pt = _conv(t->tm_mday,
@@ -228,7 +233,7 @@ label:
 					pt, ptlim, loc);
 				continue;
 			case 'F':
-				pt = _fmt("%Y-%m-%d", t, pt, ptlim, warnp, loc);
+				pt = _fmt("%Y-%m-%d", t, pt, ptlim, warnp, loc, tp);
 				continue;
 			case 'H':
 				pt = _conv(t->tm_hour, fmt_padding[PAD_FMT_HMS][PadIndex],
@@ -300,11 +305,11 @@ label:
 					pt, ptlim);
 				continue;
 			case 'R':
-				pt = _fmt("%H:%M", t, pt, ptlim, warnp, loc);
+				pt = _fmt("%H:%M", t, pt, ptlim, warnp, loc, tp);
 				continue;
 			case 'r':
 				pt = _fmt(tptr->ampm_fmt, t, pt, ptlim,
-					warnp, loc);
+					warnp, loc, tp);
 				continue;
 			case 'S':
 				pt = _conv(t->tm_sec, fmt_padding[PAD_FMT_HMS][PadIndex],
@@ -328,7 +333,7 @@ label:
 				}
 				continue;
 			case 'T':
-				pt = _fmt("%H:%M:%S", t, pt, ptlim, warnp, loc);
+				pt = _fmt("%H:%M:%S", t, pt, ptlim, warnp, loc, tp);
 				continue;
 			case 't':
 				pt = _add("\t", pt, ptlim);
@@ -444,7 +449,7 @@ label:
 				 * "date as dd-bbb-YYYY"
 				 * (ado, 1993-05-24)
 				 */
-				pt = _fmt("%e-%b-%Y", t, pt, ptlim, warnp, loc);
+				pt = _fmt("%e-%b-%Y", t, pt, ptlim, warnp, loc, tp);
 				continue;
 			case 'W':
 				pt = _conv((t->tm_yday + DAYSPERWEEK -
@@ -458,13 +463,13 @@ label:
 				pt = _conv(t->tm_wday, "%d", pt, ptlim, loc);
 				continue;
 			case 'X':
-				pt = _fmt(tptr->X_fmt, t, pt, ptlim, warnp, loc);
+				pt = _fmt(tptr->X_fmt, t, pt, ptlim, warnp, loc, tp);
 				continue;
 			case 'x':
 				{
 				int	warn2 = IN_SOME;
 
-				pt = _fmt(tptr->x_fmt, t, pt, ptlim, &warn2, loc);
+				pt = _fmt(tptr->x_fmt, t, pt, ptlim, &warn2, loc, tp);
 				if (warn2 == IN_ALL)
 					warn2 = IN_THIS;
 				if (warn2 > *warnp)
@@ -553,7 +558,7 @@ label:
 				continue;
 			case '+':
 				pt = _fmt(tptr->date_fmt, t, pt, ptlim,
-					warnp, loc);
+					warnp, loc, tp);
 				continue;
 			case '-':
 				if (PadIndex != PAD_DEFAULT)
