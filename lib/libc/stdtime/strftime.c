@@ -84,7 +84,7 @@ static const char fmt_padding[][4][5] = {
 #define	PAD_FMT_DAYOFYEAR	2
 	{ "%03d",	"%d",	"%3d",	"%03d" },
 #define	PAD_FMT_YEAR		3
-	{ "%04d",	"%d",	"%4d",	"%04d" }
+	{ "%04d",	"%d",	"%4d",	"%04d" },
 #define	PAD_FMT_NANOSECONDS	9
 	{ "%09d",	"%d",	"%9d",	"%09d" }
 };
