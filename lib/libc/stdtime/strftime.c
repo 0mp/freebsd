@@ -145,7 +145,7 @@ strftimespec_l(char * __restrict s, size_t maxsize,
 
 	tzset();
 	warn = IN_NONE;
-	t = gmtime(tspec->tv_sec);
+	t = gmtime(&tspec->tv_sec);
 	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn,
 	    loc, tspec);
 #ifndef NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
