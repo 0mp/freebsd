@@ -129,6 +129,8 @@ struct tm *localtime(const time_t *);
 time_t mktime(struct tm *);
 size_t strftime(char * __restrict, size_t, const char * __restrict,
     const struct tm * __restrict);
+size_t strftimespec(char * __restrict, size_t, const char * __restrict,
+    const struct timespec * __restrict);
 time_t time(time_t *);
 #if __POSIX_VISIBLE >= 200112
 struct sigevent;
