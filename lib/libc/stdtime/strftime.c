@@ -133,6 +133,50 @@ strftime(char * __restrict s, size_t maxsize, const char * __restrict format,
 	return strftime_l(s, maxsize, format, t, __get_locale());
 }
 
+size_t
+strftimespec_l(char * __restrict s, size_t maxsize,
+    const char * __restrict format, const struct timespec * __restrict tspec,
+    locale_t loc)
+{
+	const struct tm *t;
+	char *	p;
+	int	warn;
+	FIX_LOCALE(loc);
+
+	tzset();
+	warn = IN_NONE;
+	t = gmtime(tspec->tv_sec);
+	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn,
+	    loc, tspec);
+#ifndef NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
+	if (warn != IN_NONE && getenv(YEAR_2000_NAME) != NULL) {
+		(void) fprintf_l(stderr, loc, "\n");
+		if (format == NULL)
+			(void) fputs("NULL strftime format ", stderr);
+		else	(void) fprintf_l(stderr, loc, "strftime format \"%s\" ",
+				format);
+		(void) fputs("yields only two digits of years in ", stderr);
+		if (warn == IN_SOME)
+			(void) fputs("some locales", stderr);
+		else if (warn == IN_THIS)
+			(void) fputs("the current locale", stderr);
+		else	(void) fputs("all locales", stderr);
+		(void) fputs("\n", stderr);
+	}
+#endif /* !defined NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU */
+	if (p == s + maxsize)
+		return (0);
+	*p = '\0';
+	return p - s;
+}
+
+size_t
+strftimespec(char * __restrict s, size_t maxsize,
+    const char * __restrict format, const struct timespec * __restrict tspec)
+{
+	return strftimespec_l(s, maxsize, format, tspec, __get_locale());
+}
+
 static char *
 _fmt(const char *format, const struct tm * const t, char *pt,
     const char * const ptlim, int *warnp, locale_t loc,
