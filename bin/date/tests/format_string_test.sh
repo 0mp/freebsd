@@ -119,6 +119,7 @@ atf_init_test_cases()
 	format_string_test l l " 7" " 9"
 	format_string_test M M 04 20
 	format_string_test m m 02 11
+	format_string_test N N 020230524 020230524 # XXX-0MP: Change to 000000000 later.
 	format_string_test p p AM PM
 	format_string_test R R 07:04 21:20
 	format_string_test r r "07:04:03 AM" "09:20:00 PM"
