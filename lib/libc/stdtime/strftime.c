@@ -138,7 +138,7 @@ strftimespec_l(char * __restrict s, size_t maxsize,
     const char * __restrict format, const struct timespec * __restrict tspec,
     locale_t loc)
 {
-	const struct tm t;
+	struct tm t;
 	char *	p;
 	int	warn;
 	FIX_LOCALE(loc);
