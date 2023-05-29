@@ -138,15 +138,16 @@ strftimespec_l(char * __restrict s, size_t maxsize,
     const char * __restrict format, const struct timespec * __restrict tspec,
     locale_t loc)
 {
-	const struct tm *t;
+	const struct tm t;
 	char *	p;
 	int	warn;
 	FIX_LOCALE(loc);
 
 	tzset();
 	warn = IN_NONE;
-	t = gmtime(&tspec->tv_sec);
-	p = _fmt(((format == NULL) ? "%c" : format), t, s, s + maxsize, &warn,
+	if (gmtime_r(&tspec->tv_sec, &t) == NULL)
+		return (0);
+	p = _fmt(((format == NULL) ? "%c" : format), &t, s, s + maxsize, &warn,
 	    loc, tspec);
 #ifndef NO_RUN_TIME_WARNINGS_ABOUT_YEAR_2000_PROBLEMS_THANK_YOU
 	if (warn != IN_NONE && getenv(YEAR_2000_NAME) != NULL) {
