@@ -65,7 +65,7 @@ for _rc_elem in $files; do
 done
 
 /usr/bin/logger -t $subsystem suspend at `/bin/date +'%Y%m%d %H:%M:%S'`
-/bin/sync && /bin/sync && /bin/sync
+/bin/sync
 /bin/sleep 3
 
 /bin/rm -f /var/run/rc.suspend.pid

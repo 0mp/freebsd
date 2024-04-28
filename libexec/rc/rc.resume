@@ -47,7 +47,7 @@ fi
 # kldload usb
 
 /usr/bin/logger -t $subsystem resumed at `/bin/date +'%Y%m%d %H:%M:%S'`
-/bin/sync && /bin/sync && /bin/sync
+/bin/sync
 
 . /etc/rc.subr
 

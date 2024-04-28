@@ -25,7 +25,7 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 28, 1999
+.Dd April 28, 2024
 .Dt APMD 8 i386
 .Os
 .Sh NAME
@@ -142,7 +142,7 @@ configuration file is quite simple.
 For example:
 .Bd -literal
 apm_event SUSPENDREQ {
-       exec "sync && sync && sync";
+       exec "sync";
        exec "sleep 1";
        exec "zzz";
 }
@@ -154,7 +154,7 @@ to receive the APM event
 .Ql SUSPENDREQ
 (which may be posted by an LCD close), run the
 .Ql sync
-command 3 times and wait for a while, then execute
+command and wait for a while, then execute
 .Nm zzz ( Ns Nm apm Fl z )
 to put the system in the suspend state.
 .Bl -bullet
@@ -266,7 +266,7 @@ apm_event SUSPENDREQ {
 }
 
 apm_event USERSUSPENDREQ {
-        exec "sync && sync && sync";
+        exec "sync";
         exec "sleep 1";
         exec "apm -z";
 }
@@ -291,7 +291,7 @@ apm_event STANDBYRESUME {
 #
 #apm_event SUSPENDREQ {
 #       reject;
-#       exec "sync && sync && sync";
+#       exec "sync";
 #       exec "sleep 1";
 #       exec "apm -Z";
 #}

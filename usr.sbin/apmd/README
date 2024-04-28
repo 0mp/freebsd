@@ -87,13 +87,13 @@ The structure of the apmd configuration file is quite simple.  For
 example:
 
 apm_event SUSPENDREQ {
-	exec "sync && sync && sync";
+	exec "sync";
 	exec "sleep 1";
 	exec "zzz";
 }
 
 Will cause apmd to receive the APM event SUSPENDREQ (which may be
-posted by an LCD close), run the sync command 3 times and wait for a
+posted by an LCD close), run the sync command and wait for a
 while, then execute zzz (apm -z) to put the system in the suspend
 state.
 
@@ -165,7 +165,7 @@ apm_event SUSPENDREQ {
 }
 
 apm_event USERSUSPENDREQ {
-	exec "sync && sync && sync";
+	exec "sync";
 	exec "sleep 1";
 	exec "apm -z";
 }
@@ -186,7 +186,7 @@ apm_event NORMRESUME, STANDBYRESUME {
 #
 #apm_event SUSPENDREQ {
 #	reject;
-#	exec "sync && sync && sync";
+#	exec "sync";
 #	exec "sleep 1";
 #	exec "apm -Z";
 #}
