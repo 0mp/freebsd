@@ -48,6 +48,16 @@ if checkyesno sendmail_submit_enable; then
 	sendmail_outbound_enable="NO"
 fi
 
+sendmail_register_error() {
+	local _rc="$?"
+	case "$_rc/$1" in
+	0/*start|0/*stop)
+		warn "$name $* returned with exit code ${_rc}."
+		_sendmail_error_occurred="yes"
+		;;
+	esac
+}
+
 sendmail_cert_create()
 {
 	cnname="${sendmail_cert_cn:-`hostname`}"
@@ -204,7 +214,9 @@ sendmail_precmd()
 	fi
 }
 
+_sendmail_error_occurred="no"
 run_rc_command "$1"
+sendmail_register_error "$1"
 
 required_files=
 
@@ -213,6 +225,7 @@ if checkyesno sendmail_submit_enable; then
 	rcvar="sendmail_submit_enable"
 	_rc_restart_done=false
 	run_rc_command "$1"
+	sendmail_register_error "$1"
 fi
 
 if checkyesno sendmail_outbound_enable; then
@@ -220,6 +233,7 @@ if checkyesno sendmail_outbound_enable; then
 	rcvar="sendmail_outbound_enable"
 	_rc_restart_done=false
 	run_rc_command "$1"
+	sendmail_register_error "$1"
 fi
 
 name="sendmail_msp_queue"
@@ -228,3 +242,10 @@ pidfile="${sendmail_msp_queue_pidfile:-/var/spool/clientmqueue/sm-client.pid}"
 required_files="/etc/mail/submit.cf"
 _rc_restart_done=false
 run_rc_command "$1"
+sendmail_register_error "$1"
+
+if checkyesno _sendmail_error_occurred; then
+	exit 69
+else
+	exit 0
+fi
