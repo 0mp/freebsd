@@ -3,7 +3,7 @@
 .\"
 .\" Copyright (c) 2025 Mateusz Piotrowski <0mp@FreeBSD.org>
 .\"
-.Dd June 19, 2025
+.Dd July 12, 2025
 .Dt TRACING 7
 .Os
 .Sh NAME
@@ -73,8 +73,11 @@ It comes in handy for some niche purposes during kernel development.
 It lets kernel programmers log events to a global ring buffer,
 which can later be dumped using
 .Xr ktrdump 8 .
+.Ss Hardware-Accelerated Tracing
+.Xr hwt 4
+is a kernel trace framework providing infrastructure
+for hardware-assisted tracing.
 .Ss Hardware Counters
-.Pp
 .Xr pmcstat 8 ,
 and its kernel counterpart,
 .Xr hwmpc 4 ,
