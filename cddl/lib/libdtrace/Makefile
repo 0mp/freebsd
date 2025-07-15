@@ -62,7 +62,8 @@ DSRCS=		errno.d			\
 		socket.d		\
 		udp.d			\
 		udplite.d		\
-		unistd.d
+		unistd.d		\
+		vfs.d
 
 FILES=		${DSRCS}
 FILESDIR=	/usr/lib/dtrace
