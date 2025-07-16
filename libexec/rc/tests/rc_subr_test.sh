@@ -104,8 +104,72 @@ oomprotect_yes_body()
 		/bin/sh "$__script" "$__name" "$__pidfile" onestop
 }
 
+atf_test_case procname_run_rc_command_start
+procname_run_rc_command_start_head()
+{
+	atf_set "descr" "Verify that \${procname} is available when " \
+		"the service is onestarted via " \
+		"the default implementaion of the start argument " \
+		"in run_rc_command"
+}
+
+procname_run_rc_command_start_body()
+{
+	__name="$(atf_get ident)"
+	__command="/bin/echo"
+	__script=$(mktemp -t "${__name}.script")
+
+	cat >> "$__script" <<-'LITERAL'
+	. /etc/rc.subr
+	name="$1"
+	command="$2"
+	_rc_arg="$3"
+	command_args='$procname'
+	load_rc_config
+	rc_quiet="YES"
+	rc_startmsgs="NO"
+	run_rc_command "$_rc_arg"
+	LITERAL
+
+	atf_check -s exit:0 -o inline:"${__command}\n" -e empty \
+		/bin/sh "$__script" "$__name" "$__command" onestart
+}
+
+atf_test_case procname_start_cmd_func
+procname_start_cmd_func_head()
+{
+	atf_set "descr" "Verify that \${procname} is available when " \
+		"the service is onestarted via " \
+		"a function in start_cmd"
+}
+
+procname_start_cmd_func_body()
+{
+	__name="$(atf_get ident)"
+	__command="/bin/echo"
+	__script=$(mktemp -t "${__name}.script")
+
+	cat >> "$__script" <<-'LITERAL'
+	. /etc/rc.subr
+	name="$1"
+	command="$2"
+	_rc_arg="$3"
+	start_cmd="procname_start_cmd_func_start"
+	procname_start_cmd_func_start() {
+		"$command" "$procname"
+	}
+	load_rc_config
+	run_rc_command "$_rc_arg"
+	LITERAL
+
+	atf_check -s exit:0 -o inline:"${__command}\n" -e empty \
+		/bin/sh "$__script" "$__name" "$__command" onestart
+}
+
 atf_init_test_cases()
 {
 	atf_add_test_case oomprotect_all
 	atf_add_test_case oomprotect_yes
+	atf_add_test_case procname_run_rc_command_start
+	atf_add_test_case procname_start_cmd_func
 }
