@@ -1379,12 +1379,12 @@ run_rc_command()
 
 						if check_jail jailed; then
 							if [ $(${SYSCTL_N} security.jail.children.max) -eq 0 ]; then
-								echo ERROR: jail parameter children.max is set to 0, can not create a new service jail.
+								echo ERROR: jail parameter children.max is set to 0, cannot create a new service jail.
 								_do_jailing=0
 							else
 								_free_jails=$(($(${SYSCTL_N} security.jail.children.max) - $(${SYSCTL_N} security.jail.children.cur)))
 								if [ ${_free_jails} -eq 0 ]; then
-									echo ERROR: max number of jail children reached, can not create a new service jail.
+									echo ERROR: max number of jail children reached, cannot create a new service jail.
 									_do_jailing=0
 
 								fi
@@ -1483,12 +1483,12 @@ run_rc_command()
 				if [ "${_rc_svcj}" != jailing ]; then
 					if check_jail jailed; then
 						if [ $(${SYSCTL_N} security.jail.children.max) -eq 0 ]; then
-							echo ERROR: jail parameter children.max is set to 0, can not create a new service jail.
+							echo ERROR: jail parameter children.max is set to 0, cannot create a new service jail.
 							return 1
 						else
 							_free_jails=$(($(${SYSCTL_N} security.jail.children.max) - $(${SYSCTL_N} security.jail.children.cur)))
 							if [ ${_free_jails} -eq 0 ]; then
-								echo ERROR: max number of jail children reached, can not create a new service jail.
+								echo ERROR: max number of jail children reached, cannot create a new service jail.
 								return 1
 							fi
 						fi
