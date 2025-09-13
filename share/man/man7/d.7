@@ -3,7 +3,7 @@
 .\"
 .\" Copyright (c) 2025 Mateusz Piotrowski <0mp@FreeBSD.org>
 .\"
-.Dd June 14, 2025
+.Dd August 21, 2025
 .Dt D 7
 .Os
 .Sh NAME
@@ -232,6 +232,13 @@ Spin on the CPU for the specified number of
 .Fa nanoseconds .
 .It Fn panic
 Panic the kernel.
+.El
+.Ss Other Functions
+.Bl -tag -width "tracemem(addr, bytes, limit)"
+.It Fn tracemem "addr" "bytes" "limit"
+The
+.Fa limit
+parameter is optional.
 .El
 .Sh FILES
 .Bl -tag -width /usr/share/dtrace
