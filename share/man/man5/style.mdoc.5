@@ -160,7 +160,7 @@ Install the missing packages.
 \&.El
 .Ed
 .El
-.Ss Synopsis Formatting
+.Ss SYNOPSIS Section
 .Bl -dash -width ""
 .It
 Do not put whitespace between alternative parameters separated with a pipe
@@ -226,6 +226,32 @@ At the same time, the square brackets
 are not stylized as they do not belong to the syntax of the
 .Fl -meet
 flag.
+.It
+In addition to what is documented in
+.Xr mdoc 5 ,
+a SYNOPSIS section may contain a short synopsis for
+.Xr config 5 ,
+.Xr loader.conf 5 ,
+.Xr sysctl.conf 5 ,
+and
+.Xr rc.conf 5 ,
+ e.g.:
+.Bd -literal -offset indent
+\&In
+\&.Xr config 5 :
+\&.Cd "options EXAMPLE"
+\&.Pp
+\&In
+\&.Xr rc.conf 5 :
+\&.Cd example_enable="YES"
+\&.Pp
+\&In
+\&.Xr loader.conf 5
+\&or
+\&.Xr sysctl.conf 5 :
+\&.Cd kern.example.X.config
+\&.Cd kern.example.debugflags
+.Ed
 .El
 .Ss Quoting
 .Bl -dash -width ""
