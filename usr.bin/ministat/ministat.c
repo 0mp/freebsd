@@ -438,10 +438,8 @@ DumpPlot(void)
 		putchar('|');
 		for (j = 0; j < pl->width; j++) {
 			k = pl->data[(pl->height - z) * pl->width + j];
-			if (k >= 0 && k < MAX_DS)
-				putchar(symbol[k]);
-			else
-				printf("[%02x]", k);
+			assert(k >= 0 && k < MAX_DS);
+			putchar(symbol[k]);
 		}
 		putchar('|');
 		putchar('\n');
