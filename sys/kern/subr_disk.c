@@ -56,7 +56,7 @@ disk_err(struct bio *bp, const char *what, int blkdone, int nl)
 	default:		printf("cmd=%x ", bp->bio_cmd); break;
 	}
 	sn = bp->bio_pblkno;
-	if (bp->bio_bcount <= DEV_BSIZE) {
+	if (bp->bio_length <= DEV_BSIZE) {
 		printf("fsbn %jd%s", (intmax_t)sn, nl ? "\n" : "");
 		return;
 	}
@@ -65,7 +65,7 @@ disk_err(struct bio *bp, const char *what, int blkdone, int nl)
 		printf("fsbn %jd of ", (intmax_t)sn);
 	}
 	printf("%jd-%jd", (intmax_t)bp->bio_pblkno,
-	    (intmax_t)(bp->bio_pblkno + (bp->bio_bcount - 1) / DEV_BSIZE));
+	    (intmax_t)(bp->bio_pblkno + (bp->bio_length - 1) / DEV_BSIZE));
 	if (nl)
 		printf("\n");
 }
