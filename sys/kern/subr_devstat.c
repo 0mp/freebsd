@@ -364,7 +364,7 @@ devstat_end_transaction_bio_bt(struct devstat *ds, const struct bio *bp,
 	else 
 		flg = DEVSTAT_NO_DATA;
 
-	devstat_end_transaction(ds, bp->bio_bcount - bp->bio_resid,
+	devstat_end_transaction(ds, bp->bio_length - bp->bio_resid,
 				tag, flg, now, &bp->bio_t0);
 	DTRACE_DEVSTAT_BIO_DONE();
 }
