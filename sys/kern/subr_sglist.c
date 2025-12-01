@@ -327,8 +327,6 @@ sglist_append(struct sglist *sg, void *buf, size_t len)
 /*
  * Append the segments to describe a bio's data to a scatter/gather list.
  * If there are insufficient segments, then this fails with EFBIG.
- *
- * NOTE: This function expects bio_bcount to be initialized.
  */
 int
 sglist_append_bio(struct sglist *sg, struct bio *bp)
@@ -336,10 +334,10 @@ sglist_append_bio(struct sglist *sg, struct bio *bp)
 	int error;
 
 	if ((bp->bio_flags & BIO_UNMAPPED) == 0)
-		error = sglist_append(sg, bp->bio_data, bp->bio_bcount);
+		error = sglist_append(sg, bp->bio_data, bp->bio_length);
 	else
 		error = sglist_append_vmpages(sg, bp->bio_ma,
-		    bp->bio_ma_offset, bp->bio_bcount);
+		    bp->bio_ma_offset, bp->bio_length);
 	return (error);
 }
 
