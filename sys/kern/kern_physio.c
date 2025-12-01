@@ -145,7 +145,6 @@ physio(struct cdev *dev, struct uio *uio, int ioflag)
 				bp->bio_length = dev->si_iosize_max;
 			if (bp->bio_length > maxphys)
 				bp->bio_length = maxphys;
-			bp->bio_bcount = bp->bio_length;
 			bp->bio_dev = dev;
 
 			if (pages) {
