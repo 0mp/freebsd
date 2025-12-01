@@ -728,7 +728,7 @@ xbd_strategy(struct bio *bp)
 	if (sc == NULL) {
 		bp->bio_error = EINVAL;
 		bp->bio_flags |= BIO_ERROR;
-		bp->bio_resid = bp->bio_bcount;
+		bp->bio_resid = bp->bio_length;
 		biodone(bp);
 		return;
 	}

@@ -2068,7 +2068,6 @@ xbb_dispatch_dev(struct xbb_softc *xbb, struct xbb_xen_reqlist *reqlist,
 		}
 
 		bio->bio_length += xbb_sg->nsect << 9;
-		bio->bio_bcount  = bio->bio_length;
 		bio_offset      += xbb_sg->nsect << 9;
 
 		if (xbb_sg->last_sect != (PAGE_SIZE - 512) >> 9) {
