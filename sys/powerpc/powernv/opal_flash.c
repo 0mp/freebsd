@@ -300,15 +300,15 @@ opalflash_task(void *arg)
 		switch (bp->bio_cmd) {
 		case BIO_DELETE:
 			bp->bio_error = opalflash_erase(sc, bp->bio_offset,
-			    bp->bio_bcount);
+			    bp->bio_length);
 			break;
 		case BIO_READ:
 			bp->bio_error = opalflash_read(sc, bp->bio_offset,
-			    bp->bio_data, bp->bio_bcount);
+			    bp->bio_data, bp->bio_length);
 			break;
 		case BIO_WRITE:
 			bp->bio_error = opalflash_write(sc, bp->bio_offset,
-			    bp->bio_data, bp->bio_bcount);
+			    bp->bio_data, bp->bio_length);
 			break;
 		default:
 			bp->bio_error = EINVAL;
