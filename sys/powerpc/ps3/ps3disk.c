@@ -362,7 +362,7 @@ ps3disk_strategy(struct bio *bp)
 	}
 
 	PS3DISK_LOCK(sc);
-	bp->bio_resid = bp->bio_bcount;
+	bp->bio_resid = bp->bio_length;
 	bioq_insert_tail(&sc->sc_bioq, bp);
 
 	DPRINTF(sc, PS3DISK_DEBUG_TASK, "%s: bio_cmd 0x%02x\n",
@@ -377,14 +377,14 @@ ps3disk_strategy(struct bio *bp)
 		if (err == LV1_BUSY)
 			err = EAGAIN;
 	} else if (bp->bio_cmd == BIO_READ || bp->bio_cmd == BIO_WRITE) {
-		if (bp->bio_bcount % sc->sc_blksize != 0) {
+		if (bp->bio_length % sc->sc_blksize != 0) {
 			err = EINVAL;
 		} else {
 			bus_dmamap_create(sc->sc_dmatag, BUS_DMA_COHERENT,
 			    (bus_dmamap_t *)(&bp->bio_driver1));
 			err = bus_dmamap_load(sc->sc_dmatag,
 			    (bus_dmamap_t)(bp->bio_driver1), bp->bio_data,
-			    bp->bio_bcount, ps3disk_transfer, bp, 0);
+			    bp->bio_length, ps3disk_transfer, bp, 0);
 			if (err == EINPROGRESS)
 				err = 0;
 		}
