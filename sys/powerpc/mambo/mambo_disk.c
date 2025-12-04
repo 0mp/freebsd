@@ -216,7 +216,7 @@ mambodisk_task(void *arg)
 		if (!sc->running)
 			break;
 		sz = sc->disk->d_sectorsize;
-		end = bp->bio_pblkno + (bp->bio_bcount / sz);
+		end = bp->bio_pblkno + (bp->bio_length / sz);
 		for (block = bp->bio_pblkno; block < end;) {
 			u_long numblocks;
 			char *vaddr = bp->bio_data + 
