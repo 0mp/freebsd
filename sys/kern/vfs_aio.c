@@ -1316,7 +1316,6 @@ aio_qbio(struct proc *p, struct kaiocb *job)
 		}
 
 		bp->bio_length = nbytes;
-		bp->bio_bcount = nbytes;
 		bp->bio_done = aio_biowakeup;
 		bp->bio_offset = offset;
 		bp->bio_cmd = bio_cmd;
@@ -2484,7 +2483,7 @@ aio_biowakeup(struct bio *bp)
 {
 	struct kaiocb *job = (struct kaiocb *)bp->bio_caller1;
 	size_t nbytes;
-	long bcount = bp->bio_bcount;
+	long length = bp->bio_length;
 	long resid = bp->bio_resid;
 	int opcode, nblks;
 	int abio_error = bp->bio_error;
@@ -2494,7 +2493,7 @@ aio_biowakeup(struct bio *bp)
 
 	aio_biocleanup(bp);
 
-	nbytes = bcount - resid;
+	nbytes = length - resid;
 	atomic_add_acq_long(&job->nbytes, nbytes);
 	nblks = btodb(nbytes);
 

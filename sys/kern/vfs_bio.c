@@ -1778,7 +1778,6 @@ buf_alloc(struct bufdomain *bd)
 	bp->b_offset = NOOFFSET;
 	bp->b_iodone = 0;
 	bp->b_resid = 0;
-	bp->b_bcount = 0;
 	bp->b_npages = 0;
 	bp->b_dirtyoff = bp->b_dirtyend = 0;
 	bp->b_bufobj = NULL;
