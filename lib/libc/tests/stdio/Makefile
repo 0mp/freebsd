@@ -1,4 +1,5 @@
 .include <bsd.own.mk>
+.include <bsd.compiler.mk>
 
 ATF_TESTS_C+=		eintr_test
 ATF_TESTS_C+=		fdopen_test

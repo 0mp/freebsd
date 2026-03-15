@@ -1,3 +1,5 @@
+.include <bsd.compiler.mk>
+
 SYSDIR?=${SRCTOP}/sys
 .include "${SYSDIR}/conf/kern.opts.mk"
 

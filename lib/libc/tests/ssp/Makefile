@@ -1,4 +1,5 @@
 .include <bsd.own.mk>
+.include <bsd.compiler.mk>
 
 MK_WERROR=	no
 WARNS?=	2
