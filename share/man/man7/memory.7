@@ -1,0 +1,228 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2018-2026 Mateusz Piotrowski <0mp@FreeBSD.org>
+.\"
+.Dd March 21, 2026
+.Dt MEMORY 7
+.Os
+.Sh NAME
+.Nm memory
+.Nd Description of the virtual memory statistics
+.Sh DESCRIPTION
+This manual offers a plain-language description
+of the
+.Fx
+virtual memory subsystem
+and the memory-related statistics seen in the outputs of tools like
+.Xr top 1
+and
+.Xr sysctl 8 .
+.Pp
+.\" Virtual memory
+Virtual memory
+.Pq VM
+in
+.Fx
+operates on memory in units of pages,
+which have a size of 4 KiB on most platforms
+.Po refer to
+.Xr arch 7
+.Pc .
+.Pp
+.Sh MEMORY CLASSES
+.Fx
+classifies virtual memory into five memory classes:
+.Bl -dash -compact
+.It
+Wired
+.It
+Active
+.It
+Inactive
+.It
+Laundry
+.It
+Free
+.El
+Active, inactive, and laundry memory classes are collectively
+referred to as
+.Sx UNWIRED MEMORY .
+.Sh WIRED MEMORY
+Wired memory cannot be reused until explicitly released by the owner.
+Userland memory can be wired by
+.Xr mlock 2 .
+Kernel memory allocators
+.Pq Xr malloc 9
+usually return wired or non-managed memory.
+Contents of the
+.Xr zfs 4
+ARC and the buffer cache
+are wired.
+Additionally, some memory is permanently wired and is never freed
+(e.g., the kernel image itself).
+.El
+.Sh UNWIRED MEMORY
+Unwired memory makes up most of virtual memory on a typical system.
+The kernel can page out unwired memory pages to a swap device or filesystem,
+e.g., under memory pressure.
+.Fx
+manages unwired memory using 3 page queues:
+active, inactive, and laundry.
+The size of each queue is visible in
+.Xr top 1 .
+Unwired memory consists of anonymous memory and file data.
+.Ss Anonymous Memory
+Anonymous memory has no dedicated backing storage
+.Pq i.e., it is not backed by a filesystem ,
+and will be paged out to the swap device
+if the memory needs to be reused for some other purpose.
+If the swapped-out memory is referenced again,
+some free memory will be allocated,
+and the saved contents of the swapped-out memory will be read back in.
+Examples of anonymous memory include but are not limited to:
+.Bl -dash -compact
+.It
+memory returned by
+.Xr malloc 3
+to a userland application
+.It
+the contents of a
+.Xr md 4
+device of type
+.Dq swap
+.Pq see Xr mdconfig 8
+.It
+.Xr tmpfs 4
+filesystems
+.It
+POSIX
+shared memory segments
+.Pq see Xr shm_open 2
+.It
+SysV
+shared memory segments
+.Pq see Xr shmget 2
+.El
+.Ss File Data
+File data consists of the cached contents of files and file metadata.
+Most filesystems like
+.Xr ufs 4 ,
+.Xr msdosfs 4 ,
+.Xr nfsv4 4 ,
+and
+.Xr tmpfs 4
+use the buffer cache.
+.Pp
+.Xr zfs 4
+does not use the buffer cache.
+Instead, it maintains its own cache of file data and metadata in its
+Adaptive Replacement Cache
+.Pq ARC ,
+which frees evicted memory directly
+and the old memory never enters the page queues.
+.Pp
+The buffer cache provides a classical UNIX buffer cache interface
+on top of the file data pages.
+Conceptually, it serves as an L1 cache for file data.
+An L2 cache in this analogy would be the VM page cache.
+Typically, a vnode in the buffer cache has an associated VM object in
+the VM page cache.
+In such a case, the buffer cache uses VMIO buffers to store its cached data in
+VM object's pages.
+.Pp
+Content of VMIO buffers is always consistent with the VM page cache for files.
+When the buffer cache needs to make room for new data,
+a VMIO buffer is reclaimed and the pages are unwired.
+Unwired pages are put at the end of the inactive queue.
+.Ss Active Queue
+The active queue contains a mix of clean and dirty pages
+.Dq actively
+(recently) referenced by userland.
+It implements a pseudo-LRU.
+.Pp
+Pages are regularly scanned by the page daemon
+every
+.Va vm.pageout_update_period
+seconds.
+Scans check to see if the page has been referenced since the last scan.
+If enough scans complete without seeing a reference, the page is moved to the
+inactive queue.
+.\" XXX0MP: Couldn't pages be moved directly to the laundry list if the system is under pressure?
+.Ss Inactive Queue
+The inactive queue contains a mix of clean and dirty pages,
+which were either aged out of the active queue
+or evicted from the buffer cache.
+It implements a second-chance LRU.
+.Pp
+Pages in the inactive queue are scanned by the page daemon
+(starting from the head of the queue) when there is a memory shortage.
+Pages which have been referenced are moved back to the active queue or the tail
+of the inactive queue.
+Pages which are dirty are moved to the tail of the laundry queue.
+.Ss Laundry Queue
+The laundry queue manages dirty inactive pages,
+which must be cleaned
+.Pq Dq laundered
+before they can be reused.
+It is managed by the laundry thread, instead of the page daemon,
+which scans the queue starting from the head of the queue.
+.Pp
+Pages which have been referenced are moved back to the active queue or the tail
+of the laundry queue.
+Dirty pages are laundered and then moved close to the head of the inactive
+queue.
+.Pp
+The laundry thread launders a small number of pages to balance the inactive and
+laundry queues.
+The frequency of laundering depends on:
+.Bl -dash -compact
+.It
+How many clean pages the page daemon is freeing; more frees contributes to a
+higher frequency of laundering.
+.It
+The size of the laundry queue relative to the inactive queue; if the laundry
+queue is growing, the laundry thread will launder more frequently.
+.El
+.Sh MANAGED PAGES
+.\" XXX0MP: This section requires some explanation how managed pages fit into the rest of the VM subsystem.
+Managed pages are always in one of two states: clean or dirty.
+For instance, a managed wired page does not belong (logically) to any queue,
+but its dirty state is managed by VM.
+Managed pages are exactly the kind of pages that are tracked by VM
+and can be paged out.
+They could be in a queue or wired.
+Dirty pages must have their contents saved before they can be reused for some
+other purpose, at which point they become clean.
+Dirty anonymous pages are cleaned by writing their contents to the swap device,
+and dirty file pages are cleaned by writing their contents to the filesystem's
+backing storage.
+Once a page is clean,
+it can be immediately freed (disassociated with its current name) and reused.
+.Sh SEE ALSO
+.Xr stats 7
+.Rs
+.%B The FreeBSD Architecture Handbook
+.%O Chapter 7. Virtual Memory System
+.%U https://docs.freebsd.org/en/books/arch-handbook/
+.Re
+.Sh HISTORY
+The
+.Nm
+manual page appeared in
+.Fx 15.0 .
+.Pp
+It is based on the
+.Lk "https://wiki.freebsd.org/Memory" "Memory article"
+from the
+.Fx
+Wiki that was a joint effort of
+.An Andriy Gapon Aq Mt avg@FreeBSD.org ,
+.An Mark Johnston Aq Mt markj@FreeBSD.org ,
+.An Kubilay Kocak Aq Mt koobs@FreeBSD.org
+and
+.An Andrey Zonov Aq Mt zont@FreeBSD.org .
+.Sh BUGS
+Some documents describe wired memory as non-pageable
+and unwired memory as pageable.
+Those terms are discouraged to avoid ambiguity.
