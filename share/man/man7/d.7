@@ -198,9 +198,93 @@ The number of nanoseconds since the Epoch
 Suitable for timestamping logs.
 .El
 .Sh BUILT-IN FUNCTIONS
+.Bl -tag -width indent
+.It Ft "string" Fn json "const char *json_string" "const char *key"
+Return the value of the given
+.Fa key
+from
+.Fa json_string.
+Return
+.Dv NULL
+if
+.Fa key
+does not exist.
+.Pp
+For example,
+.Bd -literal -compact -offset indent
+json("{\e"a\e": 1024}", "a");
+.Ed
+returns
+.Ql 1024 .
+.It Ft int Fn progenyof "pid_t pid"
+Return non-zero if the current thread is a progeny of
+the process associted with specified
+.Fa pid
+and zero otherwise.
+.Pp
+For example,
+.Bd -literal -compact -offset indent
+progenyof(ppid);
+.Ed
+.\" XXX(0mp): Can the current thread not have a process associated with it?
+.\" What if the current process is PID 1? Also, progenyof(0) returns "1" which
+.\" adds to the confusion.
+returns non-zero as the current thread is always a child process of its parent
+process.
+.It Ft int Fn rand
+Return a pseudo-random integer.
+.It Ft int Fn speculation
+Allocate a new speculative trace buffer
+and return a unique speculation identifier for that buffer.
+.El
+.Ss Device Functions
+.Bl -tag -width indent
+.It Ft "string" Fn ddi_pathname "void *" "int64_t"
+.\" XXX(0mp): Can we just use int for function types and dev_t for argument types here?
+.It Ft "genunix`major_t" Fn getmajor "genunix`dev_t"
+.It Ft "genunix`minor_t" Fn getminor "genunix`dev_t"
+.El
+.Ss Memory Functions
+.Bl -tag -width indent
+.It Ft "void *" Fn alloca "size_t"
+.It Ft "void" Fn bcopy "void *" "void *" "size_t"
+.It Ft "uintptr_t *" Fn memref "void *" "size_t"
+.It Ft "string" Fn memstr "void *" "char" "size_t"
+.El
+.Ss Network Functions
+.Bl -tag -width indent
+.It Ft "uint32_t" Fn htonl "uint32_t"
+.It Ft "uint64_t" Fn htonll "uint64_t"
+.It Ft "uint16_t" Fn htons "uint16_t"
+.It Ft "string" Fn inet_ntoa "in_addr_t * address"
+Return a dotted quad decimal representation of the provided
+IPv4
+.Fa address.
+.It Ft "string" Fn inet_ntoa6 "in6_addr *address"
+.It Ft "string" Fn inet_ntop "int" "void *"
+.El
+.Ss File Functions
+.Bl -tag -width indent
+.\" XXX(0mp): See https://www.illumos.org/issues/2916 for more details about getf().
+.It Ft "file_t *" Fn getf "int fd"
+Return a
+.Ft "file_t *"
+to the file descriptor of the current thread.
+The underlying
+.Ft file_t
+structure
+will not freed until it is no longer in use by the probe.
+.It Ft "string" Fn basename "const char *"
+.It Ft "string" Fn cleanpath "const char *"
+.It Ft "string" Fn dirname "const char *"
+.El
+.Ss String Functions
 .\" Keep the indentation wide enough for the reader to be able to skim through
 .\" function names quickly.
 .Bl -tag -width "size_t strlen"
+.It Ft "int" Fn index "const char *" "const char *" "[int]"
+.It Ft "string" Fn lltostr "int64_t" "[int]"
+.It Ft "int" Fn rindex "const char *" "const char *" "[int]"
 .It Ft string Fn strchr "string s" "char c"
 Return a substring of
 .Fa s
@@ -321,6 +405,9 @@ and
 substr("abcd", 99)
 .Ed
 returns an empty string.
+.It Ft int64_t Fn strtoll "const char *" "[int]"
+.It Ft string Fn tolower "const char *"
+.It Ft string Fn toupper "const char *"
 .El
 .Ss Aggregation Functions
 .Bl -tag -compact -width "llquantize(value, factor, low, high, nsteps)"
@@ -343,6 +430,14 @@ Standard deviation
 .It Fn sum value
 Sum
 .El
+.Ss Kernel Copy Functions
+.Bl -tag -width indent
+.It Ft "void *" Fn copyin "uintptr_t" "size_t"
+.It Ft "string" Fn copyinstr "uintptr_t" "[size_t]"
+.It Ft "void" Fn copyintro "uintptr_t" "size_t" "void *"
+.It Ft "void" Fn copyout "void *" "uintptr_t" "size_t"
+.It Ft "void" Fn copyoutstr "char *" "uintptr_t" "size_t"
+.El
 .Ss Kernel Destructive Functions
 By default,
 .Xr dtrace 1
@@ -358,6 +453,24 @@ Spin on the CPU for the specified number of
 .Fa nanoseconds .
 .It Fn panic
 Panic the kernel.
+.El
+.Ss Kernel Synchronization Functions
+The following functions are related to
+.Xr locking 9
+in the
+.Fx
+kernel:
+.Bl -tag -width indent
+.It Ft intmtx_str Fn mutex_owned
+.It Ft threadmtx_str Fn mutex_owner
+.It Ft intmtx_str Fn mutex_type_adaptive
+.It Ft intmtx_str Fn mutex_type_spin
+.It Ft rwlock_str Fn rw_iswriter
+.It Ft rwlock_str Fn rw_read_held
+.It Ft rwlock_str Fn rw_write_held
+.It Ft sxlock_str Fn sx_isexclusive
+.It Ft sxlock_str Fn sx_shared_held
+.It Ft sxlock_str Fn sx_exclusive_held
 .El
 .Sh FILES
 .Bl -tag -width /usr/share/dtrace
