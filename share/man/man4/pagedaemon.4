@@ -1,0 +1,75 @@
+.\"
+.\" SPDX-License-Identifier: BSD-2-Clause
+.\"
+.\" Copyright (c) 2026 Mateusz Piotrowski <0mp@FreeBSD.org>
+.\"
+.Dd March 22, 2026
+.Dt PAGEDAEMON 9
+.Os
+.Sh NAME
+.Nm pagedaemon
+.Nd "virtual memory page daemon"
+.Sh SYNOPSIS
+.Cd vm.pageout_update_period
+.Cd vm.panic_on_oom
+.Cd vm.pageout_cpus_per_thread
+.Cd vm.lowmem_period
+.Cd vm.disable_swapspace_pageouts
+.Cd vm.pageout_lock_miss
+.Cd vm.pageout_oom_seq
+.Cd vm.act_scan_laundry_weight
+.Cd vm.inact_scan_laundry_weight
+.Cd vm.background_launder_rate
+.Cd vm.background_launder_max
+.Cd vm.max_user_wired
+.Sh DESCRIPTION
+The in-kernel
+.Nm
+.Pq sometimes called Dq a page-out daemon
+is responsible for examining the recent access history of each page.
+Unreferenced pages are aged out of the active queue and into the inactive queue
+or the laundry queue depending on the memory pressure.
+.Pp
+The following MIBs are available:
+.Bl -tag -width "vm.background_launder_rate=4096"
+.It Va vm.pageout_update_period Ns =16
+The interval (seconds) between an active queue scan.
+Those scans check if a page has been referenced since the last scan.
+If enough scans complete without seeing a reference,
+the page is moved to the inactive queue.
+.It Va vm.panic_on_oom Ns =0
+The number of out-of-memory errors before the kernel panics
+instead of killing the largest process.
+.It Va vm.pageout_cpus_per_thread Ns =16 Pq Xr loader 8 Ns -settable
+The number of CPUs per
+.Nm
+worker thread.
+.It Va vm.lowmem_period Ns =10
+The low memory callback period.
+.It Va vm.disable_swapspace_pageouts Ns =0
+The knob to disallow swapout of dirty pages.
+.It Va vm.pageout_lock_miss No Pq readonly
+The number of
+.Xr vget 9
+lock misses during pageout.
+.It Va vm.pageout_oom_seq Ns =12
+The number of back-to-back calls to the OOM detector to start OOM.
+.It Va vm.act_scan_laundry_weight Ns =3
+The weight given to clean vs. dirty pages in the active queue scans.
+.It Va vm.inact_scan_laundry_weight Ns =1
+The weight given to clean vs. dirty pages in the inactive queue scans.
+.It Va vm.background_launder_rate Ns =4096
+The background laundering rate (in kilobytes per second).
+.It Va vm.background_launder_max Ns =20480
+The laundering capacity (in kilobytes).
+.It Va vm.max_user_wired
+The system-wide limit to the user-wired page count.
+.El
+.Sh SEE ALSO
+.Xr memory 7 ,
+.Xr kthread 9
+.Sh HISTORY
+The
+.Nm
+manual page first appeared in
+.Fx 16.0 .
