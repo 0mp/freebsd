@@ -26,12 +26,12 @@
 .\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 .\" SUCH DAMAGE.
 .\"
-.Dd June 5, 2026
+.Dd June 12, 2026
 .Dt BHYVE 8
 .Os
 .Sh NAME
 .Nm bhyve
-.Nd "run a guest operating system inside a virtual machine"
+.Nd run a guest operating system inside a virtual machine
 .Sh SYNOPSIS
 .Nm
 .Op Fl aCDeHhMPSuWwxY
@@ -51,7 +51,7 @@
 .Oo Fl f\~
 .Ar name Cm \&,
 .Oo
-.Cm string No | Cm file
+.Cm string | Cm file
 .Oc
 .Cm \&= Ar data
 .Sm on
@@ -79,8 +79,9 @@
 .Oc
 .Sm on
 .Oc
+.Op Fl n Ar id Ns Cm \&, Ns Ar size Ns Cm \&, Ns Ar cpuset Ns Op Cm \&, Ns Ar domain_policy
 .Op Fl o Ar var Ns Cm = Ns Ar value
-.Oo Fl p Ar vcpuN Ns Oo - Ns Ar vcpuM Oc Ns Cm \&: Ns Ar hostcpuN Ns Oo - Ns Ar hostcpuM Oc Oc
+.Op Fl p Ar vcpuN Ns Oo Cm - Ns Ar vcpuM Oc Ns Cm \&: Ns Ar hostcpuN Ns Oo Cm - Ns Ar hostcpuM Oc
 .Op Fl r Ar file
 .Sm off
 .Oo Fl s\~
@@ -183,7 +184,7 @@ Force
 .Nm
 to exit when a guest issues an access to an I/O port that is not emulated.
 This is intended for debug purposes and only applies to the amd64 platform.
-.It Fl f Ar name Ns Cm \&, Ns Oo Cm string Ns No | Ns Cm file Ns Oc Ns Cm \&= Ns Ar data
+.It Fl f Ar name Ns Cm \&, Ns Oo Cm string Ns | Ns Cm file Ns Oc Ns Cm \&= Ns Ar data
 Add a fw_cfg file
 .Ar name
 to the fw_cfg interface.
@@ -295,9 +296,9 @@ Run the VM in
 mode.
 In this mode, a guest reboot does not cause the bhyve process to exit.
 Instead, bhyve will restart the VM.
-Once the bhyve process exits or is killed, the VM will be destroyed automatically.
-.Pp
-.It Fl n Ar id Ns Cm \&, Ns Ar size Ns Cm \&, Ns Ar cpus Ns Op Cm \&, Ns Ar domain_policy
+Once the bhyve process exits or is killed,
+the VM will be destroyed automatically.
+.It Fl n Ar id Ns Cm \&, Ns Ar size Ns Cm \&, Ns Ar cpuset Ns Op Cm \&, Ns Ar domain_policy
 Configure guest NUMA domains.
 This option applies only to the amd64 platform.
 .Pp
@@ -317,14 +318,14 @@ particular cannot be used if the guest was initialized using
 .Xr bhyveload 8 .
 .Pp
 Each domain is identified by a numerical
-.Em id .
+.Ar id .
 The domain memory
-.Em size
+.Ar size
 is specified using the same format as the
 .Fl m
 flag.
 The sum of all
-.Em size
+.Ar size
 parameters overrides the total VM memory size specified by the
 .Fl m
 flag.
@@ -332,10 +333,10 @@ However, if at least one domain memory size parameter is
 missing, the total VM memory size will be equally distributed across
 all emulated domains.
 The
-.Em cpuset
+.Ar cpuset
 parameter specifies the set of CPUs that are part of the domain.
 The
-.Em domain_policy
+.Ar domain_policy
 parameter may be optionally used to configure the
 .Xr domainset 9
 host NUMA memory allocation policy for an emulated
@@ -356,20 +357,20 @@ for configuration options.
 .It Fl P
 Force the guest virtual CPU to exit when a PAUSE instruction is detected.
 This option applies only to the amd64 platform.
-.It Fl p Ar vcpuN Ns Oo - Ns Ar vcpuM Oc Ns Cm \&: Ns Ar hostcpuN Ns Op - Ns Ar hostcpuM
+.It Fl p Ar vcpuN Ns Oo Cm - Ns Ar vcpuM Oc Ns Cm \&: Ns Ar hostcpuN Ns Op Cm - Ns Ar hostcpuM
 Pin the guest's virtual CPUs starting from
-.Em vcpuN
+.Ar vcpuN
 to
-.Em vcpuM
+.Ar vcpuM
 to the host CPUs starting from
-.Em hostcpuN
+.Ar hostcpuN
 to
-.Em hostcpuM .
+.Ar hostcpuM .
 Host CPUs and guest virtual CPUs are numbered starting from 0.
 The
-.Em vcpuM
+.Ar vcpuM
 and
-.Em hostcpuM
+.Ar hostcpuM
 arguments may be omitted.
 .It Fl r Ar file
 Resume a guest from a snapshot.
@@ -642,7 +643,7 @@ Multiple rules can be specified, separated by semicolons.
 Note that semicolons must be escaped or quoted to prevent the shell from
 interpreting them.
 The backend will provide DHCP and DNS service to the guest.
-.Ss Block storage device backends:
+.Ss Block storage device backends
 .Bl -bullet
 .Sm off
 .It
@@ -884,18 +885,18 @@ QEMU's fw_cfg interface as well.
 .Sm off
 .Bl -bullet
 .It
-.Cm ppt Ar N Oo , Ar passthru-device-options Oc
+.Cm ppt Ar N Oo Cm \&, Ar passthru-device-options Oc
 .It
-.Ns Ar bus Cm \&/ Ar slot Cm \&/ Ar function
+.Ar bus Cm \&/ Ar slot Cm \&/ Ar function
 .Op , Ar passthru-device-options
 .It
-.Cm pci Ar bus Cm : Ar slot Cm : Ns Ar function
-.Op , Ar passthru-device-options
+.Cm pci Ar bus Cm \&: Ar slot Cm \&: Ns Ar function
+.Op Cm \&, Ar passthru-device-options
 .El
 .Sm on
 .Pp
-Connect to a PCI device on the host either named ppt
-.Ns Ar N
+Connect to a PCI device on the host either named
+.Cm ppt Ns Ar N
 or at the selector described by
 .Ar slot ,
 .Ar bus ,
@@ -959,7 +960,7 @@ resize at present.
 .It
 Emergency write is advertised, but no-op at present.
 .El
-.Ss Virtio input device backends:
+.Ss Virtio input device backends
 .Bl -bullet
 .Sm off
 .It
@@ -1001,7 +1002,7 @@ There are three possible formats:
 .Sm on
 .It
 .Sm off
-.Cm unix: Ar my/unix.sock
+.Cm unix\&: Ar my/unix.sock
 .Sm on
 .El
 .Pp
@@ -1205,7 +1206,8 @@ Use
 to make
 .Nm
 dump a configuration file representing the used flags and arguments to
-stdout. You can pipe the output into a file to persist the generated settings.
+stdout.
+You can pipe the output into a file to persist the generated settings.
 .Pp
 Make sure to remove the
 .Ar config.dump
