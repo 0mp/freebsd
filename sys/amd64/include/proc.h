@@ -77,6 +77,7 @@ struct mdthread {
 	struct pcb md_pcb;
 	void *md_stack_base;
 	void *md_usr_fpu_save;
+	uintptr_t md_canary;
 };
 
 struct mdproc {

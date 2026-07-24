@@ -201,6 +201,9 @@ copy_thread(struct thread *td1, struct thread *td2)
 		 */
 		td2->td_frame->tf_rflags &= ~PSL_T;
 	}
+#if defined(PERTHREAD_SSP)
+	arc4random_buf(&td2->td_md.md_canary, sizeof(td2->td_md.md_canary));
+#endif
 }
 
 /*

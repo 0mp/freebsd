@@ -35,6 +35,21 @@ INCLUDES+= -I$S/contrib/libfdt
 CFLAGS+=	-fno-omit-frame-pointer -mno-omit-leaf-frame-pointer
 .endif
 
+PERTHREAD_SSP_ENABLED!=	grep PERTHREAD_SSP opt_global.h || true ; echo
+.if !empty(PERTHREAD_SSP_ENABLED)
+. if (${COMPILER_TYPE} == "clang" && ${OSRELDATE} >= 1600019) || \
+  ${COMPILER_TYPE} == "gcc"
+PCPU_CANARY_OFFSET != grep PC_CANARY assym.inc | cut -f3 | xargs printf "%d"
+AMD64_SSP_CFLAGS += -mstack-protector-guard=tls
+AMD64_SSP_CFLAGS += -mstack-protector-guard-reg=gs
+AMD64_SSP_CFLAGS += -mstack-protector-guard-offset=${PCPU_CANARY_OFFSET}
+. else
+.  warning "Compiler is too old to support PERTHREAD_SSP"
+. endif
+CFLAGS += ${AMD64_SSP_CFLAGS}
+ARCH_FLAGS += ${AMD64_SSP_CFLAGS}
+.endif
+
 %BEFORE_DEPEND
 
 %OBJS

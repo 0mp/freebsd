@@ -105,6 +105,8 @@ extern u_int mptramp_nx;
 smp_targeted_tlb_shootdown_t smp_targeted_tlb_shootdown =
     &smp_targeted_tlb_shootdown_native;
 
+extern uintptr_t boot_canary;
+
 /*
  * Local data and functions.
  */
@@ -231,6 +233,7 @@ init_secondary(void)
 	pc->pc_pcid_gen = 1;
 	pc->pc_kpmap_store.pm_pcid = PMAP_PCID_KERN;
 	pc->pc_kpmap_store.pm_gen = 1;
+	pc->pc_canary = boot_canary;
 
 	pc->pc_smp_tlb_gen = 1;
 

@@ -85,6 +85,7 @@ ASSYM(TD_FRAME, offsetof(struct thread, td_frame));
 ASSYM(TD_MD, offsetof(struct thread, td_md));
 ASSYM(TD_MD_PCB, offsetof(struct thread, td_md.md_pcb));
 ASSYM(TD_MD_STACK_BASE, offsetof(struct thread, td_md.md_stack_base));
+ASSYM(TD_MD_CANARY, offsetof(struct thread, td_md.md_canary));
 
 ASSYM(TDP_CALLCHAIN, TDP_CALLCHAIN);
 ASSYM(TDP_KTHREAD, TDP_KTHREAD);
@@ -269,6 +270,7 @@ ASSYM(PC_IBPB_SET, offsetof(struct pcpu, pc_ibpb_set));
 ASSYM(PC_MDS_TMP, offsetof(struct pcpu, pc_mds_tmp));
 ASSYM(PC_MDS_BUF, offsetof(struct pcpu, pc_mds_buf));
 ASSYM(PC_MDS_BUF64, offsetof(struct pcpu, pc_mds_buf64));
+ASSYM(PC_CANARY, offsetof(struct pcpu, pc_canary));
 
 ASSYM(LA_EOI, LAPIC_EOI * LAPIC_MEM_MUL);
 ASSYM(LA_ISR, LAPIC_ISR0 * LAPIC_MEM_MUL);

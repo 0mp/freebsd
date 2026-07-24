@@ -31,6 +31,8 @@
  * SUCH DAMAGE.
  */
 
+#include "opt_global.h"
+
 #include <machine/asmacros.h>
 #include <machine/specialreg.h>
 
@@ -145,6 +147,11 @@ sw1cont:
 	 * to load up the rest of the next context.
 	 */
 
+#ifdef PERTHREAD_SSP
+	movq	TD_MD_CANARY(%r12),%rax
+	movq	%rax,PCPU(CANARY)
+	xorq	%rax,%rax
+#endif
 	/* Skip loading LDT and user fsbase/gsbase for kthreads */
 	testl	$TDP_KTHREAD,TD_PFLAGS(%r12)
 	jnz	do_kthread

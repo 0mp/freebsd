@@ -82,6 +82,11 @@ ENTRY(btext)
 	xorq	%rbp, %rbp
 
 	call	hammer_time		/* set up cpu for unix operation */
+#ifdef PERTHREAD_SSP
+	movq	boot_canary, %rbx
+	movq	%rbx, PCPU(CANARY)
+	xorq	%rbx, %rbx
+#endif
 	movq	%rax,%rsp		/* set up kstack for mi_startup() */
 	call	mi_startup		/* autoconfiguration, mountroot etc */
 0:	hlt

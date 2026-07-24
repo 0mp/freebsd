@@ -9,6 +9,7 @@ MAXMEM
 MPTABLE_FORCE_HTT
 NKPT			opt_pmap.h
 PV_STATS		opt_pmap.h
+PERTHREAD_SSP		opt_global.h
 
 # Options for emulators.  These should only be used at config time, so
 # they are handled like options for static filesystems

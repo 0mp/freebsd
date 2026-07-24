@@ -228,6 +228,10 @@ void (*vmm_resume_p)(void);
 
 bool efi_boot;
 
+#ifdef PERTHREAD_SSP
+uintptr_t boot_canary = 0x6543d292157d3053UL;
+#endif
+
 static void
 cpu_startup(void *dummy)
 {
@@ -1410,6 +1414,9 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	bzero(thread0.td_kstack, kstack0_sz);
 	cpu_thread_new_kstack(&thread0);
 	physfree += kstack0_sz;
+#ifdef PERTHREAD_SSP
+	thread0.td_md.md_canary = boot_canary;
+#endif
 
 	/*
 	 * Initialize enough of thread0 for delayed invalidation to
@@ -1564,7 +1571,6 @@ hammer_time(u_int64_t modulep, u_int64_t physfree)
 	 * handlers will work.
 	 */
 	thread0.td_pcb = get_pcb_td(&thread0);
-
 	/*
 	 * The console and kdb should be initialized even earlier than here,
 	 * but some console drivers don't work until after getmemsize().
