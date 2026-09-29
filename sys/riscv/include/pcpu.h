@@ -47,7 +47,8 @@
 	uint32_t pc_pending_ipis;	/* IPIs pending to this CPU */	\
 	uint32_t pc_hart;		/* Hart ID */			\
 	uint64_t pc_clock;						\
-	char __pad[48]			/* Pad to factor of PAGE_SIZE */
+	uintptr_t pc_canary;						\
+	char __pad[40]			/* Pad to factor of PAGE_SIZE */
 
 #ifdef _KERNEL
 

@@ -110,6 +110,8 @@ static volatile int aps_ready;
 /* Temporary variables for init_secondary()  */
 void *dpcpu[MAXCPU - 1];
 
+extern uintptr_t boot_canary;
+
 static void
 release_aps(void *dummy __unused)
 {
@@ -395,6 +397,10 @@ cpu_init_fdt(u_int id, phandle_t node, u_int addr_size, pcell_t *reg)
 	pcpup = &__pcpu[cpuid];
 	pcpu_init(pcpup, cpuid, sizeof(struct pcpu));
 	pcpup->pc_hart = hart;
+// XXX-0MP: Wrong place?
+#ifdef PERTHREAD_SSP
+	pcpup->pc_canary = boot_canary;
+#endif
 
 	dpcpu[cpuid - 1] = kmem_malloc(DPCPU_SIZE, M_WAITOK | M_ZERO);
 	dpcpu_init(dpcpu[cpuid - 1], cpuid);

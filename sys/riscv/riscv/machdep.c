@@ -123,6 +123,11 @@ extern char end[];
 
 static char static_kenv[PAGE_SIZE];
 
+// XXX-0MP: Is it correc to have the same value as on amd64?
+#ifdef PERTHREAD_SSP
+uintptr_t boot_canary = 0x6543d292157d3053UL;
+#endif
+
 static void
 cpu_startup(void *dummy)
 {
@@ -301,6 +306,9 @@ init_proc0(void *kstack)
 	thread0.td_pcb->pcb_fpflags = 0;
 	thread0.td_pcb->pcb_vsflags = 0;
 	thread0.td_frame = &proc0_tf;
+#ifdef PERTHREAD_SSP
+	thread0.td_md.md_canary = boot_canary;
+#endif
 	pcpup->pc_curpcb = thread0.td_pcb;
 }
 
@@ -575,6 +583,10 @@ initriscv(struct riscv_bootparams *rvbp)
 	__asm __volatile("mv tp, %0" :: "r"(pcpup));
 
 	PCPU_SET(curthread, &thread0);
+// XXX-0MP: Most likely not the right location.
+#ifdef PERTHREAD_SSP
+	thread0.td_md.md_canary = boot_canary;
+#endif
 
 	/* Initialize SBI interface. */
 	sbi_init();

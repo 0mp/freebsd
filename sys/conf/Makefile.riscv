@@ -39,6 +39,23 @@ LDFLAGS+= --defsym='kernel_lma=${KERNEL_LMA}'
 CFLAGS += -fno-omit-frame-pointer -fno-optimize-sibling-calls
 .endif
 
+.if ${MK_SSP} != "no"
+PERTHREAD_SSP_ENABLED!=	grep PERTHREAD_SSP opt_global.h || true ; echo
+. if !empty(PERTHREAD_SSP_ENABLED)
+.  if (${COMPILER_TYPE} == "clang" && ${OSRELDATE} >= 1600019) || \
+	  ${COMPILER_TYPE} == "gcc"
+PCPU_CANARY_OFFSET!= grep PC_CANARY assym.inc | cut -f3 | xargs printf "%d"
+RISCV_SSP_CFLAGS+= -mstack-protector-guard=tls
+RISCV_SSP_CFLAGS+= -mstack-protector-guard-reg=tp
+RISCV_SSP_CFLAGS+= -mstack-protector-guard-offset=${PCPU_CANARY_OFFSET}
+.  else
+.   warning "Compiler is too old to support PERTHREAD_SSP"
+.  endif
+CFLAGS+= ${RISCV_SSP_CFLAGS}
+ARCH_FLAGS+= ${RISCV_SSP_CFLAGS}
+. endif
+.endif
+
 %BEFORE_DEPEND
 
 %OBJS

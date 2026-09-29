@@ -75,6 +75,7 @@ ASSYM(SF_UC, offsetof(struct sigframe, sf_uc));
 
 ASSYM(PC_CURPCB, offsetof(struct pcpu, pc_curpcb));
 ASSYM(PC_CURTHREAD, offsetof(struct pcpu, pc_curthread));
+ASSYM(PC_CANARY, offsetof(struct pcpu, pc_canary));
 
 ASSYM(TD_PCB, offsetof(struct thread, td_pcb));
 ASSYM(TD_FLAGS, offsetof(struct thread, td_flags));
@@ -82,6 +83,7 @@ ASSYM(TD_AST, offsetof(struct thread, td_ast));
 ASSYM(TD_PROC, offsetof(struct thread, td_proc));
 ASSYM(TD_FRAME, offsetof(struct thread, td_frame));
 ASSYM(TD_MD, offsetof(struct thread, td_md));
+ASSYM(TD_MD_CANARY, offsetof(struct thread, td_md.md_canary));
 ASSYM(TD_LOCK, offsetof(struct thread, td_lock));
 
 ASSYM(TF_SIZE, TF_SIZE);

@@ -32,6 +32,8 @@
  * SUCH DAMAGE.
  */
 
+#include "opt_global.h"
+
 #include "assym.inc"
 
 #include <machine/param.h>
@@ -223,6 +225,11 @@ ENTRY(cpu_throw)
 1:
 	/* Store the new curthread */
 	sd	a0, PC_CURTHREAD(tp)
+#ifdef PERTHREAD_SSP
+	/* Add the canary */
+	ld	t0, TD_MD_CANARY(a1)
+	sd	t0, PC_CANARY(tp)
+#endif
 	/* And the new pcb */
 	ld	x13, TD_PCB(a0)
 	sd	x13, PC_CURPCB(tp)
@@ -269,6 +276,11 @@ END(cpu_throw)
 ENTRY(cpu_switch)
 	/* Store the new curthread */
 	sd	a1, PC_CURTHREAD(tp)
+#ifdef PERTHREAD_SSP
+	/* Add the canary */
+	ld	t0, TD_MD_CANARY(a1)
+	sd	t0, PC_CANARY(tp)
+#endif
 	/* And the new pcb */
 	ld	x13, TD_PCB(a1)
 	sd	x13, PC_CURPCB(tp)
